@@ -1,0 +1,5 @@
+{
+  "name": "remote-notify",
+  "version": "1.0.0",
+  "description": "Notify remote control dashboard when Claude stops"
+}

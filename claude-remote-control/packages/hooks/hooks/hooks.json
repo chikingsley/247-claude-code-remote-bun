@@ -1,0 +1,17 @@
+{
+  "description": "Remote notification hooks for Claude Remote Control",
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/notify-stop.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

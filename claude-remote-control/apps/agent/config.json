@@ -1,0 +1,27 @@
+{
+  "machine": {
+    "id": "mac-mini-home",
+    "name": "Mac Mini (home)"
+  },
+  "tunnel": {
+    "domain": "mac.thevibecompany.co"
+  },
+  "projects": {
+    "basePath": "~/Dev/BrainStorming",
+    "whitelist": [
+      "claude-remote-control",
+      "ClaudIn",
+      "enterprise",
+      "quivrcom"
+    ]
+  },
+  "github": {
+    "enabled": true,
+    "clonePath": "~/Dev",
+    "allowedOrgs": ["*"]
+  },
+  "dashboard": {
+    "apiUrl": "http://localhost:3001/api",
+    "apiKey": "cr-api-key-CHANGE-ME"
+  }
+}

@@ -1,0 +1,92 @@
+// Machine types
+export interface Machine {
+  id: string;
+  name: string;
+  tunnelUrl: string;
+  status: 'online' | 'offline';
+  lastSeen: Date | null;
+  config: MachineConfig | null;
+  createdAt: Date;
+}
+
+export interface MachineConfig {
+  projects: string[];
+  github?: {
+    enabled: boolean;
+    allowedOrgs: string[];
+  };
+}
+
+// Session types
+export interface Session {
+  id: string;
+  machineId: string;
+  project: string | null;
+  status: 'running' | 'stopped' | 'waiting';
+  tmuxSession: string | null;
+  startedAt: Date;
+  endedAt: Date | null;
+}
+
+// User types
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  createdAt: Date;
+}
+
+// WebSocket message types - Client to Agent
+export type WSMessageToAgent =
+  | { type: 'input'; data: string }
+  | { type: 'resize'; cols: number; rows: number }
+  | { type: 'start-claude' }
+  | { type: 'ping' };
+
+// WebSocket message types - Agent to Client
+export type WSMessageFromAgent =
+  | { type: 'output'; data: string }
+  | { type: 'connected'; session: string }
+  | { type: 'disconnected' }
+  | { type: 'pong' };
+
+// API types
+export interface RegisterMachineRequest {
+  id: string;
+  name: string;
+  tunnelUrl: string;
+  config?: MachineConfig;
+}
+
+export interface AgentInfo {
+  machine: {
+    id: string;
+    name: string;
+  };
+  status: 'online' | 'offline';
+  projects: string[];
+}
+
+// Agent configuration
+export interface AgentConfig {
+  machine: {
+    id: string;
+    name: string;
+  };
+  tunnel: {
+    domain: string;
+  };
+  projects: {
+    basePath: string;
+    whitelist: string[];
+  };
+  github?: {
+    enabled: boolean;
+    clonePath: string;
+    allowedOrgs: string[];
+  };
+  dashboard: {
+    apiUrl: string;
+    apiKey: string;
+  };
+}
