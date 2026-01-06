@@ -83,8 +83,7 @@ export function SessionRow({ session, onConnect, onKill }: SessionRowProps) {
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">{session.project}</p>
           <p className="text-xs text-muted-foreground truncate">
-            {timeAgo}
-            {session.lastActivity && ` · ${session.lastActivity.slice(0, 30)}...`}
+            {session.name.split('--')[1] || ''} · {timeAgo}
           </p>
         </div>
 

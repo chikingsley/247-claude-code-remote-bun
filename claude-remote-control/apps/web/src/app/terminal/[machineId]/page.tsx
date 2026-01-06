@@ -43,6 +43,16 @@ export default function TerminalPage() {
 
   const agentUrl = machine?.config?.agentUrl || 'localhost:4678';
 
+  // Sync URL params to state (handles hydration and navigation)
+  useEffect(() => {
+    if (urlProject && urlProject !== selectedProject) {
+      setSelectedProject(urlProject);
+    }
+    if (urlSession && urlSession !== selectedSession) {
+      setSelectedSession(urlSession);
+    }
+  }, [urlProject, urlSession]);
+
   useEffect(() => {
     fetch(`/api/machines/${machineId}`)
       .then((r) => {
@@ -219,7 +229,7 @@ export default function TerminalPage() {
               <option value="">+ New session</option>
               {sessions.map((s) => (
                 <option key={s.name} value={s.name}>
-                  {s.project} ({s.status})
+                  {s.name.split('--')[1] || s.project} ({s.status})
                 </option>
               ))}
             </select>

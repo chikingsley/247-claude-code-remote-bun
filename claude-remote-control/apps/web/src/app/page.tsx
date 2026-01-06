@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Monitor, Search, RefreshCw } from 'lucide-react';
 import { formatTimeAgo } from '@/lib/time';
+import { useSessionPolling } from '@/contexts/SessionPollingContext';
 
 interface Machine {
   id: string;
@@ -43,6 +44,7 @@ function MachineCardSkeleton() {
 
 export default function Home() {
   const router = useRouter();
+  const { setMachines: setPollingMachines } = useSessionPolling();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,6 +57,7 @@ export default function Home() {
       const response = await fetch('/api/machines');
       const data = await response.json();
       setMachines(data);
+      setPollingMachines(data);
       setLastRefresh(new Date());
     } catch (err) {
       console.error('Failed to fetch machines:', err);
@@ -62,7 +65,7 @@ export default function Home() {
       setLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [setPollingMachines]);
 
   useEffect(() => {
     fetchMachines();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { CountBadge, type SessionStatus } from '@/components/ui/status-badge';
 import { SessionList } from './SessionList';
@@ -12,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useSessionPolling } from '@/contexts/SessionPollingContext';
 
 interface Machine {
   id: string;
@@ -40,92 +41,15 @@ interface MachineCardProps {
 
 export function MachineCard({ machine, onConnect }: MachineCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const prevSessionsRef = useRef<SessionInfo[]>([]);
+  const { getSessionsForMachine, isLoading, getError, refreshMachine } = useSessionPolling();
+
+  const sessions = getSessionsForMachine(machine.id);
+  const loading = isLoading(machine.id);
+  const error = getError(machine.id);
 
   const isOnline = machine.status === 'online';
   const agentUrl = machine.config?.agentUrl || 'localhost:4678';
   const projects = machine.config?.projects || [];
-
-  useEffect(() => {
-    if (!expanded || !isOnline) return;
-
-    const fetchSessions = async () => {
-      setLoading(true);
-      setError(null);
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-
-      try {
-        const protocol = agentUrl.includes('localhost') ? 'http' : 'https';
-        const response = await fetch(`${protocol}://${agentUrl}/api/sessions`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch sessions');
-
-        const data = await response.json();
-        setSessions(data);
-      } catch (err) {
-        if ((err as Error).name === 'AbortError') {
-          setError('Agent not responding');
-        } else {
-          setError('Could not connect to agent');
-        }
-        setSessions([]);
-      } finally {
-        clearTimeout(timeout);
-        setLoading(false);
-      }
-    };
-
-    fetchSessions();
-    const interval = setInterval(fetchSessions, 10000);
-    return () => clearInterval(interval);
-  }, [expanded, isOnline, agentUrl]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  useEffect(() => {
-    const prev = prevSessionsRef.current;
-
-    for (const session of sessions) {
-      const prevSession = prev.find((s) => s.name === session.name);
-      const wasNotActionable = !prevSession || !['permission', 'stopped', 'waiting'].includes(prevSession.status);
-      const isActionable = ['permission', 'stopped', 'waiting'].includes(session.status);
-
-      if (wasNotActionable && isActionable) {
-        showNotification(session);
-      }
-    }
-
-    prevSessionsRef.current = [...sessions];
-  }, [sessions]);
-
-  function showNotification(session: SessionInfo) {
-    if (typeof window === 'undefined' || !('Notification' in window)) return;
-    if (Notification.permission !== 'granted') return;
-
-    const body =
-      session.status === 'permission'
-        ? 'Autorisation requise'
-        : session.status === 'waiting'
-          ? 'Question posée'
-          : 'Tâche terminée';
-
-    new Notification(`${machine.name} - ${session.project}`, {
-      body,
-      icon: '/favicon.ico',
-      tag: `${session.name}-${session.status}`,
-    });
-  }
 
   const handleKillSession = async (sessionName: string) => {
     const protocol = agentUrl.includes('localhost') ? 'http' : 'https';
@@ -137,7 +61,7 @@ export function MachineCard({ machine, onConnect }: MachineCardProps) {
       );
 
       if (response.ok) {
-        setSessions((prev) => prev.filter((s) => s.name !== sessionName));
+        await refreshMachine(machine.id);
         toast.success('Session terminated');
       } else {
         toast.error('Failed to terminate session');

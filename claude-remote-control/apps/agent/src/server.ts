@@ -11,6 +11,7 @@ interface HookStatus {
   status: 'running' | 'waiting' | 'stopped' | 'ended' | 'permission';
   lastEvent: string;
   lastActivity: number;
+  lastStatusChange: number; // Timestamp when status actually changed
   project?: string;
   toolName?: string;
   stopReason?: string;
@@ -24,11 +25,8 @@ const projectHookStatus = new Map<string, HookStatus>();
 // Track pending tool executions to detect permission waiting
 const pendingTools = new Map<string, { toolName: string; timestamp: number }>();
 
-// Track pending auto-close timers
-const autoCloseTimers = new Map<string, NodeJS.Timeout>();
-
-// Auto-close delay in ms (5 seconds to allow viewing the final output)
-const AUTO_CLOSE_DELAY = 5000;
+// Track active WebSocket connections per session
+const activeConnections = new Map<string, Set<WebSocket>>();
 
 // Generate human-readable session names with project prefix
 function generateSessionName(project: string): string {
@@ -86,6 +84,13 @@ export function createServer() {
       return;
     }
 
+    // Track this connection
+    if (!activeConnections.has(sessionName)) {
+      activeConnections.set(sessionName, new Set());
+    }
+    activeConnections.get(sessionName)!.add(ws);
+    console.log(`[Connections] Added connection to '${sessionName}' (total: ${activeConnections.get(sessionName)!.size})`);
+
     // If reconnecting to an existing session, send the scrollback history
     if (terminal.isExistingSession()) {
       console.log(`Reconnecting to existing session '${sessionName}', sending history...`);
@@ -122,6 +127,26 @@ export function createServer() {
         switch (msg.type) {
           case 'input':
             terminal.write(msg.data);
+            // Update status to 'running' when user sends input from stopped/waiting state
+            // Don't overwrite permission status (user might just be accepting/rejecting)
+            if (msg.data.includes('\r') || msg.data.includes('\n')) {
+              const existing = tmuxSessionStatus.get(sessionName);
+              const currentStatus = existing?.status;
+
+              // Only set to running if Claude was waiting for input (stopped/waiting)
+              // Don't overwrite: running (already running), permission (user accepting/rejecting), ended
+              if (!currentStatus || currentStatus === 'stopped' || currentStatus === 'waiting') {
+                const now = Date.now();
+                tmuxSessionStatus.set(sessionName, {
+                  status: 'running',
+                  lastEvent: 'UserInput',
+                  lastActivity: now,
+                  lastStatusChange: now,
+                  project,
+                });
+                console.log(`[Status] Updated '${sessionName}' to 'running' (user input from ${currentStatus || 'unknown'})`);
+              }
+            }
             break;
           case 'resize':
             terminal.resize(msg.cols, msg.rows);
@@ -153,6 +178,16 @@ export function createServer() {
       console.log(`Client disconnected, tmux session '${sessionName}' preserved`);
       // Detach from tmux instead of killing - session stays alive
       terminal.detach();
+
+      // Remove from active connections
+      const connections = activeConnections.get(sessionName);
+      if (connections) {
+        connections.delete(ws);
+        console.log(`[Connections] Removed connection from '${sessionName}' (remaining: ${connections.size})`);
+        if (connections.size === 0) {
+          activeConnections.delete(sessionName);
+        }
+      }
     });
 
     ws.on('error', (err) => {
@@ -181,15 +216,6 @@ export function createServer() {
     switch (event) {
       case 'SessionStart':
         status = 'running';
-        // Cancel any pending auto-close timer
-        if (tmux_session) {
-          const existingTimer = autoCloseTimers.get(tmux_session);
-          if (existingTimer) {
-            clearTimeout(existingTimer);
-            autoCloseTimers.delete(tmux_session);
-            console.log(`[Auto-close] Cancelled for '${tmux_session}' - new session started`);
-          }
-        }
         break;
       case 'PreToolUse':
         // Tool starting - still running (most tools are auto-approved)
@@ -225,56 +251,41 @@ export function createServer() {
         if (trackingKey) {
           pendingTools.delete(trackingKey);
         }
-        // Auto-close the tmux session after a delay
-        if (tmux_session) {
-          // Cancel any existing timer
-          const existingTimer = autoCloseTimers.get(tmux_session);
-          if (existingTimer) {
-            clearTimeout(existingTimer);
-          }
-          // Schedule auto-close
-          const timer = setTimeout(async () => {
-            try {
-              const { exec } = await import('child_process');
-              const { promisify } = await import('util');
-              const execAsync = promisify(exec);
-              await execAsync(`tmux kill-session -t "${tmux_session}" 2>/dev/null`);
-              console.log(`[Auto-close] Session '${tmux_session}' killed after Claude Code exit`);
-              autoCloseTimers.delete(tmux_session);
-              tmuxSessionStatus.delete(tmux_session);
-            } catch {
-              // Session may already be closed
-              autoCloseTimers.delete(tmux_session);
-            }
-          }, AUTO_CLOSE_DELAY);
-          autoCloseTimers.set(tmux_session, timer);
-          console.log(`[Auto-close] Session '${tmux_session}' scheduled to close in ${AUTO_CLOSE_DELAY / 1000}s`);
-        }
         break;
     }
 
-    const hookData: HookStatus = {
-      status,
-      lastEvent: event,
-      lastActivity: timestamp || Date.now(),
-      project,
-      toolName: tool_name,
-      stopReason: stop_reason,
+    const now = Date.now();
+
+    // Helper to create hookData with proper lastStatusChange tracking
+    const createHookData = (existingData: HookStatus | undefined): HookStatus => {
+      const statusChanged = !existingData || existingData.status !== status;
+      return {
+        status,
+        lastEvent: event,
+        lastActivity: timestamp || now,
+        lastStatusChange: statusChanged ? now : existingData.lastStatusChange,
+        project,
+        toolName: tool_name,
+        stopReason: stop_reason,
+      };
     };
 
     // Priority 1: Store by tmux session name (most reliable for matching)
     if (tmux_session) {
-      tmuxSessionStatus.set(tmux_session, hookData);
+      const existing = tmuxSessionStatus.get(tmux_session);
+      tmuxSessionStatus.set(tmux_session, createHookData(existing));
     }
 
     // Priority 2: Store by Claude session_id (backup)
     if (session_id) {
-      claudeSessionStatus.set(session_id, hookData);
+      const existing = claudeSessionStatus.get(session_id);
+      claudeSessionStatus.set(session_id, createHookData(existing));
     }
 
     // Priority 3: Store by project name (last resort, can cause conflicts with multiple sessions)
     if (project) {
-      projectHookStatus.set(project, hookData);
+      const existing = projectHookStatus.get(project);
+      projectHookStatus.set(project, createHookData(existing));
     }
 
     const identifier = tmux_session || project || session_id;
@@ -297,6 +308,7 @@ export function createServer() {
       statusSource: 'hook' | 'tmux';
       lastActivity?: string;
       lastEvent?: string;
+      lastStatusChange?: number;
     }
 
     try {
@@ -318,15 +330,29 @@ export function createServer() {
         let statusSource: SessionInfo['statusSource'] = 'tmux';
         let lastActivity = '';
         let lastEvent: string | undefined;
+        let lastStatusChange: number | undefined;
 
         // 1. First check hook status (more reliable)
-        // Priority: tmux session name (exact match) > project name (can conflict)
-        const hookData = tmuxSessionStatus.get(name) || projectHookStatus.get(project);
+        // Get status from both sources and use the most recent
+        const tmuxHook = tmuxSessionStatus.get(name);
+        const projectHook = projectHookStatus.get(project);
+
+        let hookData: HookStatus | undefined;
+        if (tmuxHook && projectHook) {
+          // Both exist - use the one with most recent lastStatusChange
+          hookData = (tmuxHook.lastStatusChange || 0) >= (projectHook.lastStatusChange || 0)
+            ? tmuxHook
+            : projectHook;
+        } else {
+          hookData = tmuxHook || projectHook;
+        }
+
         if (hookData && (now - hookData.lastActivity < HOOK_TTL)) {
           // Hook data is fresh, use it
           status = hookData.status;
           statusSource = 'hook';
           lastEvent = hookData.lastEvent;
+          lastStatusChange = hookData.lastStatusChange;
         } else {
           // 2. Fallback to tmux heuristics
           try {
@@ -354,6 +380,7 @@ export function createServer() {
           statusSource,
           lastActivity: lastActivity.slice(-80),
           lastEvent,
+          lastStatusChange,
         });
       }
 
