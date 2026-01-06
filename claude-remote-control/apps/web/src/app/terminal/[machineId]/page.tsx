@@ -16,6 +16,14 @@ import {
   Minimize2,
   RefreshCw,
   Plus,
+  X,
+  FolderOpen,
+  GitBranch,
+  ChevronDown,
+  Loader2,
+  AlertCircle,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Terminal } from '@/components/Terminal';
@@ -59,6 +67,8 @@ export default function TerminalPage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('terminal');
+  const [showNewSessionModal, setShowNewSessionModal] = useState(false);
+  const [folders, setFolders] = useState<string[]>([]);
 
   const agentUrl = machine?.config?.agentUrl || 'localhost:4678';
 
@@ -105,7 +115,7 @@ export default function TerminalPage() {
       .finally(() => setLoading(false));
   }, [machineId, urlProject]);
 
-  // Fetch projects and sessions
+  // Fetch projects, sessions and folders
   useEffect(() => {
     if (!machine) return;
 
@@ -114,9 +124,10 @@ export default function TerminalPage() {
 
     const fetchData = async () => {
       try {
-        const [projectsRes, sessionsRes] = await Promise.all([
+        const [projectsRes, sessionsRes, foldersRes] = await Promise.all([
           fetch(`${protocol}://${url}/api/projects`),
           fetch(`${protocol}://${url}/api/sessions`),
+          fetch(`${protocol}://${url}/api/folders`),
         ]);
 
         if (projectsRes.ok) {
@@ -130,6 +141,11 @@ export default function TerminalPage() {
         if (sessionsRes.ok) {
           const s: SessionInfo[] = await sessionsRes.json();
           setSessions(s);
+        }
+
+        if (foldersRes.ok) {
+          const f: string[] = await foldersRes.json();
+          setFolders(f);
         }
       } catch (e) {
         console.error('Failed to fetch data:', e);
@@ -154,12 +170,18 @@ export default function TerminalPage() {
     [updateUrl]
   );
 
-  // Handle new session creation
+  // Handle new session button click - open modal
+  const handleNewSessionClick = useCallback((_project: string) => {
+    setShowNewSessionModal(true);
+  }, []);
+
+  // Handle new session creation from modal
   const handleNewSession = useCallback(
     (project: string) => {
       setSelectedProject(project);
       setSelectedSession('');
       setShowEmptyState(false);
+      setShowNewSessionModal(false);
       updateUrl(null, project);
     },
     [updateUrl]
@@ -349,7 +371,7 @@ export default function TerminalPage() {
           currentSessionName={selectedSession || null}
           currentProject={selectedProject}
           onSelectSession={handleSelectSession}
-          onNewSession={handleNewSession}
+          onNewSession={handleNewSessionClick}
           onSessionKilled={handleSessionKilled}
           agentUrl={agentUrl}
         />
@@ -391,7 +413,437 @@ export default function TerminalPage() {
           )}
         </main>
       </div>
+
+      {/* New Session Modal */}
+      <NewSessionProjectModal
+        open={showNewSessionModal}
+        onOpenChange={setShowNewSessionModal}
+        folders={folders}
+        currentProject={selectedProject}
+        machineName={machine.name}
+        agentUrl={agentUrl}
+        onStartSession={handleNewSession}
+      />
     </div>
+  );
+}
+
+// New Session Project Modal
+interface NewSessionProjectModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  folders: string[];
+  currentProject: string;
+  machineName: string;
+  agentUrl: string;
+  onStartSession: (project: string) => void;
+}
+
+function NewSessionProjectModal({
+  open,
+  onOpenChange,
+  folders,
+  currentProject,
+  machineName,
+  agentUrl,
+  onStartSession,
+}: NewSessionProjectModalProps) {
+  const [selectedProject, setSelectedProject] = useState<string>(currentProject);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+
+  // Clone state
+  const [activeTab, setActiveTab] = useState<'select' | 'clone'>('select');
+  const [repoUrl, setRepoUrl] = useState('');
+  const [customProjectName, setCustomProjectName] = useState('');
+  const [previewedName, setPreviewedName] = useState('');
+  const [cloning, setCloning] = useState(false);
+  const [cloneError, setCloneError] = useState<string | null>(null);
+  const [cloneSuccess, setCloneSuccess] = useState<string | null>(null);
+  const [localFolders, setLocalFolders] = useState<string[]>(folders);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (open) {
+      setSelectedProject(currentProject || (folders[0] || ''));
+      setProjectDropdownOpen(false);
+      setActiveTab('select');
+      setRepoUrl('');
+      setCustomProjectName('');
+      setPreviewedName('');
+      setCloneError(null);
+      setCloneSuccess(null);
+      setLocalFolders(folders);
+    }
+  }, [open, currentProject, folders]);
+
+  // Preview project name from URL
+  useEffect(() => {
+    if (!repoUrl) {
+      setPreviewedName('');
+      return;
+    }
+
+    const previewName = async () => {
+      try {
+        const protocol = agentUrl.includes('localhost') ? 'http' : 'https';
+        const response = await fetch(
+          `${protocol}://${agentUrl}/api/clone/preview?url=${encodeURIComponent(repoUrl)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setPreviewedName(data.projectName);
+        }
+      } catch {
+        const parts = repoUrl.replace(/\.git$/, '').split('/');
+        setPreviewedName(parts[parts.length - 1] || '');
+      }
+    };
+
+    const timer = setTimeout(previewName, 300);
+    return () => clearTimeout(timer);
+  }, [repoUrl, agentUrl]);
+
+  // Handle clone
+  const handleClone = async () => {
+    if (!repoUrl) return;
+
+    setCloning(true);
+    setCloneError(null);
+    setCloneSuccess(null);
+
+    try {
+      const protocol = agentUrl.includes('localhost') ? 'http' : 'https';
+
+      const response = await fetch(`${protocol}://${agentUrl}/api/clone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repoUrl,
+          projectName: customProjectName || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setCloneSuccess(data.projectName);
+        setLocalFolders((prev) => [...prev, data.projectName].sort());
+        setSelectedProject(data.projectName);
+        setTimeout(() => {
+          setActiveTab('select');
+          setRepoUrl('');
+          setCustomProjectName('');
+          setCloneSuccess(null);
+        }, 1500);
+      } else {
+        setCloneError(data.error || 'Clone failed');
+      }
+    } catch {
+      setCloneError('Network error - could not connect to agent');
+    } finally {
+      setCloning(false);
+    }
+  };
+
+  // Keyboard shortcut handler
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onOpenChange(false);
+      }
+      if (e.key === 'Enter' && selectedProject && activeTab === 'select') {
+        onStartSession(selectedProject);
+      }
+    },
+    [onOpenChange, onStartSession, selectedProject, activeTab]
+  );
+
+  useEffect(() => {
+    if (open) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [open, handleKeyDown]);
+
+  const handleStart = () => {
+    if (selectedProject) {
+      onStartSession(selectedProject);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={() => onOpenChange(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 10 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              'relative w-full max-w-lg mx-4',
+              'bg-[#0d0d14] border border-white/10 rounded-2xl',
+              'shadow-2xl shadow-black/50'
+            )}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/20 border border-orange-500/30 flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-orange-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white">New Session</h2>
+                  <p className="text-sm text-white/40">{machineName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => onOpenChange(false)}
+                className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {/* Tab Buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setActiveTab('select')}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                    activeTab === 'select'
+                      ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                      : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-transparent'
+                  )}
+                >
+                  <FolderOpen className="w-4 h-4" />
+                  Select Folder
+                </button>
+                <button
+                  onClick={() => setActiveTab('clone')}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                    activeTab === 'clone'
+                      ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                      : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border border-transparent'
+                  )}
+                >
+                  <GitBranch className="w-4 h-4" />
+                  Clone Repo
+                </button>
+              </div>
+
+              {/* Select Folder Tab */}
+              {activeTab === 'select' && (
+                <>
+                  <label className="block text-sm font-medium text-white/60 mb-3">
+                    Select Project
+                  </label>
+                  <div className="relative">
+                    <button
+                      onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                      className={cn(
+                        'w-full px-4 py-3 rounded-xl text-left',
+                        'bg-white/5 border border-white/10',
+                        'hover:bg-white/10 hover:border-white/20',
+                        'flex items-center justify-between',
+                        'transition-all'
+                      )}
+                    >
+                      <span className={selectedProject ? 'text-white' : 'text-white/40'}>
+                        {selectedProject || 'Choose a project...'}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          'w-4 h-4 text-white/40 transition-transform',
+                          projectDropdownOpen && 'rotate-180'
+                        )}
+                      />
+                    </button>
+
+                    {/* Dropdown */}
+                    <AnimatePresence>
+                      {projectDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          transition={{ duration: 0.15 }}
+                          className={cn(
+                            'absolute top-full left-0 right-0 mt-2 z-10',
+                            'bg-[#12121a] border border-white/10 rounded-xl',
+                            'shadow-xl shadow-black/50',
+                            'max-h-64 overflow-y-auto'
+                          )}
+                        >
+                          {localFolders.length > 0 ? (
+                            localFolders.map((folder) => (
+                              <button
+                                key={folder}
+                                onClick={() => {
+                                  setSelectedProject(folder);
+                                  setProjectDropdownOpen(false);
+                                }}
+                                className={cn(
+                                  'w-full px-4 py-2.5 text-left',
+                                  'hover:bg-white/5 transition-colors',
+                                  'first:rounded-t-xl last:rounded-b-xl',
+                                  selectedProject === folder
+                                    ? 'text-orange-400 bg-orange-500/10'
+                                    : 'text-white/80'
+                                )}
+                              >
+                                {folder}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-white/30 text-sm">
+                              No folders found
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </>
+              )}
+
+              {/* Clone Repo Tab */}
+              {activeTab === 'clone' && (
+                <div className="space-y-4">
+                  {/* Success Message */}
+                  {cloneSuccess && (
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                      <Check className="w-4 h-4" />
+                      <span className="text-sm">
+                        Successfully cloned <strong>{cloneSuccess}</strong>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {cloneError && (
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="text-sm">{cloneError}</span>
+                    </div>
+                  )}
+
+                  {/* Repo URL Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-white/60 mb-2">
+                      Repository URL
+                    </label>
+                    <input
+                      type="text"
+                      value={repoUrl}
+                      onChange={(e) => setRepoUrl(e.target.value)}
+                      placeholder="https://github.com/user/repo or git@github.com:user/repo"
+                      className={cn(
+                        'w-full px-4 py-3 rounded-xl',
+                        'bg-white/5 border border-white/10',
+                        'text-white placeholder:text-white/30',
+                        'focus:outline-none focus:border-orange-500/50 focus:bg-white/10',
+                        'transition-all'
+                      )}
+                    />
+                  </div>
+
+                  {/* Project Name (optional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-white/60 mb-2">
+                      Project Name <span className="text-white/30">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customProjectName}
+                      onChange={(e) => setCustomProjectName(e.target.value)}
+                      placeholder={previewedName || 'Auto-detected from URL'}
+                      className={cn(
+                        'w-full px-4 py-3 rounded-xl',
+                        'bg-white/5 border border-white/10',
+                        'text-white placeholder:text-white/30',
+                        'focus:outline-none focus:border-orange-500/50 focus:bg-white/10',
+                        'transition-all'
+                      )}
+                    />
+                    {previewedName && !customProjectName && (
+                      <p className="text-xs text-white/40 mt-1.5">
+                        Will be cloned as: <span className="text-orange-400">{previewedName}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Clone Button */}
+                  <button
+                    onClick={handleClone}
+                    disabled={!repoUrl || cloning}
+                    className={cn(
+                      'w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium transition-all',
+                      repoUrl && !cloning
+                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white shadow-lg shadow-orange-500/25'
+                        : 'bg-white/5 text-white/30 cursor-not-allowed'
+                    )}
+                  >
+                    {cloning ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Cloning...
+                      </>
+                    ) : (
+                      <>
+                        <GitBranch className="w-4 h-4" />
+                        Clone Repository
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer - only show start button when on select tab */}
+            {activeTab === 'select' && (
+              <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
+                <p className="text-xs text-white/30">
+                  Press{' '}
+                  <kbd className="px-1.5 py-0.5 bg-white/10 rounded text-white/50 font-mono">
+                    Enter
+                  </kbd>{' '}
+                  to start
+                </p>
+                <button
+                  onClick={handleStart}
+                  disabled={!selectedProject}
+                  className={cn(
+                    'flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all',
+                    selectedProject
+                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white shadow-lg shadow-orange-500/25'
+                      : 'bg-white/5 text-white/30 cursor-not-allowed'
+                  )}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Start Session
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 

@@ -41,6 +41,7 @@ export function SessionPreviewPopover({
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const hasSnapshotRef = useRef(false);
 
   const fetchPreview = useCallback(
     async (sessionName: string, isRefresh = false) => {
@@ -73,10 +74,11 @@ export function SessionPreviewPopover({
             lines: data.lines || [],
             timestamp: Date.now(),
           });
+          hasSnapshotRef.current = true;
         }
       } catch (err) {
         // Only set fallback if it's not an abort error and we don't have existing data
-        if (err instanceof Error && err.name !== 'AbortError' && !snapshot) {
+        if (err instanceof Error && err.name !== 'AbortError' && !hasSnapshotRef.current) {
           // Keep existing snapshot if we have one, otherwise don't update
         }
       } finally {
@@ -84,12 +86,13 @@ export function SessionPreviewPopover({
         setIsRefreshing(false);
       }
     },
-    [agentUrl, snapshot]
+    [agentUrl]
   );
 
   useEffect(() => {
     if (!session) {
       setSnapshot(null);
+      hasSnapshotRef.current = false;
       // Clear any pending operations
       if (fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current);
