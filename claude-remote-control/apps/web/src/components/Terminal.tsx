@@ -43,6 +43,7 @@ export function Terminal({ agentUrl, project, sessionName, environmentId, onConn
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
+  const isSelectingRef = useRef(false);
 
   // Generate session name ONCE on first render, persisted across re-mounts
   const generatedSessionRef = useRef<string | null>(null);
@@ -144,6 +145,7 @@ export function Terminal({ agentUrl, project, sessionName, environmentId, onConn
     let term: XTerm | null = null;
     let ws: WebSocket | null = null;
     let handleResize: (() => void) | null = null;
+    let handleMouseUp: (() => void) | null = null;
 
     // Debounce connection to avoid React Strict Mode double-mount issues
     const connectTimeout = setTimeout(() => {
@@ -237,9 +239,22 @@ export function Terminal({ agentUrl, project, sessionName, environmentId, onConn
       fitAddonRef.current = fitAddon;
       searchAddonRef.current = searchAddon;
 
-      // Track scroll position
+      // Track mouse selection to prevent re-renders during selection
+      const handleMouseDown = () => {
+        isSelectingRef.current = true;
+      };
+      handleMouseUp = () => {
+        // Delay to let xterm finalize selection before allowing re-renders
+        setTimeout(() => {
+          isSelectingRef.current = false;
+        }, 100);
+      };
+      term.element?.addEventListener('mousedown', handleMouseDown);
+      window.addEventListener('mouseup', handleMouseUp);
+
+      // Track scroll position (skip during selection to prevent re-render breaking selection)
       term.onScroll(() => {
-        if (!term) return;
+        if (!term || isSelectingRef.current) return;
         const buffer = term.buffer.active;
         const isBottom = buffer.viewportY >= buffer.baseY;
         setIsAtBottom(isBottom);
@@ -332,6 +347,9 @@ export function Terminal({ agentUrl, project, sessionName, environmentId, onConn
 
       if (handleResize) {
         window.removeEventListener('resize', handleResize);
+      }
+      if (handleMouseUp) {
+        window.removeEventListener('mouseup', handleMouseUp);
       }
 
       // Close WebSocket properly

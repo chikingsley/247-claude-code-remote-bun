@@ -582,8 +582,9 @@ export async function createServer() {
       };
 
       // Write to SQLite database first (persistent storage)
+      // The DB preserves the original createdAt from when the session was first seen
       const sessionProject = tmux_session.split('--')[0] || project;
-      sessionsDb.upsertSession(tmux_session, {
+      const dbSession = sessionsDb.upsertSession(tmux_session, {
         project: sessionProject,
         status: receivedStatus,
         attentionReason: receivedReason,
@@ -597,6 +598,7 @@ export async function createServer() {
       tmuxSessionStatus.set(tmux_session, hookData);
 
       // Broadcast status update to WebSocket subscribers
+      // Use createdAt from DB to ensure stable sorting on the frontend
       const envId = getSessionEnvironment(tmux_session);
       const envMeta = envId ? getEnvironmentMetadata(envId) : undefined;
 
@@ -608,7 +610,7 @@ export async function createServer() {
         statusSource: 'hook',
         lastEvent: hookData.lastEvent,
         lastStatusChange: hookData.lastStatusChange,
-        createdAt: timestamp || now,
+        createdAt: dbSession.created_at, // Use stable createdAt from DB, not current timestamp
         lastActivity: undefined,
         environmentId: envId,
         environment: envMeta ? {
