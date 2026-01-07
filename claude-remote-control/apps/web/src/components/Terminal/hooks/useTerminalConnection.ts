@@ -223,6 +223,10 @@ export function useTerminalConnection({
                 ralphConfig.completionPromise +
                 '\x1b[0m\r\n'
             );
+          if (ralphConfig.trustMode)
+            currentTerm.write(
+              '\x1b[38;5;208m   🛡️  Trust Mode: ENABLED (auto-accept all tools)\x1b[0m\r\n'
+            );
           currentTerm.write('\r\n');
           currentWs.send(JSON.stringify({ type: 'start-claude-ralph', config: ralphConfig }));
         }

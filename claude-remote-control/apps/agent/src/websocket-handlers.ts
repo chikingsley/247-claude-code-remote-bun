@@ -281,6 +281,7 @@ iteration: 1
 maxIterations: ${ralphConfig.maxIterations || 'unlimited'}
 completionPromise: ${ralphConfig.completionPromise || 'none'}
 useWorktree: ${ralphConfig.useWorktree || false}
+trustMode: ${ralphConfig.trustMode || false}
 active: true
 createdAt: ${new Date().toISOString()}
 ---
@@ -302,15 +303,32 @@ ${ralphConfig.prompt}
         terminal.write(`cd ../ralph-${branchName} && `);
       }
 
-      const args: string[] = [];
-      if (ralphConfig.maxIterations) args.push(`--max-iterations ${ralphConfig.maxIterations}`);
-      if (ralphConfig.completionPromise)
-        args.push(`--completion-promise "${ralphConfig.completionPromise}"`);
+      // Build Claude command flags
+      const claudeFlags: string[] = [];
+      if (ralphConfig.trustMode) {
+        claudeFlags.push('--dangerously-skip-permissions');
+      }
 
-      const ralphPromptEscaped = ralphConfig.prompt.replace(/"/g, '\\"').replace(/\n/g, ' ');
-      terminal.write(
-        `claude -p '/ralph-loop:ralph-loop "${ralphPromptEscaped}" ${args.join(' ')}'\r`
-      );
+      // Build ralph-loop command arguments
+      const ralphArgs: string[] = [];
+      if (ralphConfig.maxIterations)
+        ralphArgs.push(`--max-iterations ${ralphConfig.maxIterations}`);
+      if (ralphConfig.completionPromise)
+        ralphArgs.push(`--completion-promise "${ralphConfig.completionPromise}"`);
+
+      // Escape the prompt for shell: escape backslashes first, then double quotes
+      const ralphPromptEscaped = ralphConfig.prompt
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, ' ');
+
+      // Build the full /ralph-loop:ralph-loop command (plugin:command syntax)
+      const ralphLoopCmd =
+        `/ralph-loop:ralph-loop "${ralphPromptEscaped}" ${ralphArgs.join(' ')}`.trim();
+
+      // Launch Claude with the ralph-loop command as initial prompt
+      const claudeFlagsStr = claudeFlags.length > 0 ? `${claudeFlags.join(' ')} ` : '';
+      terminal.write(`claude ${claudeFlagsStr}"${ralphLoopCmd}"\r`);
     })();
   });
 }

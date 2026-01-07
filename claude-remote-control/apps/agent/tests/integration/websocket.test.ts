@@ -357,6 +357,101 @@ describe('WebSocket Terminal', () => {
       ws.close();
     });
 
+    it('handles start-claude-ralph with trustMode enabled', async () => {
+      const ws = await connectWS('allowed-project');
+
+      // Wait for terminal to be created
+      await new Promise((r) => setTimeout(r, 100));
+
+      ws.send(
+        JSON.stringify({
+          type: 'start-claude-ralph',
+          config: {
+            prompt: 'Build a feature autonomously',
+            maxIterations: 10,
+            trustMode: true,
+          },
+        })
+      );
+
+      // Wait for message processing (ralph setup is async + 2.5s delay for command)
+      await new Promise((r) => setTimeout(r, 3000));
+
+      // Should write claude command with --dangerously-skip-permissions flag
+      const dangerousFlagCalls = mockTerminal.write.mock.calls.filter((call: string[]) =>
+        call[0]?.includes('--dangerously-skip-permissions')
+      );
+      expect(dangerousFlagCalls.length).toBeGreaterThan(0);
+      ws.close();
+    });
+
+    it('constructs correct command format with plugin syntax', async () => {
+      const ws = await connectWS('allowed-project');
+
+      // Wait for terminal to be created
+      await new Promise((r) => setTimeout(r, 100));
+
+      ws.send(
+        JSON.stringify({
+          type: 'start-claude-ralph',
+          config: {
+            prompt: 'Build feature X',
+            maxIterations: 5,
+            completionPromise: 'DONE',
+          },
+        })
+      );
+
+      // Wait for message processing
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Verify the command uses the correct plugin:command syntax
+      const commandCalls = mockTerminal.write.mock.calls.filter((call: string[]) =>
+        call[0]?.includes('claude')
+      );
+      expect(commandCalls.length).toBeGreaterThan(0);
+
+      // The command should contain /ralph-loop:ralph-loop with proper args
+      const ralphCommand = commandCalls.find((call: string[]) =>
+        call[0]?.includes('/ralph-loop:ralph-loop')
+      );
+      expect(ralphCommand).toBeDefined();
+      expect(ralphCommand![0]).toContain('--max-iterations 5');
+      expect(ralphCommand![0]).toContain('--completion-promise "DONE"');
+      ws.close();
+    });
+
+    it('escapes special characters in prompt correctly', async () => {
+      const ws = await connectWS('allowed-project');
+
+      // Wait for terminal to be created
+      await new Promise((r) => setTimeout(r, 100));
+
+      ws.send(
+        JSON.stringify({
+          type: 'start-claude-ralph',
+          config: {
+            prompt: 'Build "feature" with\nnewlines',
+          },
+        })
+      );
+
+      // Wait for message processing
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Verify special characters are escaped
+      const commandCalls = mockTerminal.write.mock.calls.filter((call: string[]) =>
+        call[0]?.includes('/ralph-loop:ralph-loop')
+      );
+      expect(commandCalls.length).toBeGreaterThan(0);
+
+      // Double quotes should be escaped, newlines replaced with spaces
+      const cmd = commandCalls[0]![0];
+      expect(cmd).toContain('\\"feature\\"');
+      expect(cmd).not.toContain('\n');
+      ws.close();
+    });
+
     it('ignores duplicate start-claude-ralph messages within debounce window', async () => {
       const ws = await connectWS('allowed-project');
 
@@ -393,8 +488,9 @@ describe('WebSocket Terminal', () => {
       await new Promise((r) => setTimeout(r, 200));
 
       // Should NOT write the second command (deduplicated)
+      // Note: We pass /ralph-loop:ralph-loop as initial prompt to claude
       const claudeWriteCalls = mockTerminal.write.mock.calls.filter((call: string[]) =>
-        call[0]?.includes('claude -p')
+        call[0]?.includes('/ralph-loop:ralph-loop')
       );
       expect(claudeWriteCalls.length).toBe(0);
       ws.close();

@@ -1,9 +1,10 @@
 'use client';
 
-import { Play } from 'lucide-react';
+import { Play, Shield, GitBranch, AlertTriangle, Sparkles, Hash, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EnvironmentSelector } from '../EnvironmentSelector';
 import { ProjectDropdown } from './ProjectDropdown';
+import { ToggleSwitch } from '../ui/toggle-switch';
 
 interface RalphLoopTabProps {
   folders: string[];
@@ -18,6 +19,8 @@ interface RalphLoopTabProps {
   onRalphCompletionPromiseChange: (promise: string) => void;
   ralphUseWorktree: boolean;
   onRalphUseWorktreeChange: (use: boolean) => void;
+  ralphTrustMode: boolean;
+  onRalphTrustModeChange: (trust: boolean) => void;
   agentUrl: string;
   selectedEnvironment: string | null;
   onSelectEnvironment: (id: string | null) => void;
@@ -40,6 +43,8 @@ export function RalphLoopTab({
   onRalphCompletionPromiseChange,
   ralphUseWorktree,
   onRalphUseWorktreeChange,
+  ralphTrustMode,
+  onRalphTrustModeChange,
   agentUrl,
   selectedEnvironment,
   onSelectEnvironment,
@@ -49,18 +54,26 @@ export function RalphLoopTab({
   isValid,
 }: RalphLoopTabProps) {
   return (
-    <div className="space-y-4">
-      {/* Info Banner */}
-      <div className="rounded-xl border border-purple-500/20 bg-purple-500/10 px-4 py-3">
-        <p className="text-sm text-purple-300">
-          <strong>Ralph Loop</strong> iteratively feeds Claude the same prompt until completion.
-          Claude sees its previous work in files and improves each iteration.
-        </p>
+    <div className="space-y-5">
+      {/* Header Banner */}
+      <div className="relative overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-violet-500/5 to-transparent px-4 py-3">
+        <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-purple-500/10 blur-2xl" />
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20">
+            <Sparkles className="h-4 w-4 text-purple-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white">Ralph Loop</h3>
+            <p className="text-xs text-white/50">Iterative AI loop that refines until completion</p>
+          </div>
+        </div>
       </div>
 
       {/* Project Selection */}
-      <div>
-        <label className="mb-2 block text-sm font-medium text-white/60">Project</label>
+      <div className="space-y-2">
+        <label className="text-xs font-medium uppercase tracking-wider text-white/40">
+          Project
+        </label>
         <ProjectDropdown
           folders={folders}
           selectedProject={selectedProject}
@@ -71,48 +84,69 @@ export function RalphLoopTab({
       </div>
 
       {/* Prompt Input */}
-      <div>
-        <label className="mb-2 block text-sm font-medium text-white/60">
-          Task Prompt <span className="text-red-400">*</span>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/40">
+          Task Prompt
+          <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">
+            Required
+          </span>
         </label>
-        <textarea
-          value={ralphPrompt}
-          onChange={(e) => onRalphPromptChange(e.target.value)}
-          placeholder="Implement feature X with tests. Output <promise>COMPLETE</promise> when done."
-          rows={4}
-          className={cn(
-            'w-full rounded-xl px-4 py-3',
-            'border border-white/10 bg-white/5',
-            'text-white placeholder:text-white/30',
-            'focus:border-purple-500/50 focus:bg-white/10 focus:outline-none',
-            'resize-none transition-all'
-          )}
-        />
-      </div>
-
-      {/* Options Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-white/60">Max Iterations</label>
-          <input
-            type="number"
-            value={ralphMaxIterations}
-            onChange={(e) => onRalphMaxIterationsChange(parseInt(e.target.value) || 0)}
-            min={1}
-            max={100}
+        <div className="group relative">
+          <textarea
+            value={ralphPrompt}
+            onChange={(e) => onRalphPromptChange(e.target.value)}
+            placeholder="Implement feature X with tests. Output <promise>COMPLETE</promise> when done."
+            rows={4}
             className={cn(
               'w-full rounded-xl px-4 py-3',
               'border border-white/10 bg-white/5',
-              'text-white placeholder:text-white/30',
-              'focus:border-purple-500/50 focus:bg-white/10 focus:outline-none',
-              'transition-all'
+              'text-white placeholder:text-white/25',
+              'focus:border-purple-500/50 focus:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-purple-500/20',
+              'resize-none transition-all duration-200'
             )}
           />
-          <p className="mt-1 text-xs text-white/30">Safety limit (recommended)</p>
+          {ralphPrompt.length > 0 && (
+            <div className="absolute bottom-3 right-3 text-xs text-white/30">
+              {ralphPrompt.length} chars
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Options Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Max Iterations */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/40">
+            <Hash className="h-3 w-3" />
+            Max Iterations
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              value={ralphMaxIterations}
+              onChange={(e) => onRalphMaxIterationsChange(parseInt(e.target.value) || 0)}
+              min={1}
+              max={100}
+              className={cn(
+                'w-full rounded-xl px-4 py-3',
+                'border border-white/10 bg-white/5',
+                'text-white placeholder:text-white/30',
+                'focus:border-purple-500/50 focus:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-purple-500/20',
+                'transition-all duration-200',
+                '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+              )}
+            />
+          </div>
+          <p className="text-[10px] text-white/30">Safety limit for iterations</p>
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-white/60">Completion Promise</label>
+        {/* Completion Promise */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/40">
+            <Check className="h-3 w-3" />
+            Completion Signal
+          </label>
           <input
             type="text"
             value={ralphCompletionPromise}
@@ -122,34 +156,44 @@ export function RalphLoopTab({
               'w-full rounded-xl px-4 py-3',
               'border border-white/10 bg-white/5',
               'text-white placeholder:text-white/30',
-              'focus:border-purple-500/50 focus:bg-white/10 focus:outline-none',
-              'transition-all'
+              'focus:border-purple-500/50 focus:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-purple-500/20',
+              'transition-all duration-200'
             )}
           />
-          <p className="mt-1 text-xs text-white/30">Text that signals completion</p>
+          <p className="text-[10px] text-white/30">Text that signals task completion</p>
         </div>
       </div>
 
-      {/* Worktree Option */}
-      <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-        <input
-          type="checkbox"
-          id="useWorktree"
-          checked={ralphUseWorktree}
-          onChange={(e) => onRalphUseWorktreeChange(e.target.checked)}
-          className="h-4 w-4 rounded border-white/20 bg-white/10 text-purple-500 focus:ring-purple-500"
+      {/* Toggle Options */}
+      <div className="space-y-3">
+        {/* Trust Mode Toggle */}
+        <ToggleSwitch
+          checked={ralphTrustMode}
+          onCheckedChange={onRalphTrustModeChange}
+          label="Trust Mode"
+          description="Auto-accept all Claude tool permissions"
+          icon={<Shield className="h-4 w-4" />}
+          accentColor="amber"
+          warningIcon={<AlertTriangle className="h-3 w-3" />}
+          warningText="Full autonomy - Claude will execute all actions without confirmation"
         />
-        <label htmlFor="useWorktree" className="flex-1 cursor-pointer">
-          <span className="block text-sm font-medium text-white">Use Git Worktree</span>
-          <span className="text-xs text-white/40">
-            Create an isolated branch for this loop (recommended for parallel loops)
-          </span>
-        </label>
+
+        {/* Git Worktree Toggle */}
+        <ToggleSwitch
+          checked={ralphUseWorktree}
+          onCheckedChange={onRalphUseWorktreeChange}
+          label="Use Git Worktree"
+          description="Create an isolated branch for parallel loops"
+          icon={<GitBranch className="h-4 w-4" />}
+          accentColor="purple"
+        />
       </div>
 
       {/* Environment Selection */}
-      <div>
-        <label className="mb-2 block text-sm font-medium text-white/60">Environment</label>
+      <div className="space-y-2">
+        <label className="text-xs font-medium uppercase tracking-wider text-white/40">
+          Environment
+        </label>
         <EnvironmentSelector
           key={`ralph-${envRefreshKey}`}
           agentUrl={agentUrl}
@@ -164,14 +208,26 @@ export function RalphLoopTab({
         onClick={onStartRalphLoop}
         disabled={!selectedProject || !isValid}
         className={cn(
-          'flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 font-medium transition-all',
+          'group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl px-5 py-3.5 font-medium transition-all duration-300',
           selectedProject && isValid
-            ? 'bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-lg shadow-purple-500/25 hover:from-purple-400 hover:to-violet-400'
+            ? 'bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30'
             : 'cursor-not-allowed bg-white/5 text-white/30'
         )}
       >
-        <Play className="h-4 w-4" />
-        Start Ralph Loop
+        {/* Animated background */}
+        {selectedProject && isValid && (
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-violet-400 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        )}
+
+        <span className="relative flex items-center gap-2">
+          <Play
+            className={cn(
+              'h-4 w-4',
+              selectedProject && isValid && 'transition-transform group-hover:scale-110'
+            )}
+          />
+          Start Ralph Loop
+        </span>
       </button>
     </div>
   );

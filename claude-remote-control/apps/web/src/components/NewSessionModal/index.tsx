@@ -221,6 +221,8 @@ export function NewSessionModal({
                       onRalphCompletionPromiseChange={ralph.setRalphCompletionPromise}
                       ralphUseWorktree={ralph.ralphUseWorktree}
                       onRalphUseWorktreeChange={ralph.setRalphUseWorktree}
+                      ralphTrustMode={ralph.ralphTrustMode}
+                      onRalphTrustModeChange={ralph.setRalphTrustMode}
                       agentUrl={agentUrl}
                       selectedEnvironment={selectedEnvironment}
                       onSelectEnvironment={setSelectedEnvironment}

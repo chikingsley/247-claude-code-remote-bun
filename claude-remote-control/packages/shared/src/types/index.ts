@@ -38,6 +38,7 @@ export interface RalphLoopConfig {
   maxIterations?: number;
   completionPromise?: string;
   useWorktree?: boolean; // Create isolated git worktree for this loop
+  trustMode?: boolean; // Auto-accept all Claude tool permissions (--dangerously-skip-permissions)
 }
 
 // WebSocket message types - Client to Agent (Terminal)

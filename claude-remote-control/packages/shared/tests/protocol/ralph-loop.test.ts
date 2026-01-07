@@ -27,6 +27,31 @@ describe('start-claude-ralph message', () => {
     expect(isWSMessageToAgent(msg)).toBe(true);
   });
 
+  it('validates start-claude-ralph with trustMode enabled', () => {
+    const msg = {
+      type: 'start-claude-ralph',
+      config: {
+        prompt: 'Build a feature with tests',
+        maxIterations: 10,
+        completionPromise: 'COMPLETE',
+        useWorktree: false,
+        trustMode: true,
+      },
+    };
+    expect(isWSMessageToAgent(msg)).toBe(true);
+  });
+
+  it('validates start-claude-ralph with trustMode disabled', () => {
+    const msg = {
+      type: 'start-claude-ralph',
+      config: {
+        prompt: 'Build a feature',
+        trustMode: false,
+      },
+    };
+    expect(isWSMessageToAgent(msg)).toBe(true);
+  });
+
   it('rejects start-claude-ralph without config', () => {
     const msg = { type: 'start-claude-ralph' };
     expect(isWSMessageToAgent(msg)).toBe(false);
@@ -73,6 +98,14 @@ describe('start-claude-ralph message', () => {
     const msg = {
       type: 'start-claude-ralph',
       config: { prompt: 'test', useWorktree: 'yes' },
+    };
+    expect(isWSMessageToAgent(msg)).toBe(false);
+  });
+
+  it('rejects start-claude-ralph with invalid trustMode', () => {
+    const msg = {
+      type: 'start-claude-ralph',
+      config: { prompt: 'test', trustMode: 'yes' },
     };
     expect(isWSMessageToAgent(msg)).toBe(false);
   });

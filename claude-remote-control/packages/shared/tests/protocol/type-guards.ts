@@ -47,6 +47,7 @@ export function isValidRalphLoopConfig(config: unknown): config is RalphLoopConf
   if (obj.completionPromise !== undefined && typeof obj.completionPromise !== 'string')
     return false;
   if (obj.useWorktree !== undefined && typeof obj.useWorktree !== 'boolean') return false;
+  if (obj.trustMode !== undefined && typeof obj.trustMode !== 'boolean') return false;
 
   return true;
 }
