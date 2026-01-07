@@ -20,11 +20,7 @@
     "test:integration": "turbo test:integration",
     "test:coverage": "turbo test -- --coverage",
     "dev:web": "pnpm --filter @claude-remote/web dev",
-    "dev:agent": "pnpm --filter @claude-remote/agent dev",
-    "db:generate": "pnpm --filter @claude-remote/web db:generate",
-    "db:migrate": "pnpm --filter @claude-remote/web db:migrate",
-    "db:push": "pnpm --filter @claude-remote/web db:push",
-    "db:studio": "pnpm --filter @claude-remote/web db:studio"
+    "dev:agent": "pnpm --filter @claude-remote/agent dev"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.16",

@@ -10,7 +10,6 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       include: ['src/lib/**/*.ts', 'src/app/api/**/*.ts'],
-      exclude: ['src/lib/db/**'],
     },
     setupFiles: ['./tests/setup.ts'],
   },

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Claude Remote Control - A system for web terminal access to Claude Code from anywhere. Consists of a Next.js dashboard (Vercel), local Node.js agents (one per Mac), Neon PostgreSQL for persistence, and Cloudflare Tunnels for secure exposure.
+Claude Remote Control - A system for web terminal access to Claude Code from anywhere. Consists of a Next.js dashboard (Vercel), local Node.js agents (one per Mac) with SQLite for local persistence, and Cloudflare Tunnels for secure exposure.
 
 ## Development Commands
 
@@ -24,10 +24,6 @@ pnpm build            # Build all packages
 pnpm typecheck        # TypeScript type checking
 pnpm lint             # Lint all packages
 
-# Database (from root or apps/web)
-pnpm db:push          # Push schema to Neon
-pnpm db:generate      # Generate Drizzle migrations
-pnpm db:studio        # Open Drizzle Studio UI
 ```
 
 ## Architecture
@@ -38,8 +34,7 @@ pnpm db:studio        # Open Drizzle Studio UI
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │  apps/web (Next.js 15)                               │   │
 │  │  - Dashboard UI with xterm.js terminal               │   │
-│  │  - API routes for machine registration               │   │
-│  │  - Drizzle ORM → Neon PostgreSQL                     │   │
+│  │  - Stateless: uses localStorage for agent URL        │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -51,7 +46,7 @@ pnpm db:studio        # Open Drizzle Studio UI
 │  │  apps/agent (Express + WebSocket)                    │   │
 │  │  - node-pty for terminal spawning                    │   │
 │  │  - tmux for session persistence                      │   │
-│  │  - Registers with dashboard on startup               │   │
+│  │  - SQLite for local session/status persistence       │   │
 │  └─────────────────────────────────────────────────────┘   │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │  packages/hooks (Claude Code Plugin)                 │   │
@@ -64,7 +59,7 @@ pnpm db:studio        # Open Drizzle Studio UI
 
 | Package | Purpose |
 |---------|---------|
-| `apps/web` | Next.js 15 dashboard, API routes, Drizzle ORM |
+| `apps/web` | Next.js 15 dashboard (stateless, localStorage only) |
 | `apps/agent` | Express server, WebSocket terminal, node-pty |
 | `packages/shared` | TypeScript types shared between web and agent |
 | `packages/hooks` | Claude Code plugin for stop notifications |
@@ -80,16 +75,10 @@ pnpm db:studio        # Open Drizzle Studio UI
 - **pnpm workspaces + Turbo** for monorepo orchestration
 - **@homebridge/node-pty-prebuilt-multiarch** for ARM64 Mac compatibility
 - **tmux** sessions for terminal persistence across browser disconnects
-- **Drizzle ORM** with Neon serverless PostgreSQL
+- **SQLite** (better-sqlite3) for agent-side persistence
 - **xterm.js** for browser terminal rendering
 
 ## Environment Setup
-
-**apps/web/.env.local:**
-```
-DATABASE_URL=postgres://...@neon.tech/...
-AGENT_API_KEY=your-shared-secret
-```
 
 **apps/agent/config.json:**
 ```json
@@ -106,10 +95,6 @@ AGENT_API_KEY=your-shared-secret
   }
 }
 ```
-
-## Database Schema
-
-Three tables in Neon: `machines` (registered agents), `sessions` (terminal sessions), `users` (future auth). Schema defined in `apps/web/src/lib/db/schema.ts`.
 
 ## WebSocket Protocol
 

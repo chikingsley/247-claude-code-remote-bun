@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -44,7 +44,7 @@ type ViewTab = 'environments' | 'guide';
 
 const DEFAULT_MACHINE_ID = 'local-agent';
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setMachines: setPollingMachines, getAllSessions, getArchivedSessions } = useSessionPolling();
@@ -504,5 +504,20 @@ export default function Home() {
         onStartSession={handleStartSession}
       />
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-[#0a0a10] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 rounded-full border-2 border-orange-500/30 border-t-orange-500 animate-spin" />
+          <p className="text-white/30 text-sm font-medium">Loading...</p>
+        </div>
+      </main>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }

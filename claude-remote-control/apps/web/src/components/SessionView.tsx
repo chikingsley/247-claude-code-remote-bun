@@ -1,9 +1,18 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { ArrowLeft, WifiOff } from 'lucide-react';
-import { Terminal } from './Terminal';
 import { FileExplorer } from './FileExplorer';
+
+const Terminal = dynamic(() => import('./Terminal').then(mod => mod.Terminal), {
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 flex items-center justify-center bg-[#0d0d14]">
+      <div className="w-6 h-6 rounded-full border-2 border-orange-500/30 border-t-orange-500 animate-spin" />
+    </div>
+  ),
+});
 import { EditorTerminalTabs, type ActiveTab } from './EditorTerminalTabs';
 import { StatusBadge, type SessionStatus } from './ui/status-badge';
 import { type SessionInfo } from '@/lib/notifications';
