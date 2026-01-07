@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+
+import { Command } from 'commander';
+import { initCommand } from './commands/init.js';
+import { startCommand } from './commands/start.js';
+import { stopCommand } from './commands/stop.js';
+import { statusCommand } from './commands/status.js';
+import { logsCommand } from './commands/logs.js';
+import { serviceCommand } from './commands/service.js';
+import { hooksCommand } from './commands/hooks.js';
+import { updateCommand } from './commands/update.js';
+import { doctorCommand } from './commands/doctor.js';
+
+const program = new Command();
+
+program
+  .name('247')
+  .description('247 - Access Claude Code from anywhere 24/7\nby The Vibe Company')
+  .version('0.1.0');
+
+// Add commands
+program.addCommand(initCommand);
+program.addCommand(startCommand);
+program.addCommand(stopCommand);
+program.addCommand(statusCommand);
+program.addCommand(logsCommand);
+program.addCommand(serviceCommand);
+program.addCommand(hooksCommand);
+program.addCommand(updateCommand);
+program.addCommand(doctorCommand);
+
+// Default action (no command)
+program.action(() => {
+  console.log(`
+  ╭──────────────────────────────────╮
+  │  247 - The Vibe Company          │
+  │  Access Claude Code 24/7         │
+  ╰──────────────────────────────────╯
+`);
+  program.help();
+});
+
+program.parse();

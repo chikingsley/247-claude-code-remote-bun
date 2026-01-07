@@ -1,0 +1,57 @@
+{
+  "name": "@vibecompany/247",
+  "version": "0.1.0",
+  "description": "247 - Access Claude Code from anywhere 24/7",
+  "keywords": ["claude", "terminal", "remote", "ai", "cli", "247", "vibecompany"],
+  "license": "MIT",
+  "author": "The Vibe Company",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/The-Vibe-Company/247",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://247.thevibecompany.co",
+  "bugs": {
+    "url": "https://github.com/The-Vibe-Company/247/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "os": ["darwin", "linux"],
+  "cpu": ["x64", "arm64"],
+  "bin": {
+    "247": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.0",
+    "enquirer": "^2.4.0",
+    "fs-extra": "^11.2.0",
+    "semver": "^7.6.0",
+    "@homebridge/node-pty-prebuilt-multiarch": "^0.13.1",
+    "better-sqlite3": "^12.5.0",
+    "express": "^4.21.0",
+    "ws": "^8.18.0",
+    "cors": "^2.8.5",
+    "http-proxy": "^1.18.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
