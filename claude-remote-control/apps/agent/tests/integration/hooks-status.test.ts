@@ -3,23 +3,27 @@ import request from 'supertest';
 import { EventEmitter } from 'events';
 
 // Mock config
-vi.mock('../../config.json', () => ({
-  default: {
-    machine: { id: 'test-machine', name: 'Test Machine' },
-    projects: {
-      basePath: '/tmp/test-projects',
-      whitelist: [],
-    },
-    editor: {
-      enabled: false,
-      portRange: { start: 4680, end: 4699 },
-      idleTimeout: 60000,
-    },
-    dashboard: {
-      apiUrl: 'http://localhost:3001/api',
-      apiKey: 'test-key',
-    },
+const mockConfig = {
+  machine: { id: 'test-machine', name: 'Test Machine' },
+  projects: {
+    basePath: '/tmp/test-projects',
+    whitelist: [],
   },
+  editor: {
+    enabled: false,
+    portRange: { start: 4680, end: 4699 },
+    idleTimeout: 60000,
+  },
+  dashboard: {
+    apiUrl: 'http://localhost:3001/api',
+    apiKey: 'test-key',
+  },
+};
+
+vi.mock('../../src/config.js', () => ({
+  config: mockConfig,
+  loadConfig: () => mockConfig,
+  default: mockConfig,
 }));
 
 // Mock dependencies
