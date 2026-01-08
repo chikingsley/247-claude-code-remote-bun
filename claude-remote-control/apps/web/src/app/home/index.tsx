@@ -47,6 +47,7 @@ export function HomeContent() {
     handleSessionKilled,
     handleSessionArchived,
     handleConnectionSaved,
+    handleConnectionCleared,
     clearSessionFromUrl,
   } = useHomeState();
 
@@ -155,6 +156,8 @@ export function HomeContent() {
         open={connectionModalOpen}
         onOpenChange={setConnectionModalOpen}
         onSave={handleConnectionSaved}
+        onDisconnect={handleConnectionCleared}
+        hasConnection={!!agentConnection}
       />
 
       {/* New Session Modal */}

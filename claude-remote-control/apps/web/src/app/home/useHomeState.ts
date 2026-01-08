@@ -194,6 +194,13 @@ export function useHomeState() {
     [setPollingMachines]
   );
 
+  const handleConnectionCleared = useCallback(() => {
+    setAgentConnection(null);
+    setPollingMachines([]);
+    setSelectedSession(null);
+    clearSessionFromUrl();
+  }, [setPollingMachines, clearSessionFromUrl]);
+
   const getAgentUrl = useCallback(() => {
     if (!selectedSession || !agentConnection) return '';
     return agentConnection.url;
@@ -248,6 +255,7 @@ export function useHomeState() {
     handleSessionKilled,
     handleSessionArchived,
     handleConnectionSaved,
+    handleConnectionCleared,
     clearSessionFromUrl,
   };
 }

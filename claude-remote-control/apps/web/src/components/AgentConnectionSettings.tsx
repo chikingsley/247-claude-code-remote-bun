@@ -36,6 +36,9 @@ interface AgentConnectionSettingsProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave?: (connection: AgentConnection) => void;
+  onDisconnect?: () => void;
+  /** Whether there's an existing connection that can be disconnected */
+  hasConnection?: boolean;
 }
 
 const PRESETS = [
@@ -77,6 +80,8 @@ export function AgentConnectionSettings({
   open,
   onOpenChange,
   onSave,
+  onDisconnect,
+  hasConnection = false,
 }: AgentConnectionSettingsProps) {
   const [selectedMethod, setSelectedMethod] = useState<string>('localhost');
   const [customUrl, setCustomUrl] = useState('');
@@ -154,6 +159,12 @@ export function AgentConnectionSettings({
       setSaved(false);
       onOpenChange(false);
     }, 1000);
+  };
+
+  const handleDisconnect = () => {
+    clearAgentConnection();
+    onDisconnect?.();
+    onOpenChange(false);
   };
 
   return (
@@ -442,10 +453,30 @@ export function AgentConnectionSettings({
 
               {/* Footer - safe area for iOS */}
               <div className="flex shrink-0 flex-col gap-3 border-t border-white/5 bg-white/5 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pb-4">
-                <p className="hidden text-xs text-white/30 sm:block">
-                  Connection saved locally in your browser
-                </p>
+                <div className="hidden sm:block">
+                  {hasConnection ? (
+                    <button
+                      onClick={handleDisconnect}
+                      className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-400 transition-all hover:bg-red-500/10 hover:text-red-300"
+                    >
+                      Disconnect
+                    </button>
+                  ) : (
+                    <p className="text-xs text-white/30">
+                      Connection saved locally in your browser
+                    </p>
+                  )}
+                </div>
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
+                  {/* Mobile disconnect button */}
+                  {hasConnection && (
+                    <button
+                      onClick={handleDisconnect}
+                      className="rounded-lg px-4 py-2.5 text-sm font-medium text-red-400 transition-all hover:bg-red-500/10 hover:text-red-300 sm:hidden"
+                    >
+                      Disconnect
+                    </button>
+                  )}
                   <button
                     onClick={() => onOpenChange(false)}
                     className="rounded-lg px-4 py-2.5 text-sm font-medium text-white/60 transition-all hover:bg-white/5 hover:text-white sm:py-2"
