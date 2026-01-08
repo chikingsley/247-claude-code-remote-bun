@@ -18,6 +18,7 @@ import {
   AgentConnectionSettings,
   type saveAgentConnection,
 } from '@/components/AgentConnectionSettings';
+import { InstallationGuide } from '@/components/InstallationGuide';
 import { cn } from '@/lib/utils';
 
 interface NoConnectionViewProps {
@@ -422,6 +423,11 @@ export function NoConnectionView({
           >
             <Lock className="h-4 w-4" />
             <span>End-to-end encrypted. Your data never leaves your machine.</span>
+          </motion.div>
+
+          {/* Installation Guide */}
+          <motion.div variants={itemVariants} className="mt-10 w-full">
+            <InstallationGuide />
           </motion.div>
 
           {/* Orbital Visualization */}
