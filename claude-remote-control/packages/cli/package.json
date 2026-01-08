@@ -9,18 +9,18 @@
     "ai",
     "cli",
     "247",
-    "vibecompany"
+    "quivr"
   ],
   "license": "MIT",
-  "author": "The Vibe Company",
+  "author": "Quivr",
   "repository": {
     "type": "git",
-    "url": "https://github.com/The-Vibe-Company/247",
+    "url": "https://github.com/QuivrHQ/247",
     "directory": "packages/cli"
   },
-  "homepage": "https://247.thevibecompany.co",
+  "homepage": "https://247.quivr.com",
   "bugs": {
-    "url": "https://github.com/The-Vibe-Company/247/issues"
+    "url": "https://github.com/QuivrHQ/247/issues"
   },
   "type": "module",
   "engines": {

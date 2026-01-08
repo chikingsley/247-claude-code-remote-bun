@@ -2,7 +2,7 @@
 
 **Access Claude Code from anywhere, 24/7.**
 
-A CLI tool by [The Vibe Company](https://247.thevibecompany.co) that lets you run Claude Code remotely and access it from any device via a web dashboard.
+A CLI tool by [Quivr](https://247.quivr.com) that lets you run Claude Code remotely and access it from any device via a web dashboard.
 
 ## Installation
 
@@ -55,7 +55,7 @@ The agent can run as a system service that starts automatically on boot:
 
 ```bash
 247 service install --start
-# Config: ~/Library/LaunchAgents/co.thevibecompany.247.plist
+# Config: ~/Library/LaunchAgents/com.quivr.247.plist
 # Logs: ~/Library/Logs/247-agent/
 ```
 
@@ -104,9 +104,9 @@ The agent includes hooks that notify when Claude Code sessions stop:
 
 ## Links
 
-- **Dashboard:** https://247.thevibecompany.co
-- **GitHub:** https://github.com/The-Vibe-Company/247
+- **Dashboard:** https://247.quivr.com
+- **GitHub:** https://github.com/QuivrHQ/247
 
 ## License
 
-MIT - The Vibe Company
+MIT - Quivr

@@ -15,7 +15,7 @@ cd "$PROJECT_ROOT/apps/agent"
 pnpm build
 
 # Create launchd plist for auto-start
-PLIST_PATH="$HOME/Library/LaunchAgents/com.vibecompany.247.plist"
+PLIST_PATH="$HOME/Library/LaunchAgents/com.quivr.247.plist"
 
 cat > "$PLIST_PATH" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -23,7 +23,7 @@ cat > "$PLIST_PATH" << EOF
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.vibecompany.247</string>
+    <string>com.quivr.247</string>
     <key>ProgramArguments</key>
     <array>
         <string>/opt/homebrew/bin/node</string>

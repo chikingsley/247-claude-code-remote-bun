@@ -36,7 +36,7 @@ tunnel: $TUNNEL_ID
 credentials-file: $CONFIG_DIR/$TUNNEL_ID.json
 
 ingress:
-  - hostname: 247.thevibecompany.co
+  - hostname: 247.quivr.com
     service: http://localhost:4678
   - service: http_status:404
 EOF
@@ -45,9 +45,9 @@ echo "Config written to $CONFIG_DIR/config.yml"
 echo ""
 
 # Prompt for DNS setup
-read -p "Set up DNS route to 247.thevibecompany.co? (y/n): " SETUP_DNS
+read -p "Set up DNS route to 247.quivr.com? (y/n): " SETUP_DNS
 if [ "$SETUP_DNS" = "y" ]; then
-    cloudflared tunnel route dns "$TUNNEL_NAME" 247.thevibecompany.co
+    cloudflared tunnel route dns "$TUNNEL_NAME" 247.quivr.com
     echo "DNS route created!"
 fi
 
@@ -61,4 +61,4 @@ echo "To install as a service (auto-start):"
 echo "  sudo cloudflared service install"
 echo ""
 echo "To test the tunnel:"
-echo "  curl https://247.thevibecompany.co/api/info"
+echo "  curl https://247.quivr.com/api/info"

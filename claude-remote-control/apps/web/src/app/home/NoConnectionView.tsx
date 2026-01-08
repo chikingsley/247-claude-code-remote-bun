@@ -9,10 +9,11 @@ import {
   HardDrive,
   Lock,
   ArrowRight,
-  Smartphone,
-  Laptop,
-  Monitor,
-  HelpCircle,
+  Database,
+  Terminal,
+  Code2,
+  Server,
+  Clock,
 } from 'lucide-react';
 import {
   AgentConnectionSettings,
@@ -119,125 +120,6 @@ function HeroBackground() {
           backgroundSize: '60px 60px',
         }}
       />
-    </div>
-  );
-}
-
-// Orbital Visualization
-function OrbitalVisualization() {
-  const rings = [
-    { radius: 80, duration: 20, delay: 0 },
-    { radius: 110, duration: 30, delay: 0.2 },
-    { radius: 140, duration: 25, delay: 0.4 },
-  ];
-
-  const devices = [
-    { angle: 45, icon: Smartphone, ringIndex: 0 },
-    { angle: 165, icon: Laptop, ringIndex: 1 },
-    { angle: 285, icon: Monitor, ringIndex: 2 },
-  ];
-
-  return (
-    <div className="relative mx-auto flex h-[320px] w-[320px] items-center justify-center">
-      {/* Background Glows */}
-      <div className="absolute inset-0 rounded-full bg-orange-500/5 blur-3xl" />
-
-      {/* Rings */}
-      {rings.map((ring, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full border border-white/[0.03] shadow-[inset_0_0_20px_rgba(255,255,255,0.01)]"
-          style={{
-            width: ring.radius * 2,
-            height: ring.radius * 2,
-          }}
-        />
-      ))}
-
-      {/* Rotating Particles on Rings */}
-      {rings.map((ring, i) => (
-        <motion.div
-          key={`particle-${i}`}
-          className="absolute"
-          style={{
-            width: ring.radius * 2,
-            height: ring.radius * 2,
-          }}
-          animate={{ rotate: 360 }}
-          transition={{
-            duration: ring.duration,
-            repeat: Infinity,
-            ease: 'linear',
-          }}
-        >
-          <div className="absolute left-1/2 top-0 -ml-[1px] h-2 w-[2px] bg-gradient-to-b from-orange-400/0 via-orange-400 to-orange-400/0 shadow-[0_0_10px_rgba(249,115,22,0.5)]" />
-        </motion.div>
-      ))}
-
-      {/* Center Hub */}
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        className="relative z-20 flex h-16 w-16 items-center justify-center rounded-full bg-[#0a0a10] shadow-2xl shadow-black/50 ring-1 ring-white/10"
-      >
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-orange-500/20 to-transparent opacity-50" />
-        <HardDrive className="relative h-6 w-6 text-orange-200" />
-        {/* Breathing Ring */}
-        <motion.div
-          className="absolute -inset-2 rounded-full border border-orange-500/20"
-          animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0, 0.5] }}
-          transition={{ duration: 3, repeat: Infinity }}
-        />
-      </motion.div>
-
-      {/* Connected Devices */}
-      {devices.map((device, i) => {
-        const ring = rings[device.ringIndex];
-        const radius = ring.radius;
-        const x = Math.cos((device.angle * Math.PI) / 180) * radius;
-        const y = Math.sin((device.angle * Math.PI) / 180) * radius;
-        const Icon = device.icon;
-
-        return (
-          <React.Fragment key={i}>
-            {/* Connection Line (SVG) */}
-            <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible">
-              <motion.line
-                x1="160" // Center 320/2
-                y1="160"
-                x2={160 + x}
-                y2={160 + y}
-                stroke="url(#gradient-line)"
-                strokeWidth="1"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 0.2 }}
-                transition={{ duration: 1, delay: 0.5 + i * 0.2 }}
-              />
-              <defs>
-                <linearGradient id="gradient-line" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#f97316" stopOpacity="0" />
-                  <stop offset="50%" stopColor="#f97316" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
-
-            {/* Device Node */}
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.8 + i * 0.1, type: 'spring', stiffness: 200 }}
-              className="absolute z-10 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0a0a10] text-white/60 shadow-lg transition-colors hover:border-orange-500/50 hover:text-orange-400"
-              style={{
-                transform: `translate(${x}px, ${y}px)`,
-              }}
-            >
-              <Icon className="h-4 w-4" />
-            </motion.div>
-          </React.Fragment>
-        );
-      })}
     </div>
   );
 }
@@ -360,6 +242,167 @@ function CTAButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// How It Works - Architecture Diagram
+function HowItWorks() {
+  const benefits = [
+    { num: '①', icon: Clock, text: 'Runs 24/7' },
+    { num: '②', icon: Shield, text: 'Data local' },
+    { num: '③', icon: Globe, text: 'Access anywhere' },
+  ];
+
+  return (
+    <motion.section
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, margin: '-100px' }}
+      transition={{ duration: 0.6 }}
+      className="mx-auto w-full max-w-2xl"
+    >
+      {/* Title */}
+      <div className="mb-8 text-center">
+        <span className="font-mono text-xs uppercase tracking-widest text-orange-400/60">
+          Architecture
+        </span>
+        <h2 className="mt-2 text-2xl font-semibold text-white">How It Works</h2>
+      </div>
+
+      {/* Diagram */}
+      <div className="relative flex flex-col items-center">
+        {/* Browser Box */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="w-full max-w-sm rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10">
+              <Globe className="h-5 w-5 text-blue-400" />
+            </div>
+            <div>
+              <p className="font-medium text-white">Any Device</p>
+              <p className="text-sm text-white/50">Dashboard 247</p>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-white/40">Just an interface — no data stored</p>
+        </motion.div>
+
+        {/* Connection Line */}
+        <div className="relative h-24 w-full max-w-sm">
+          <svg
+            className="absolute inset-0 h-full w-full overflow-visible"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
+            {/* Dashed line */}
+            <line
+              x1="50"
+              y1="0"
+              x2="50"
+              y2="100"
+              stroke="rgba(255,255,255,0.1)"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+            />
+            {/* Animated dots */}
+            {[0, 1, 2].map((i) => (
+              <motion.circle
+                key={i}
+                cx="50"
+                r="2"
+                fill="#f97316"
+                initial={{ cy: 0, opacity: 0 }}
+                animate={{
+                  cy: [0, 100],
+                  opacity: [0, 1, 1, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  delay: i * 0.6,
+                  ease: 'linear',
+                }}
+              />
+            ))}
+          </svg>
+          {/* Lock badge */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="flex items-center gap-1.5 rounded-full bg-[#0a0a10] px-3 py-1.5 text-xs text-white/50 ring-1 ring-white/10">
+              <Lock className="h-3 w-3" />
+              <span>Secure · Tailscale / Local</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Server Box */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="w-full max-w-sm rounded-xl border border-orange-500/20 bg-orange-500/5 p-5 shadow-lg shadow-orange-500/10"
+        >
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-orange-500/20 bg-orange-500/10">
+              <Server className="h-5 w-5 text-orange-400" />
+              {/* Live indicator */}
+              <motion.div
+                className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0a10] bg-green-400"
+                animate={{ opacity: [1, 0.5, 1], scale: [1, 0.9, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+            </div>
+            <div>
+              <p className="font-medium text-white">Your Server</p>
+              <p className="text-sm text-white/50">Agent 247 · 24/7</p>
+            </div>
+          </div>
+
+          {/* Features inside */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            <div className="flex items-center gap-1.5 rounded-md bg-white/5 px-2.5 py-1 text-xs text-white/60">
+              <Database className="h-3 w-3" />
+              <span>SQLite</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-md bg-white/5 px-2.5 py-1 text-xs text-white/60">
+              <Terminal className="h-3 w-3" />
+              <span>tmux</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-md bg-white/5 px-2.5 py-1 text-xs text-white/60">
+              <Code2 className="h-3 w-3" />
+              <span>Claude Code</span>
+            </div>
+          </div>
+
+          <p className="mt-3 text-xs text-white/40">All your data stays on YOUR machine</p>
+        </motion.div>
+      </div>
+
+      {/* Benefits */}
+      <div className="mt-8 grid grid-cols-3 gap-3 text-center">
+        {benefits.map((item, i) => {
+          const Icon = item.icon;
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4 + i * 0.1, duration: 0.4 }}
+              className="flex flex-col items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.02] p-3"
+            >
+              <span className="text-lg text-orange-400">{item.num}</span>
+              <Icon className="h-4 w-4 text-white/40" />
+              <span className="text-xs text-white/50">{item.text}</span>
+            </motion.div>
+          );
+        })}
+      </div>
+    </motion.section>
+  );
+}
+
 // Main Component
 export function NoConnectionView({
   modalOpen,
@@ -404,16 +447,8 @@ export function NoConnectionView({
           </motion.p>
 
           {/* CTA Button */}
-          <motion.div variants={itemVariants} className="mt-10 flex flex-col items-center gap-4">
+          <motion.div variants={itemVariants} className="mt-10">
             <CTAButton onClick={() => onModalOpenChange(true)} />
-
-            <button
-              onClick={() => window.open('https://tailscale.com', '_blank')}
-              className="group flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white/40 transition-all hover:bg-white/5 hover:text-white/60"
-            >
-              <HelpCircle className="h-4 w-4" />
-              <span>How does this work?</span>
-            </button>
           </motion.div>
 
           {/* Security Badge */}
@@ -430,9 +465,9 @@ export function NoConnectionView({
             <InstallationGuide />
           </motion.div>
 
-          {/* Orbital Visualization */}
+          {/* How It Works - Architecture Diagram */}
           <motion.div variants={itemVariants} className="mt-12 lg:mt-16">
-            <OrbitalVisualization />
+            <HowItWorks />
           </motion.div>
 
           {/* Value Props */}
@@ -443,22 +478,6 @@ export function NoConnectionView({
             {valueProps.map((prop, index) => (
               <ValueCard key={prop.title} {...prop} index={index} />
             ))}
-          </motion.div>
-
-          {/* Bottom Explanation */}
-          <motion.div
-            variants={itemVariants}
-            className="mt-16 max-w-2xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 text-center backdrop-blur-sm"
-          >
-            <p className="mb-3 font-mono text-sm text-orange-400/80">Why 24x7?</p>
-            <p className="text-balance text-white/60">
-              <span className="font-semibold text-white">24</span> hours a day.{' '}
-              <span className="font-semibold text-white">7</span> days a week.
-              <br />
-              <span className="text-white/40">
-                Always-on access to Claude Code from anywhere in the world.
-              </span>
-            </p>
           </motion.div>
 
           {/* Footer */}

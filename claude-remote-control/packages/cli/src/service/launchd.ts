@@ -13,7 +13,7 @@ import { checkTmux } from '../lib/prerequisites.js';
 
 const execAsync = promisify(exec);
 
-const SERVICE_LABEL = 'co.thevibecompany.247';
+const SERVICE_LABEL = 'com.quivr.247';
 
 export class LaunchdService implements ServiceManager {
   platform = 'macos' as const;

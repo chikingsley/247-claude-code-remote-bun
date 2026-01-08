@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-247 (The Vibe Company) - A system for web terminal access to Claude Code from anywhere. Consists of a Next.js dashboard (Vercel), local Node.js agents (one per Mac) with SQLite for local persistence, and Cloudflare Tunnels for secure exposure.
+247 (Quivr) - A system for web terminal access to Claude Code from anywhere. Consists of a Next.js dashboard (Vercel), local Node.js agents (one per Mac) with SQLite for local persistence, and Cloudflare Tunnels for secure exposure.
 
-**Domain:** 247.thevibecompany.co
+**Domain:** 247.quivr.com
 
 ## Development Commands
 
@@ -87,18 +87,18 @@ pnpm lint             # Lint all packages
 pnpm test
 
 # Run tests for specific package
-pnpm --filter @vibecompany/247-agent test
-pnpm --filter @vibecompany/247-cli test
-pnpm --filter @vibecompany/247-web test
-pnpm --filter @vibecompany/247-shared test
+pnpm --filter 247-agent test
+pnpm --filter 247-cli test
+pnpm --filter 247-web test
+pnpm --filter 247-shared test
 
 # Run tests with coverage
-pnpm --filter @vibecompany/247-agent test -- --coverage
-pnpm --filter @vibecompany/247-cli test -- --coverage
-pnpm --filter @vibecompany/247-web test -- --coverage
+pnpm --filter 247-agent test -- --coverage
+pnpm --filter 247-cli test -- --coverage
+pnpm --filter 247-web test -- --coverage
 
 # Run tests in watch mode
-pnpm --filter @vibecompany/247-agent test -- --watch
+pnpm --filter 247-agent test -- --watch
 ```
 
 ### Test File Structure.

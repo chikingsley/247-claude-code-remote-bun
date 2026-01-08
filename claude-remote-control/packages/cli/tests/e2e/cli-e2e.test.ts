@@ -207,10 +207,10 @@ describe.skipIf(skipE2E)('247 CLI E2E Tests', () => {
       // Note: launchctl commands may fail in sandbox but file should be created
       await env.runCli(['service', 'install']);
 
-      expect(env.fileExists('Library/LaunchAgents/co.thevibecompany.247.plist')).toBe(true);
+      expect(env.fileExists('Library/LaunchAgents/com.quivr.247.plist')).toBe(true);
 
-      const plist = env.readFile('Library/LaunchAgents/co.thevibecompany.247.plist');
-      expect(plist).toContain('co.thevibecompany.247');
+      const plist = env.readFile('Library/LaunchAgents/com.quivr.247.plist');
+      expect(plist).toContain('com.quivr.247');
       expect(plist).toContain('AGENT_247_CONFIG');
     });
 

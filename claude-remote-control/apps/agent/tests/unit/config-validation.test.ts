@@ -388,7 +388,7 @@ describe('Config Schema Documentation', () => {
         whitelist: [],
       },
       dashboard: {
-        apiUrl: 'https://247.thevibecompany.co/api',
+        apiUrl: 'https://247.quivr.com/api',
         apiKey: 'your-api-key',
       },
     };
@@ -416,7 +416,7 @@ describe('Config Schema Documentation', () => {
         whitelist: ['project-a', 'project-b'],
       },
       dashboard: {
-        apiUrl: 'https://247.thevibecompany.co/api',
+        apiUrl: 'https://247.quivr.com/api',
         apiKey: 'your-api-key',
       },
     };

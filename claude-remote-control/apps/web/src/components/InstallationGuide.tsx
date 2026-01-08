@@ -273,7 +273,7 @@ export function InstallationGuide() {
                 <p className="text-center text-xs text-white/30">
                   Need help?{' '}
                   <a
-                    href="https://github.com/The-Vibe-Company/247"
+                    href="https://github.com/QuivrHQ/247"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-orange-400/70 underline underline-offset-2 transition-colors hover:text-orange-400"
