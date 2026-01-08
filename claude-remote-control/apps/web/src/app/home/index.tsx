@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { HomeSidebar } from '@/components/HomeSidebar';
+import { HomeSidebar, type ViewTab } from '@/components/HomeSidebar';
 import { DashboardContent } from '@/components/DashboardContent';
 import { SessionView } from '@/components/SessionView';
 import { NewSessionModal } from '@/components/NewSessionModal';
@@ -18,6 +18,7 @@ import { useViewportHeight } from '@/hooks/useViewportHeight';
 export function HomeContent() {
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [viewTab, setViewTab] = useState<ViewTab>('terminal');
 
   // Set CSS variable for viewport height (handles mobile keyboard)
   useViewportHeight();
@@ -64,21 +65,36 @@ export function HomeContent() {
     );
   }
 
+  // Handler for menu button in session view
+  const handleMenuClick = () => {
+    if (isMobile) {
+      // On mobile: open sidebar drawer
+      setMobileMenuOpen(true);
+    } else {
+      // On desktop: go back to session list
+      setSelectedSession(null);
+      clearSessionFromUrl();
+    }
+  };
+
   // Connected state - Split View Layout
   return (
     <main className="h-screen-safe flex flex-col overflow-hidden bg-[#0a0a10]">
-      <Header
-        agentUrl={agentConnection.url}
-        sessionCount={allSessions.length}
-        needsAttention={needsAttention}
-        selectedSession={selectedSession}
-        isFullscreen={isFullscreen}
-        onConnectionSettingsClick={() => setConnectionModalOpen(true)}
-        onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
-        onNewSession={() => setNewSessionOpen(true)}
-        isMobile={isMobile}
-        onMobileMenuClick={() => setMobileMenuOpen(true)}
-      />
+      {/* Header - hidden when a session is selected (minimalist design) */}
+      {!selectedSession && (
+        <Header
+          agentUrl={agentConnection.url}
+          sessionCount={allSessions.length}
+          needsAttention={needsAttention}
+          selectedSession={selectedSession}
+          isFullscreen={isFullscreen}
+          onConnectionSettingsClick={() => setConnectionModalOpen(true)}
+          onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+          onNewSession={() => setNewSessionOpen(true)}
+          isMobile={isMobile}
+          onMobileMenuClick={() => setMobileMenuOpen(true)}
+        />
+      )}
 
       {/* Mobile Sidebar Drawer */}
       {isMobile && (
@@ -100,13 +116,15 @@ export function HomeContent() {
             onSessionArchived={handleSessionArchived}
             isMobileDrawer={true}
             onMobileSessionSelect={() => setMobileMenuOpen(false)}
+            activeTab={viewTab}
+            onTabChange={setViewTab}
           />
         </MobileSidebarDrawer>
       )}
 
       {/* Main Split View */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Sidebar - hidden on mobile */}
+        {/* Desktop Sidebar - hidden on mobile and in fullscreen */}
         {!isFullscreen && !isMobile && (
           <HomeSidebar
             sessions={allSessions}
@@ -116,6 +134,8 @@ export function HomeContent() {
             onNewSession={() => setNewSessionOpen(true)}
             onSessionKilled={handleSessionKilled}
             onSessionArchived={handleSessionArchived}
+            activeTab={viewTab}
+            onTabChange={setViewTab}
           />
         )}
 
@@ -129,11 +149,9 @@ export function HomeContent() {
               sessionInfo={getSelectedSessionInfo()}
               environmentId={selectedSession.environmentId}
               ralphConfig={selectedSession.ralphConfig}
-              onBack={() => {
-                setSelectedSession(null);
-                clearSessionFromUrl();
-              }}
+              onMenuClick={handleMenuClick}
               onSessionCreated={handleSessionCreated}
+              activeTab={viewTab}
               isMobile={isMobile}
             />
           ) : (

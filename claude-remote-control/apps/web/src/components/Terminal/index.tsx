@@ -4,11 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import '@xterm/xterm/css/xterm.css';
 import type { RalphLoopConfig } from '@vibecompany/247-shared';
 import { generateSessionName } from './constants';
-import { Toolbar } from './Toolbar';
 import { SearchBar } from './SearchBar';
 import { ScrollToBottomButton } from './ScrollToBottomButton';
 import { MobileKeybar } from './MobileKeybar';
+import { KeybarToggleButton } from './KeybarToggleButton';
 import { useTerminalConnection, useTerminalSearch } from './hooks';
+import { useKeybarVisibility } from '@/hooks/useKeybarVisibility';
+import { MinimalSessionHeader } from '@/components/MinimalSessionHeader';
+import type { SessionStatus } from '@/components/ui/status-badge';
 
 interface TerminalProps {
   agentUrl: string;
@@ -19,6 +22,10 @@ interface TerminalProps {
   onConnectionChange?: (connected: boolean) => void;
   onSessionCreated?: (sessionName: string) => void;
   claudeStatus?: 'init' | 'working' | 'needs_attention' | 'idle';
+  /** Session status for status indicator */
+  status?: SessionStatus;
+  /** Callback when menu button is clicked (opens sidebar) */
+  onMenuClick: () => void;
   /** Mobile mode for responsive styling and smaller font */
   isMobile?: boolean;
 }
@@ -32,10 +39,13 @@ export function Terminal({
   onConnectionChange,
   onSessionCreated,
   claudeStatus,
+  status,
+  onMenuClick,
   isMobile = false,
 }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+  const { isVisible: keybarVisible, toggle: toggleKeybar } = useKeybarVisibility();
 
   // Generate session name ONCE on first render, persisted across re-mounts
   const generatedSessionRef = useRef<string | null>(null);
@@ -90,18 +100,19 @@ export function Terminal({
 
   return (
     <div className="relative flex w-full flex-1 flex-col overflow-hidden">
-      <Toolbar
-        project={project}
+      <MinimalSessionHeader
         sessionName={effectiveSessionName}
+        status={status}
         connectionState={connectionState}
         connected={connected}
         copied={copied}
         searchVisible={searchVisible}
         claudeStatus={claudeStatus}
+        isMobile={isMobile}
+        onMenuClick={onMenuClick}
         onStartClaude={startClaude}
         onCopySelection={copySelection}
         onToggleSearch={toggleSearch}
-        isMobile={isMobile}
       />
 
       <SearchBar
@@ -125,8 +136,13 @@ export function Terminal({
 
       <ScrollToBottomButton visible={!isAtBottom} onClick={scrollToBottom} />
 
-      {/* Mobile virtual keyboard with arrow keys and action buttons */}
-      {isMobile && <MobileKeybar onKeyPress={sendInput} onScroll={scrollTerminal} />}
+      {/* Mobile: Keybar toggle button and virtual keyboard */}
+      {isMobile && (
+        <>
+          <KeybarToggleButton isVisible={keybarVisible} onToggle={toggleKeybar} />
+          <MobileKeybar onKeyPress={sendInput} onScroll={scrollTerminal} visible={keybarVisible} />
+        </>
+      )}
     </div>
   );
 }

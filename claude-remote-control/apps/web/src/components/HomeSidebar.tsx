@@ -14,6 +14,8 @@ import {
   Archive,
   Download,
   Share,
+  TerminalSquare,
+  FolderOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SessionCard } from './SessionCard';
@@ -29,6 +31,8 @@ interface SelectedSession {
   project: string;
 }
 
+export type ViewTab = 'terminal' | 'editor';
+
 interface HomeSidebarProps {
   sessions: SessionWithMachine[];
   archivedSessions: SessionWithMachine[];
@@ -41,6 +45,10 @@ interface HomeSidebarProps {
   isMobileDrawer?: boolean;
   /** Callback when a session is selected in mobile mode (to close drawer) */
   onMobileSessionSelect?: () => void;
+  /** Active view tab (terminal/editor) - shown when session selected */
+  activeTab?: ViewTab;
+  /** Callback when tab changes */
+  onTabChange?: (tab: ViewTab) => void;
 }
 
 type FilterType = 'all' | 'active' | 'waiting' | 'done';
@@ -55,6 +63,8 @@ export function HomeSidebar({
   onSessionArchived,
   isMobileDrawer = false,
   onMobileSessionSelect,
+  activeTab = 'terminal',
+  onTabChange,
 }: HomeSidebarProps) {
   // Don't allow collapse in mobile drawer mode
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -301,6 +311,40 @@ export function HomeSidebar({
                 <ChevronLeft className="h-4 w-4" />
               )}
             </button>
+          </div>
+        )}
+
+        {/* View Tabs - shown when a session is selected */}
+        {selectedSession && !effectiveCollapsed && (
+          <div className="border-b border-white/5 p-2">
+            <div className="flex gap-1 rounded-lg bg-white/5 p-1">
+              <button
+                onClick={() => onTabChange?.('terminal')}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all',
+                  isMobileDrawer && 'min-h-[40px]',
+                  activeTab === 'terminal'
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/50 hover:text-white/70'
+                )}
+              >
+                <TerminalSquare className="h-4 w-4" />
+                <span>Terminal</span>
+              </button>
+              <button
+                onClick={() => onTabChange?.('editor')}
+                className={cn(
+                  'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all',
+                  isMobileDrawer && 'min-h-[40px]',
+                  activeTab === 'editor'
+                    ? 'bg-white/10 text-white'
+                    : 'text-white/50 hover:text-white/70'
+                )}
+              >
+                <FolderOpen className="h-4 w-4" />
+                <span>Files</span>
+              </button>
+            </div>
           </div>
         )}
 

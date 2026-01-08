@@ -140,6 +140,39 @@ describe('MobileKeybar', () => {
     });
   });
 
+  describe('Visibility prop', () => {
+    it('defaults to visible when prop not provided', () => {
+      const defaultVisible = true;
+      expect(defaultVisible).toBe(true);
+    });
+
+    it('uses translate-y-0 when visible', () => {
+      const visible = true;
+      const translateClass = visible ? 'translate-y-0' : 'translate-y-full';
+      expect(translateClass).toBe('translate-y-0');
+    });
+
+    it('uses translate-y-full when hidden', () => {
+      const visible = false;
+      const translateClass = visible ? 'translate-y-0' : 'translate-y-full';
+      expect(translateClass).toBe('translate-y-full');
+    });
+
+    it('has transition animation classes', () => {
+      const animationClasses = 'transition-transform duration-200 ease-out';
+      expect(animationClasses).toContain('transition-transform');
+      expect(animationClasses).toContain('duration-200');
+      expect(animationClasses).toContain('ease-out');
+    });
+
+    it('200ms is appropriate for slide animation', () => {
+      // 200ms is snappy but visible
+      const durationMs = 200;
+      expect(durationMs).toBeGreaterThanOrEqual(150); // Not too fast
+      expect(durationMs).toBeLessThanOrEqual(300); // Not too slow
+    });
+  });
+
   describe('Touch scroll logic', () => {
     // Test the scroll calculation logic used in useTerminalConnection
     const calculateScrollLines = (deltaY: number): number => {

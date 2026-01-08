@@ -26,6 +26,8 @@ const KEYS = {
 interface MobileKeybarProps {
   onKeyPress: (key: string) => void;
   onScroll: (direction: 'up' | 'down') => void;
+  /** Controls visibility with slide animation */
+  visible?: boolean;
 }
 
 interface KeyButtonProps {
@@ -54,9 +56,15 @@ function KeyButton({ onClick, children, label, className }: KeyButtonProps) {
   );
 }
 
-export function MobileKeybar({ onKeyPress, onScroll }: MobileKeybarProps) {
+export function MobileKeybar({ onKeyPress, onScroll, visible = true }: MobileKeybarProps) {
   return (
-    <div className="flex flex-col gap-1.5 border-t border-white/5 bg-[#0d0d14]/95 px-2 py-2 backdrop-blur-sm">
+    <div
+      className={cn(
+        'flex flex-col gap-1.5 border-t border-white/5 bg-[#0d0d14]/95 px-2 py-2 backdrop-blur-sm',
+        'transition-transform duration-200 ease-out',
+        visible ? 'translate-y-0' : 'translate-y-full'
+      )}
+    >
       {/* Row 1: Scroll + Arrow Navigation */}
       <div className="flex items-center justify-between gap-1">
         {/* Scroll buttons */}
