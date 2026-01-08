@@ -5,6 +5,15 @@ import { homedir, platform } from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Get the home directory, allowing override via AGENT_247_HOME for E2E testing.
+ * This enables running tests in isolated temporary directories without affecting
+ * the real user's configuration, hooks, or system services.
+ */
+export function getTestableHomedir(): string {
+  return process.env.AGENT_247_HOME || homedir();
+}
+
 export interface AgentPaths {
   /** Where the CLI package is installed */
   cliRoot: string;
@@ -66,23 +75,26 @@ export function getAgentPaths(): AgentPaths {
     hooksSource = join(cliRoot, 'hooks');
   }
 
+  // Use testable home directory (allows override via AGENT_247_HOME)
+  const home = getTestableHomedir();
+
   // Configuration directory
-  const configDir = join(homedir(), '.247');
+  const configDir = join(home, '.247');
 
   // Log directory varies by platform
   const os = platform();
   let logDir: string;
   if (os === 'darwin') {
-    logDir = join(homedir(), 'Library', 'Logs', '247-agent');
+    logDir = join(home, 'Library', 'Logs', '247-agent');
   } else {
-    logDir = join(homedir(), '.local', 'log', '247-agent');
+    logDir = join(home, '.local', 'log', '247-agent');
   }
 
   cachedPaths = {
     cliRoot,
     agentRoot,
     hooksSource,
-    hooksDestination: join(homedir(), '.claude-plugins', '247-hooks'),
+    hooksDestination: join(home, '.claude-plugins', '247-hooks'),
     configDir,
     configPath: join(configDir, 'config.json'),
     dataDir: join(configDir, 'data'),
@@ -101,11 +113,7 @@ export function getAgentPaths(): AgentPaths {
 export function ensureDirectories(): void {
   const paths = getAgentPaths();
 
-  const dirs = [
-    paths.configDir,
-    paths.dataDir,
-    paths.logDir,
-  ];
+  const dirs = [paths.configDir, paths.dataDir, paths.logDir];
 
   for (const dir of dirs) {
     if (!existsSync(dir)) {

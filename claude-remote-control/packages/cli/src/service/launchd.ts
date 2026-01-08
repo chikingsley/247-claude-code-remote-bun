@@ -1,10 +1,14 @@
 import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import type { ServiceManager, ServiceStatus, ServiceInstallOptions, ServiceResult } from './index.js';
-import { getAgentPaths } from '../lib/paths.js';
+import type {
+  ServiceManager,
+  ServiceStatus,
+  ServiceInstallOptions,
+  ServiceResult,
+} from './index.js';
+import { getAgentPaths, getTestableHomedir } from '../lib/paths.js';
 import { checkTmux } from '../lib/prerequisites.js';
 
 const execAsync = promisify(exec);
@@ -16,7 +20,7 @@ export class LaunchdService implements ServiceManager {
   serviceName = SERVICE_LABEL;
 
   private get plistPath(): string {
-    return join(homedir(), 'Library', 'LaunchAgents', `${SERVICE_LABEL}.plist`);
+    return join(getTestableHomedir(), 'Library', 'LaunchAgents', `${SERVICE_LABEL}.plist`);
   }
 
   async status(): Promise<ServiceStatus> {
@@ -58,14 +62,16 @@ export class LaunchdService implements ServiceManager {
       };
     }
 
+    const home = getTestableHomedir();
+
     // Create LaunchAgents directory if needed
-    const launchAgentsDir = join(homedir(), 'Library', 'LaunchAgents');
+    const launchAgentsDir = join(home, 'Library', 'LaunchAgents');
     if (!existsSync(launchAgentsDir)) {
       mkdirSync(launchAgentsDir, { recursive: true });
     }
 
     // Create log directory
-    const logDir = join(homedir(), 'Library', 'Logs', '247-agent');
+    const logDir = join(home, 'Library', 'Logs', '247-agent');
     if (!existsSync(logDir)) {
       mkdirSync(logDir, { recursive: true });
     }
@@ -145,12 +151,12 @@ export class LaunchdService implements ServiceManager {
 
   async restart(): Promise<ServiceResult> {
     await this.stop();
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
     return this.start();
   }
 
   getLogPaths(): { stdout: string; stderr: string } {
-    const logDir = join(homedir(), 'Library', 'Logs', '247-agent');
+    const logDir = join(getTestableHomedir(), 'Library', 'Logs', '247-agent');
     return {
       stdout: join(logDir, 'agent.log'),
       stderr: join(logDir, 'agent.error.log'),

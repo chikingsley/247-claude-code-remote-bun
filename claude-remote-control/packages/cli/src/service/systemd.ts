@@ -1,10 +1,14 @@
 import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import type { ServiceManager, ServiceStatus, ServiceInstallOptions, ServiceResult } from './index.js';
-import { getAgentPaths } from '../lib/paths.js';
+import type {
+  ServiceManager,
+  ServiceStatus,
+  ServiceInstallOptions,
+  ServiceResult,
+} from './index.js';
+import { getAgentPaths, getTestableHomedir } from '../lib/paths.js';
 import { checkTmux } from '../lib/prerequisites.js';
 
 const execAsync = promisify(exec);
@@ -16,7 +20,7 @@ export class SystemdService implements ServiceManager {
   serviceName = SERVICE_NAME;
 
   private get unitPath(): string {
-    return join(homedir(), '.config', 'systemd', 'user', `${SERVICE_NAME}.service`);
+    return join(getTestableHomedir(), '.config', 'systemd', 'user', `${SERVICE_NAME}.service`);
   }
 
   async status(): Promise<ServiceStatus> {
@@ -72,14 +76,16 @@ export class SystemdService implements ServiceManager {
       };
     }
 
+    const home = getTestableHomedir();
+
     // Create systemd user directory
-    const systemdUserDir = join(homedir(), '.config', 'systemd', 'user');
+    const systemdUserDir = join(home, '.config', 'systemd', 'user');
     if (!existsSync(systemdUserDir)) {
       mkdirSync(systemdUserDir, { recursive: true });
     }
 
     // Create log directory
-    const logDir = join(homedir(), '.local', 'log', '247-agent');
+    const logDir = join(home, '.local', 'log', '247-agent');
     if (!existsSync(logDir)) {
       mkdirSync(logDir, { recursive: true });
     }

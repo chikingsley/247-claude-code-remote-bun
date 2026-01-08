@@ -1,0 +1,80 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/cli/**'
+      - 'packages/hooks/**'
+      - 'apps/agent/**'
+      - '.github/workflows/e2e-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/cli/**'
+      - 'packages/hooks/**'
+      - 'apps/agent/**'
+      - '.github/workflows/e2e-tests.yml'
+
+jobs:
+  e2e:
+    name: E2E Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [22]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'pnpm'
+
+      # Install tmux (required for E2E tests)
+      - name: Install tmux (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      - name: Install tmux (macOS)
+        if: runner.os == 'macOS'
+        run: brew install tmux
+
+      - name: Verify tmux installation
+        run: tmux -V
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm build
+
+      # Run unit tests first (fast feedback)
+      - name: Run unit tests
+        run: pnpm test
+
+      # Run E2E tests
+      - name: Run E2E tests
+        run: pnpm --filter 247-cli test:e2e
+        env:
+          CI: true
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs-${{ matrix.os }}
+          path: |
+            packages/cli/tests/e2e/logs/
+          retention-days: 7
