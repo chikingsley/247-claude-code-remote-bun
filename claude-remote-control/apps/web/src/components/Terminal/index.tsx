@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import '@xterm/xterm/css/xterm.css';
-import type { RalphLoopConfig } from '@vibecompany/247-shared';
 import { generateSessionName } from './constants';
 import { SearchBar } from './SearchBar';
 import { ScrollToBottomButton } from './ScrollToBottomButton';
@@ -18,7 +17,6 @@ interface TerminalProps {
   project: string;
   sessionName?: string;
   environmentId?: string;
-  ralphConfig?: RalphLoopConfig;
   onConnectionChange?: (connected: boolean) => void;
   onSessionCreated?: (sessionName: string) => void;
   claudeStatus?: 'init' | 'working' | 'needs_attention' | 'idle';
@@ -35,7 +33,6 @@ export function Terminal({
   project,
   sessionName,
   environmentId,
-  ralphConfig,
   onConnectionChange,
   onSessionCreated,
   claudeStatus,
@@ -76,7 +73,6 @@ export function Terminal({
     project,
     sessionName: effectiveSessionName,
     environmentId,
-    ralphConfig,
     onSessionCreated,
     onCopySuccess: handleCopySuccess,
     isMobile,

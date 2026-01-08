@@ -32,23 +32,9 @@ describe('Protocol Compatibility', () => {
   });
 
   it('verifies all WSMessageToAgent types are covered', () => {
-    const toAgentTypes = [
-      'input',
-      'resize',
-      'start-claude',
-      'start-claude-ralph',
-      'ping',
-      'request-history',
-    ];
+    const toAgentTypes = ['input', 'resize', 'start-claude', 'ping', 'request-history'];
     toAgentTypes.forEach((type) => {
-      expect([
-        'input',
-        'resize',
-        'start-claude',
-        'start-claude-ralph',
-        'ping',
-        'request-history',
-      ]).toContain(type);
+      expect(['input', 'resize', 'start-claude', 'ping', 'request-history']).toContain(type);
     });
   });
 

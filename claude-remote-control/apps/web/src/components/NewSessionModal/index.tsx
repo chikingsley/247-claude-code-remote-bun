@@ -5,14 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EnvironmentFormModal } from '../EnvironmentFormModal';
-import type { RalphLoopConfig } from '@vibecompany/247-shared';
 
-import { useFolders, useClone, useRalphLoop } from './hooks';
+import { useFolders, useClone } from './hooks';
 import { MachineSelector } from './MachineSelector';
 import { TabButtons, type TabType } from './TabButtons';
 import { SelectFolderTab } from './SelectFolderTab';
 import { CloneRepoTab } from './CloneRepoTab';
-import { RalphLoopTab } from './RalphLoopTab';
 
 interface Machine {
   id: string;
@@ -28,12 +26,7 @@ interface NewSessionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   machines: Machine[];
-  onStartSession: (
-    machineId: string,
-    project: string,
-    environmentId?: string,
-    ralphConfig?: RalphLoopConfig
-  ) => void;
+  onStartSession: (machineId: string, project: string, environmentId?: string) => void;
 }
 
 export function NewSessionModal({
@@ -52,7 +45,6 @@ export function NewSessionModal({
   const { folders, selectedProject, setSelectedProject, loadingFolders, addFolder } =
     useFolders(selectedMachine);
   const clone = useClone(selectedMachine);
-  const ralph = useRalphLoop();
 
   // Reset state when modal closes
   useEffect(() => {
@@ -61,8 +53,8 @@ export function NewSessionModal({
       setActiveTab('select');
       setSelectedEnvironment(null);
       clone.resetCloneState();
-      ralph.resetRalphState();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Handle clone with folder update
@@ -101,18 +93,6 @@ export function NewSessionModal({
   const handleStartSession = () => {
     if (selectedMachine && selectedProject) {
       onStartSession(selectedMachine.id, selectedProject, selectedEnvironment || undefined);
-      onOpenChange(false);
-    }
-  };
-
-  const handleStartRalphLoop = () => {
-    if (selectedMachine && selectedProject && ralph.isValid) {
-      onStartSession(
-        selectedMachine.id,
-        selectedProject,
-        selectedEnvironment || undefined,
-        ralph.getRalphConfig()
-      );
       onOpenChange(false);
     }
   };
@@ -204,45 +184,6 @@ export function NewSessionModal({
                       cloneError={clone.cloneError}
                       cloneSuccess={clone.cloneSuccess}
                       onClone={handleClone}
-                    />
-                  )}
-
-                  {activeTab === 'ralph' && (
-                    <RalphLoopTab
-                      folders={folders}
-                      selectedProject={selectedProject}
-                      onSelectProject={setSelectedProject}
-                      loadingFolders={loadingFolders}
-                      // Prompt Builder props
-                      taskDescription={ralph.taskDescription}
-                      onTaskDescriptionChange={ralph.setTaskDescription}
-                      successCriteria={ralph.successCriteria}
-                      onSuccessCriteriaChange={ralph.setSuccessCriteria}
-                      deliverables={ralph.deliverables}
-                      onDeliverablesChange={ralph.setDeliverables}
-                      customDeliverable={ralph.customDeliverable}
-                      onCustomDeliverableChange={ralph.setCustomDeliverable}
-                      ralphCompletionPromise={ralph.ralphCompletionPromise}
-                      onRalphCompletionPromiseChange={ralph.setRalphCompletionPromise}
-                      completionInstruction={ralph.completionInstruction}
-                      fullPrompt={ralph.fullPrompt}
-                      isPreviewExpanded={ralph.isPreviewExpanded}
-                      onPreviewExpandedChange={ralph.setPreviewExpanded}
-                      // Other settings
-                      ralphMaxIterations={ralph.ralphMaxIterations}
-                      onRalphMaxIterationsChange={ralph.setRalphMaxIterations}
-                      ralphUseWorktree={ralph.ralphUseWorktree}
-                      onRalphUseWorktreeChange={ralph.setRalphUseWorktree}
-                      ralphTrustMode={ralph.ralphTrustMode}
-                      onRalphTrustModeChange={ralph.setRalphTrustMode}
-                      // Environment & actions
-                      agentUrl={agentUrl}
-                      selectedEnvironment={selectedEnvironment}
-                      onSelectEnvironment={setSelectedEnvironment}
-                      onManageEnvironments={() => setEnvModalOpen(true)}
-                      envRefreshKey={envRefreshKey}
-                      onStartRalphLoop={handleStartRalphLoop}
-                      isValid={ralph.isValid}
                     />
                   )}
                 </motion.div>

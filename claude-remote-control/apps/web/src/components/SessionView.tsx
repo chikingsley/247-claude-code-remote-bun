@@ -4,7 +4,6 @@ import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { SessionStatus } from './ui/status-badge';
 import { type SessionInfo } from '@/lib/notifications';
-import type { RalphLoopConfig } from '@vibecompany/247-shared';
 
 const Terminal = dynamic(() => import('./Terminal').then((mod) => mod.Terminal), {
   ssr: false,
@@ -21,7 +20,6 @@ interface SessionViewProps {
   agentUrl: string;
   sessionInfo?: SessionInfo;
   environmentId?: string;
-  ralphConfig?: RalphLoopConfig;
   onSessionCreated?: (sessionName: string) => void;
   /** Callback when menu button is clicked (goes back on desktop) */
   onMenuClick: () => void;
@@ -39,7 +37,6 @@ export function SessionView({
   agentUrl,
   sessionInfo,
   environmentId,
-  ralphConfig,
   onSessionCreated,
   onMenuClick,
   isMobile = false,
@@ -63,7 +60,6 @@ export function SessionView({
       project={project}
       sessionName={isNewSession ? undefined : sessionName}
       environmentId={environmentId}
-      ralphConfig={ralphConfig}
       onConnectionChange={setIsConnected}
       onSessionCreated={handleSessionCreated}
       claudeStatus={sessionInfo?.status}

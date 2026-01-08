@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { JetBrains_Mono, Inter } from 'next/font/google';
+import { JetBrains_Mono, Inter, Space_Grotesk } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { Providers } from '@/components/Providers';
 import './globals.css';
@@ -12,6 +12,12 @@ const inter = Inter({
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['400', '500', '600', '700'],
 });
 
 export const viewport: Viewport = {
@@ -50,7 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable}`}
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground min-h-screen font-sans antialiased">

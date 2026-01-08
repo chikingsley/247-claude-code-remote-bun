@@ -34,10 +34,6 @@ export const activeConnections = new Map<string, Set<WebSocket>>();
 // Track WebSocket subscribers for status updates (real-time push)
 export const statusSubscribers = new Set<WebSocket>();
 
-// Track Ralph Loop starts to prevent duplicate commands from race conditions
-export const ralphLoopLastStart = new Map<string, number>();
-export const RALPH_DEBOUNCE_MS = 1000;
-
 /**
  * Broadcast status update to all subscribers
  */

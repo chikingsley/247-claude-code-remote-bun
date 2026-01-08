@@ -132,7 +132,6 @@ export function HomeContent() {
               agentUrl={getAgentUrl()}
               sessionInfo={getSelectedSessionInfo()}
               environmentId={selectedSession.environmentId}
-              ralphConfig={selectedSession.ralphConfig}
               onMenuClick={handleMenuClick}
               onSessionCreated={handleSessionCreated}
               isMobile={isMobile}

@@ -11,6 +11,7 @@ module.exports = {
   		fontFamily: {
   			sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
   			mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
+  			display: ['var(--font-display)', 'var(--font-sans)', 'system-ui', 'sans-serif'],
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

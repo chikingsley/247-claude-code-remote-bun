@@ -12,7 +12,6 @@ import type {
   SessionStatus,
   AttentionReason,
   StatusSource,
-  RalphLoopConfig,
 } from '../../src/types/index.js';
 
 export function isWSMessageToAgent(msg: unknown): msg is WSMessageToAgent {
@@ -29,27 +28,11 @@ export function isWSMessageToAgent(msg: unknown): msg is WSMessageToAgent {
     case 'start-claude':
     case 'ping':
       return true;
-    case 'start-claude-ralph':
-      return isValidRalphLoopConfig(obj.config);
     case 'request-history':
       return obj.lines === undefined || typeof obj.lines === 'number';
     default:
       return false;
   }
-}
-
-export function isValidRalphLoopConfig(config: unknown): config is RalphLoopConfig {
-  if (typeof config !== 'object' || config === null) return false;
-  const obj = config as Record<string, unknown>;
-
-  if (typeof obj.prompt !== 'string' || obj.prompt.trim() === '') return false;
-  if (obj.maxIterations !== undefined && typeof obj.maxIterations !== 'number') return false;
-  if (obj.completionPromise !== undefined && typeof obj.completionPromise !== 'string')
-    return false;
-  if (obj.useWorktree !== undefined && typeof obj.useWorktree !== 'boolean') return false;
-  if (obj.trustMode !== undefined && typeof obj.trustMode !== 'boolean') return false;
-
-  return true;
 }
 
 export function isWSMessageFromAgent(msg: unknown): msg is WSMessageFromAgent {
