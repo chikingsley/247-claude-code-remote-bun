@@ -13,6 +13,7 @@ import {
   Code2,
   Server,
   Clock,
+  Github,
 } from 'lucide-react';
 import {
   AgentConnectionSettings,
@@ -386,6 +387,19 @@ export function NoConnectionView({
             <span>End-to-end encrypted. Your data never leaves your machine.</span>
           </motion.div>
 
+          {/* Open Source Badge */}
+          <motion.a
+            variants={itemVariants}
+            href="https://github.com/QuivrHQ/247"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-2 text-sm text-white/40 transition-colors hover:text-orange-400"
+          >
+            <Github className="h-4 w-4" />
+            <span>100% Open Source</span>
+            <ArrowRight className="h-3 w-3" />
+          </motion.a>
+
           {/* Installation Guide */}
           <motion.div variants={itemVariants} className="mt-10 w-full">
             <InstallationGuide />
@@ -397,12 +411,20 @@ export function NoConnectionView({
           </motion.div>
 
           {/* Footer */}
-          <motion.p
-            variants={itemVariants}
-            className="mt-12 text-center font-mono text-xs text-white/30"
-          >
-            Built for developers who value privacy and control.
-          </motion.p>
+          <motion.div variants={itemVariants} className="mt-12 flex flex-col items-center gap-3">
+            <p className="text-center font-mono text-xs text-white/30">
+              Built for developers who value privacy and control.
+            </p>
+            <a
+              href="https://github.com/QuivrHQ/247"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-white/20 transition-colors hover:text-white/40"
+            >
+              <Github className="h-3.5 w-3.5" />
+              <span>Star us on GitHub</span>
+            </a>
+          </motion.div>
         </motion.div>
       </div>
 
