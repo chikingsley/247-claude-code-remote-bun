@@ -2,9 +2,32 @@
   "name": "247",
   "version": "0.5.1",
   "private": true,
-  "description": "247 - Web terminal access to Claude Code from anywhere",
-  "author": "Stan",
+  "description": "247 - Remote web terminal for Claude Code. Access AI coding sessions from your phone, tablet, or any browser 24/7. Built with Next.js, WebSocket, xterm.js, and tmux for persistent terminal sessions.",
+  "keywords": [
+    "claude-code",
+    "remote-terminal",
+    "web-terminal",
+    "ai-coding",
+    "terminal",
+    "websocket",
+    "tmux",
+    "xterm",
+    "nextjs",
+    "mobile-terminal",
+    "ssh-alternative",
+    "remote-development",
+    "quivr"
+  ],
+  "author": "Quivr (Y Combinator W24)",
   "license": "MIT",
+  "homepage": "https://247.quivr.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/QuivrHQ/247"
+  },
+  "bugs": {
+    "url": "https://github.com/QuivrHQ/247/issues"
+  },
   "packageManager": "pnpm@9.15.1",
   "engines": {
     "node": ">=22.0.0"
