@@ -101,6 +101,18 @@ export function useTerminalConnection({
     }
   }, []);
 
+  // Trigger terminal resize (for keybar visibility changes)
+  const triggerResize = useCallback(() => {
+    const fitAddon = fitAddonRef.current;
+    const term = xtermRef.current;
+    if (!fitAddon || !term) return;
+
+    fitAddon.fit();
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+    }
+  }, []);
+
   useEffect(() => {
     if (!terminalRef.current) return;
 
@@ -221,10 +233,10 @@ export function useTerminalConnection({
         setIsAtBottom(buffer.viewportY >= buffer.baseY);
       });
 
-      // Touch scroll handler for mobile - xterm.js canvas doesn't support native touch scroll
-      // We need to attach to the xterm-screen element which contains the canvas
+      // Touch scroll handler - xterm.js canvas doesn't support native touch scroll
+      // We attach handlers unconditionally - they only fire on touch devices
       // See: https://github.com/xtermjs/xterm.js/issues/5377
-      if (isMobile && term.element) {
+      if (term.element) {
         const currentTermForTouch = term; // Capture for closure
 
         // Wait for .xterm-screen to be available (xterm creates it async after CanvasAddon)
@@ -714,5 +726,6 @@ export function useTerminalConnection({
     startClaude,
     sendInput,
     scrollTerminal,
+    triggerResize,
   };
 }
