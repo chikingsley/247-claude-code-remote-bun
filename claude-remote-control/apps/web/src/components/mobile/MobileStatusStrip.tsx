@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Plus, Search, HelpCircle, Settings } from 'lucide-react';
+import { ChevronDown, Plus, Search, HelpCircle, Settings, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, buildApiUrl } from '@/lib/utils';
 import { StatusRing } from '@/components/ui/StatusRing';
@@ -23,6 +23,8 @@ export interface MobileStatusStripProps {
   onNewSession: () => void;
   onOpenGuide?: () => void;
   onOpenEnvironments?: () => void;
+  /** Called to open connection settings modal */
+  onConnectionSettingsClick?: () => void;
   /** Called when a session is killed (to deselect if it was selected) */
   onSessionKilled?: (machineId: string, sessionName: string) => void;
 }
@@ -48,6 +50,7 @@ export function MobileStatusStrip({
   onNewSession,
   onOpenGuide,
   onOpenEnvironments,
+  onConnectionSettingsClick,
   onSessionKilled,
 }: MobileStatusStripProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -294,6 +297,16 @@ export function MobileStatusStrip({
                 data-testid="environments-button"
               >
                 <Settings className="h-4 w-4" />
+              </button>
+            )}
+            {onConnectionSettingsClick && (
+              <button
+                onClick={onConnectionSettingsClick}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
+                aria-label="Connection settings"
+                data-testid="connection-settings-button"
+              >
+                <Wifi className="h-4 w-4" />
               </button>
             )}
           </div>
