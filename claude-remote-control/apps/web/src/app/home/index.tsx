@@ -84,6 +84,8 @@ export function HomeContent() {
           currentSession={selectedSession}
           onSelectSession={handleSelectSession}
           onNewSession={() => setNewSessionOpen(true)}
+          onOpenGuide={() => setGuideOpen(true)}
+          onOpenEnvironments={() => setEnvironmentsOpen(true)}
         />
       )}
 

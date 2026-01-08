@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Plus, Search } from 'lucide-react';
+import { ChevronDown, Plus, Search, HelpCircle, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusRing } from '@/components/ui/StatusRing';
 import { SessionMiniCard } from './SessionMiniCard';
@@ -20,6 +20,8 @@ export interface MobileStatusStripProps {
   } | null;
   onSelectSession: (machineId: string, name: string, project: string) => void;
   onNewSession: () => void;
+  onOpenGuide?: () => void;
+  onOpenEnvironments?: () => void;
 }
 
 function getStatusColor(status: SessionStatus): string {
@@ -41,6 +43,8 @@ export function MobileStatusStrip({
   currentSession,
   onSelectSession,
   onNewSession,
+  onOpenGuide,
+  onOpenEnvironments,
 }: MobileStatusStripProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [filter, setFilter] = useState<MobileFilterType>('all');
@@ -208,6 +212,30 @@ export function MobileStatusStrip({
               <span className="ml-1 font-mono text-[10px] text-white/30">
                 +{sessions.length - 5}
               </span>
+            )}
+          </div>
+
+          {/* Utility buttons - Guide & Environments */}
+          <div className="flex items-center gap-0.5">
+            {onOpenGuide && (
+              <button
+                onClick={onOpenGuide}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
+                aria-label="Guide"
+                data-testid="guide-button"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            )}
+            {onOpenEnvironments && (
+              <button
+                onClick={onOpenEnvironments}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/30 transition-colors hover:bg-white/5 hover:text-white/60"
+                aria-label="Environments"
+                data-testid="environments-button"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
             )}
           </div>
 
