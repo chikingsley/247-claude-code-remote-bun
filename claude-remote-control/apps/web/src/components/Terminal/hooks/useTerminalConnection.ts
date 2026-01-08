@@ -8,6 +8,7 @@ import { SearchAddon } from '@xterm/addon-search';
 import { CanvasAddon } from '@xterm/addon-canvas';
 import type { RalphLoopConfig } from '@vibecompany/247-shared';
 import { TERMINAL_THEME, WS_RECONNECT_BASE_DELAY, WS_RECONNECT_MAX_DELAY } from '../constants';
+import { buildWebSocketUrl } from '@/lib/utils';
 
 interface UseTerminalConnectionProps {
   terminalRef: React.RefObject<HTMLDivElement | null>;
@@ -185,8 +186,10 @@ export function useTerminalConnection({
       });
 
       // WebSocket connection
-      const wsProtocol = agentUrl.includes('localhost') ? 'ws' : 'wss';
-      let wsUrl = `${wsProtocol}://${agentUrl}/terminal?project=${encodeURIComponent(project)}&session=${encodeURIComponent(sessionName)}`;
+      let wsUrl = buildWebSocketUrl(
+        agentUrl,
+        `/terminal?project=${encodeURIComponent(project)}&session=${encodeURIComponent(sessionName)}`
+      );
       if (environmentId) wsUrl += `&environment=${encodeURIComponent(environmentId)}`;
 
       ws = new WebSocket(wsUrl);
@@ -275,7 +278,10 @@ export function useTerminalConnection({
           setConnectionState('reconnecting');
           isReconnectRef.current = true;
 
-          let newWsUrl = `${wsProtocol}://${agentUrl}/terminal?project=${encodeURIComponent(project)}&session=${encodeURIComponent(sessionName)}`;
+          let newWsUrl = buildWebSocketUrl(
+            agentUrl,
+            `/terminal?project=${encodeURIComponent(project)}&session=${encodeURIComponent(sessionName)}`
+          );
           if (environmentId) newWsUrl += `&environment=${encodeURIComponent(environmentId)}`;
 
           const newWs = new WebSocket(newWsUrl);

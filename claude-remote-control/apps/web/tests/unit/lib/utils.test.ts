@@ -1,10 +1,10 @@
 /**
  * Utils Module Tests
  *
- * Tests for the cn utility function used for className merging.
+ * Tests for utility functions used across the application.
  */
 import { describe, it, expect } from 'vitest';
-import { cn } from '@/lib/utils';
+import { cn, stripProtocol, buildWebSocketUrl } from '@/lib/utils';
 
 describe('Utils', () => {
   describe('cn function', () => {
@@ -74,6 +74,100 @@ describe('Utils', () => {
     it('handles Tailwind state modifiers', () => {
       expect(cn('hover:bg-blue-500', 'focus:bg-blue-600')).toBe(
         'hover:bg-blue-500 focus:bg-blue-600'
+      );
+    });
+  });
+
+  describe('stripProtocol', () => {
+    it('strips https:// protocol', () => {
+      expect(stripProtocol('https://example.com')).toBe('example.com');
+    });
+
+    it('strips http:// protocol', () => {
+      expect(stripProtocol('http://example.com')).toBe('example.com');
+    });
+
+    it('strips wss:// protocol', () => {
+      expect(stripProtocol('wss://example.com')).toBe('example.com');
+    });
+
+    it('strips ws:// protocol', () => {
+      expect(stripProtocol('ws://example.com')).toBe('example.com');
+    });
+
+    it('preserves port numbers', () => {
+      expect(stripProtocol('https://example.com:4678')).toBe('example.com:4678');
+    });
+
+    it('preserves path', () => {
+      expect(stripProtocol('https://example.com/path/to/resource')).toBe(
+        'example.com/path/to/resource'
+      );
+    });
+
+    it('returns unchanged URL without protocol', () => {
+      expect(stripProtocol('example.com:4678')).toBe('example.com:4678');
+    });
+
+    it('handles localhost with protocol', () => {
+      expect(stripProtocol('http://localhost:4678')).toBe('localhost:4678');
+    });
+
+    it('handles Tailscale URLs', () => {
+      expect(stripProtocol('https://macbook-pro.tail5f910b.ts.net:4678')).toBe(
+        'macbook-pro.tail5f910b.ts.net:4678'
+      );
+    });
+  });
+
+  describe('buildWebSocketUrl', () => {
+    it('builds ws:// URL for localhost', () => {
+      expect(buildWebSocketUrl('localhost:4678', '/status')).toBe('ws://localhost:4678/status');
+    });
+
+    it('builds ws:// URL for 127.0.0.1', () => {
+      expect(buildWebSocketUrl('127.0.0.1:4678', '/status')).toBe('ws://127.0.0.1:4678/status');
+    });
+
+    it('builds wss:// URL for non-localhost domains', () => {
+      expect(buildWebSocketUrl('example.com:4678', '/status')).toBe(
+        'wss://example.com:4678/status'
+      );
+    });
+
+    it('strips existing https:// protocol before building URL', () => {
+      expect(buildWebSocketUrl('https://example.com:4678', '/status')).toBe(
+        'wss://example.com:4678/status'
+      );
+    });
+
+    it('strips existing http:// protocol before building URL', () => {
+      expect(buildWebSocketUrl('http://localhost:4678', '/status')).toBe(
+        'ws://localhost:4678/status'
+      );
+    });
+
+    it('handles Tailscale URLs with protocol', () => {
+      expect(buildWebSocketUrl('https://macbook-pro.tail5f910b.ts.net:4678', '/status')).toBe(
+        'wss://macbook-pro.tail5f910b.ts.net:4678/status'
+      );
+    });
+
+    it('handles Tailscale URLs without protocol', () => {
+      expect(buildWebSocketUrl('macbook-pro.tail5f910b.ts.net:4678', '/status')).toBe(
+        'wss://macbook-pro.tail5f910b.ts.net:4678/status'
+      );
+    });
+
+    it('handles paths with query parameters', () => {
+      expect(buildWebSocketUrl('localhost:4678', '/terminal?project=test&session=s1')).toBe(
+        'ws://localhost:4678/terminal?project=test&session=s1'
+      );
+    });
+
+    it('handles complex paths', () => {
+      expect(buildWebSocketUrl('https://example.com:4678', '/api/v1/websocket')).toBe(
+        'wss://example.com:4678/api/v1/websocket'
       );
     });
   });

@@ -1,6 +1,25 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
+}
+
+/**
+ * Strip protocol (http://, https://, ws://, wss://) from a URL
+ * Returns just the host:port/path portion
+ */
+export function stripProtocol(url: string): string {
+  return url.replace(/^(https?|wss?):\/\//, '');
+}
+
+/**
+ * Build a WebSocket URL from an agent URL
+ * Handles both URLs with and without protocol
+ */
+export function buildWebSocketUrl(agentUrl: string, path: string): string {
+  const cleanUrl = stripProtocol(agentUrl);
+  const isLocalhost = cleanUrl.includes('localhost') || cleanUrl.startsWith('127.0.0.1');
+  const wsProtocol = isLocalhost ? 'ws' : 'wss';
+  return `${wsProtocol}://${cleanUrl}${path}`;
 }

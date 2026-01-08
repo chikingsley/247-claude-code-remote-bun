@@ -14,6 +14,7 @@ import {
   requestNotificationPermission,
   showSessionNotification,
 } from '@/lib/notifications';
+import { buildWebSocketUrl } from '@/lib/utils';
 import type { WSStatusMessageFromAgent } from '@vibecompany/247-shared';
 
 export interface Machine {
@@ -314,8 +315,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   const connectWebSocket = useCallback(
     (machine: Machine) => {
       const agentUrl = machine.config?.agentUrl || 'localhost:4678';
-      const wsProtocol = agentUrl.includes('localhost') ? 'ws' : 'wss';
-      const wsUrl = `${wsProtocol}://${agentUrl}/status`;
+      const wsUrl = buildWebSocketUrl(agentUrl, '/status');
 
       // Close existing connection if any
       const existingWs = wsConnectionsRef.current.get(machine.id);
