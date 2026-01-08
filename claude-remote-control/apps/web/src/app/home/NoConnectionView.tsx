@@ -6,7 +6,6 @@ import {
   Wifi,
   Shield,
   Globe,
-  HardDrive,
   Lock,
   ArrowRight,
   Database,
@@ -46,16 +45,6 @@ const itemVariants = {
     opacity: 1,
     y: 0,
     transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 40, scale: 0.95 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
@@ -144,69 +133,6 @@ function StatusBadge() {
       <span className="font-mono text-xs font-medium tracking-wide text-orange-400">
         READY TO CONNECT
       </span>
-    </motion.div>
-  );
-}
-
-// Value proposition cards data
-const valueProps = [
-  {
-    icon: Shield,
-    title: 'Privacy First',
-    description: "Zero tracking. No analytics. We don't collect any information. Period.",
-    gradient: 'from-emerald-500 to-green-600',
-    iconBg: 'bg-emerald-500/10 border-emerald-500/20',
-    iconColor: 'text-emerald-400',
-  },
-  {
-    icon: Globe,
-    title: '24/7 Access',
-    description: 'From your phone, tablet, or any browser. Claude Code is always available.',
-    gradient: 'from-blue-500 to-indigo-600',
-    iconBg: 'bg-blue-500/10 border-blue-500/20',
-    iconColor: 'text-blue-400',
-  },
-  {
-    icon: HardDrive,
-    title: 'Runs Locally',
-    description: 'Everything stays on YOUR machine. No cloud servers. Full control.',
-    gradient: 'from-orange-500 to-amber-500',
-    iconBg: 'bg-orange-500/10 border-orange-500/20',
-    iconColor: 'text-orange-400',
-  },
-];
-
-// Value Proposition Card
-function ValueCard({
-  icon: Icon,
-  title,
-  description,
-  iconBg,
-  iconColor,
-  index,
-}: {
-  icon: typeof Shield;
-  title: string;
-  description: string;
-  iconBg: string;
-  iconColor: string;
-  gradient: string;
-  index: number;
-}) {
-  return (
-    <motion.div
-      variants={cardVariants}
-      custom={index}
-      className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 backdrop-blur-sm transition-all duration-300 hover:border-white/10 hover:bg-white/[0.04]"
-    >
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-
-      <div className={cn('mb-4 inline-flex rounded-xl border p-3', iconBg)}>
-        <Icon className={cn('h-6 w-6', iconColor)} />
-      </div>
-
-      <h3 className="mb-2 text-lg font-semibold text-white">{title}</h3>
-      <p className="text-sm leading-relaxed text-white/50">{description}</p>
     </motion.div>
   );
 }
@@ -468,16 +394,6 @@ export function NoConnectionView({
           {/* How It Works - Architecture Diagram */}
           <motion.div variants={itemVariants} className="mt-12 lg:mt-16">
             <HowItWorks />
-          </motion.div>
-
-          {/* Value Props */}
-          <motion.div
-            variants={itemVariants}
-            className="mt-16 grid w-full max-w-4xl grid-cols-1 gap-4 sm:grid-cols-3"
-          >
-            {valueProps.map((prop, index) => (
-              <ValueCard key={prop.title} {...prop} index={index} />
-            ))}
           </motion.div>
 
           {/* Footer */}
