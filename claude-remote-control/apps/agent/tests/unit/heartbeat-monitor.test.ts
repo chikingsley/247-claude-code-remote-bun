@@ -1,6 +1,7 @@
 /**
  * Heartbeat Monitor tests
- * Tests for timeout behavior - should transition to 'idle' not 'needs_attention'
+ * Tests for timeout behavior - transitions to 'idle' when no heartbeat for 3s
+ * Note: The Notification hook handles 'needs_attention' cases (permission requests)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -53,7 +54,7 @@ describe('Heartbeat Monitor - Idle Transition', () => {
     vi.useRealTimers();
   });
 
-  it('does NOT transition from working to idle if hasBeenWorking is true', async () => {
+  it('transitions from working to idle after timeout regardless of hasBeenWorking', async () => {
     const sessionName = 'project--test-session-42';
     const now = Date.now();
 
@@ -61,7 +62,7 @@ describe('Heartbeat Monitor - Idle Transition', () => {
     lastHeartbeat.set(sessionName, now);
     tmuxSessionStatus.set(sessionName, {
       status: 'working',
-      hasBeenWorking: true, // Session has been working - should NOT transition to idle
+      hasBeenWorking: true, // Session has been working
       lastEvent: 'Heartbeat',
       lastActivity: now,
       lastStatusChange: now,
@@ -77,50 +78,13 @@ describe('Heartbeat Monitor - Idle Transition', () => {
     // Advance time past the timeout (3 seconds + 1 second check interval)
     vi.advanceTimersByTime(4000);
 
-    // Status should remain 'working' because hasBeenWorking is true
-    const updatedStatus = tmuxSessionStatus.get(sessionName);
-    expect(updatedStatus?.status).toBe('working');
-
-    // Database should NOT have been updated
-    expect(upsertSession).not.toHaveBeenCalled();
-
-    // No broadcast should have been sent
-    expect(broadcastStatusUpdate).not.toHaveBeenCalled();
-
-    stopHeartbeatMonitor();
-  });
-
-  it('transitions from working to idle if hasBeenWorking is false (fresh session)', async () => {
-    const sessionName = 'project--fresh-session-42';
-    const now = Date.now();
-
-    // Set up a "working" session that has NOT been working yet
-    // This is an edge case - normally hasBeenWorking would be true for working sessions
-    lastHeartbeat.set(sessionName, now);
-    tmuxSessionStatus.set(sessionName, {
-      status: 'working',
-      hasBeenWorking: false, // Session has not been working yet
-      lastEvent: 'Heartbeat',
-      lastActivity: now,
-      lastStatusChange: now,
-      project: 'project',
-    });
-
-    // Import and start the monitor
-    const { startHeartbeatMonitor, stopHeartbeatMonitor } =
-      await import('../../src/heartbeat-monitor.js');
-
-    startHeartbeatMonitor();
-
-    // Advance time past the timeout (3 seconds + 1 second check interval)
-    vi.advanceTimersByTime(4000);
-
-    // Verify status changed to 'idle' (NOT 'needs_attention')
+    // Status should transition to 'idle' after timeout
+    // Note: 'needs_attention' is handled by Notification hook, not timeout
     const updatedStatus = tmuxSessionStatus.get(sessionName);
     expect(updatedStatus?.status).toBe('idle');
     expect(updatedStatus?.lastEvent).toBe('HeartbeatTimeout');
 
-    // Verify database was updated with 'idle'
+    // Database should have been updated
     expect(upsertSession).toHaveBeenCalledWith(
       sessionName,
       expect.objectContaining({
@@ -129,7 +93,7 @@ describe('Heartbeat Monitor - Idle Transition', () => {
       })
     );
 
-    // Verify broadcast was sent with 'idle'
+    // Broadcast should have been sent
     expect(broadcastStatusUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         name: sessionName,
@@ -137,6 +101,46 @@ describe('Heartbeat Monitor - Idle Transition', () => {
         lastEvent: 'HeartbeatTimeout',
       })
     );
+
+    stopHeartbeatMonitor();
+  });
+
+  it('does NOT transition from needs_attention to idle (only working -> idle)', async () => {
+    const sessionName = 'project--attention-session-42';
+    const now = Date.now();
+
+    // Set up a "needs_attention" session (waiting for permission)
+    // This should NOT transition to idle - user needs to respond
+    lastHeartbeat.set(sessionName, now);
+    tmuxSessionStatus.set(sessionName, {
+      status: 'needs_attention',
+      attentionReason: 'permission',
+      hasBeenWorking: true,
+      lastEvent: 'Permission: Write',
+      lastActivity: now,
+      lastStatusChange: now,
+      project: 'project',
+    });
+
+    // Import and start the monitor
+    const { startHeartbeatMonitor, stopHeartbeatMonitor } =
+      await import('../../src/heartbeat-monitor.js');
+
+    startHeartbeatMonitor();
+
+    // Advance time past the timeout (3 seconds + 1 second check interval)
+    vi.advanceTimersByTime(4000);
+
+    // Status should remain 'needs_attention' - only working -> idle is allowed
+    const updatedStatus = tmuxSessionStatus.get(sessionName);
+    expect(updatedStatus?.status).toBe('needs_attention');
+    expect(updatedStatus?.attentionReason).toBe('permission');
+
+    // Database should NOT have been updated
+    expect(upsertSession).not.toHaveBeenCalled();
+
+    // No broadcast should have been sent
+    expect(broadcastStatusUpdate).not.toHaveBeenCalled();
 
     stopHeartbeatMonitor();
   });
@@ -201,11 +205,11 @@ describe('Heartbeat Monitor - Idle Transition', () => {
     const sessionName = 'project--metrics-session';
     const now = Date.now();
 
-    // Set up a "working" session with metrics (hasBeenWorking: false to allow transition)
+    // Set up a "working" session with metrics
     lastHeartbeat.set(sessionName, now);
     tmuxSessionStatus.set(sessionName, {
       status: 'working',
-      hasBeenWorking: false, // Allow transition for this test
+      hasBeenWorking: true,
       lastEvent: 'Heartbeat',
       lastActivity: now,
       lastStatusChange: now,

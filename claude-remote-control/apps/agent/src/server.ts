@@ -21,6 +21,7 @@ import {
   createEnvironmentRoutes,
   createSessionRoutes,
   createHeartbeatRoutes,
+  createNotificationRoutes,
   createEditorRoutes,
   createFilesRoutes,
   isProjectAllowed,
@@ -86,6 +87,7 @@ export async function createServer() {
   app.use('/api/environments', createEnvironmentRoutes());
   app.use('/api/sessions', createSessionRoutes());
   app.use('/api/heartbeat', createHeartbeatRoutes());
+  app.use('/api/notification', createNotificationRoutes());
   app.use('/api/editor', createEditorRoutes());
   app.use('/api/files', createFilesRoutes());
 

@@ -4,11 +4,12 @@
  *
  * Logic:
  * - Heartbeat received → status "working"
- * - No heartbeat for 3s → status "idle" (Claude stopped working, but NOT needs_attention)
+ * - Notification hook received → status "needs_attention" (permission request, etc.)
+ * - No heartbeat for 3s (and no notification) → status "idle" (Claude stopped)
  * - tmux session removed → cleanup (handled by cleanupStatusMaps)
  *
- * Note: "needs_attention" should only be set when Claude explicitly needs user input,
- * not just because heartbeats stopped. A timeout means Claude is idle, not blocked.
+ * The Notification hook handles "needs_attention" cases. This monitor only handles
+ * the transition to "idle" when Claude has truly stopped working.
  */
 
 import { lastHeartbeat } from './routes/heartbeat.js';
@@ -17,7 +18,7 @@ import * as sessionsDb from './db/sessions.js';
 import { getEnvironmentMetadata, getSessionEnvironment } from './db/environments.js';
 
 // Timeout threshold: if no heartbeat for 3 seconds, Claude has stopped working
-// Increased from 2s to reduce false-positive "needs_attention" during brief API pauses
+// Note: "needs_attention" is now handled by the Notification hook, not timeout
 const HEARTBEAT_TIMEOUT_MS = 3000;
 
 // Check interval: how often we check for timeouts
@@ -42,14 +43,10 @@ export function startHeartbeatMonitor(): void {
       const timeSinceLastBeat = now - lastBeat;
       const status = tmuxSessionStatus.get(sessionName);
 
-      // Only transition if currently "working", timeout exceeded, AND session has never been working
-      // This prevents false idle states during long operations (file reads, agent calls)
-      // Once a session has received a heartbeat (hasBeenWorking=true), it should never go back to idle
-      if (
-        timeSinceLastBeat > HEARTBEAT_TIMEOUT_MS &&
-        status?.status === 'working' &&
-        !status?.hasBeenWorking
-      ) {
+      // Transition to idle if currently "working" and timeout exceeded
+      // Note: The Notification hook handles "needs_attention" cases (permission requests, etc.)
+      // This timeout only fires when Claude has truly stopped (no heartbeats AND no notification)
+      if (timeSinceLastBeat > HEARTBEAT_TIMEOUT_MS && status?.status === 'working') {
         const newStatus = {
           ...status,
           status: 'idle' as const,

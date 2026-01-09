@@ -6,6 +6,7 @@ export { createProjectRoutes } from './projects.js';
 export { createEnvironmentRoutes } from './environments.js';
 export { createSessionRoutes } from './sessions.js';
 export { createHeartbeatRoutes } from './heartbeat.js';
+export { createNotificationRoutes } from './notification.js';
 export {
   createEditorRoutes,
   isProjectAllowed,
