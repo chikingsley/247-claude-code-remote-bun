@@ -15,7 +15,7 @@ import { RETENTION_CONFIG } from './db/index.js';
 import * as sessionsDb from './db/sessions.js';
 import * as historyDb from './db/history.js';
 
-// Store session status from Claude Code hooks
+// Store session status from Claude Code statusLine/hooks
 export interface HookStatus {
   status: SessionStatus;
   attentionReason?: AttentionReason;
@@ -23,6 +23,13 @@ export interface HookStatus {
   lastActivity: number;
   lastStatusChange: number;
   project?: string;
+  // StatusLine metrics
+  transcriptPath?: string;
+  model?: string;
+  costUsd?: number;
+  contextUsage?: number; // percentage 0-100
+  linesAdded?: number;
+  linesRemoved?: number;
 }
 
 // Store by tmux session name - single source of truth for status

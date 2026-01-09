@@ -26,6 +26,10 @@ interface TerminalProps {
   onMenuClick: () => void;
   /** Mobile mode for responsive styling and smaller font */
   isMobile?: boolean;
+  // StatusLine metrics
+  model?: string;
+  costUsd?: number;
+  contextUsage?: number;
 }
 
 export function Terminal({
@@ -39,6 +43,9 @@ export function Terminal({
   status,
   onMenuClick,
   isMobile = false,
+  model,
+  costUsd,
+  contextUsage,
 }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
@@ -119,6 +126,9 @@ export function Terminal({
         onStartClaude={startClaude}
         onCopySelection={copySelection}
         onToggleSearch={toggleSearch}
+        model={model}
+        costUsd={costUsd}
+        contextUsage={contextUsage}
       />
 
       <SearchBar

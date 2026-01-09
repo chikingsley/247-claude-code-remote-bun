@@ -15,7 +15,7 @@ export interface SessionInfo {
   status: SessionStatus;
   attentionReason?: AttentionReason;
   statusSource?: StatusSource;
-  lastActivity?: string;
+  lastActivity?: number;
   lastEvent?: string;
   lastStatusChange?: number;
   archivedAt?: number; // Timestamp when archived (undefined = active)
@@ -28,6 +28,30 @@ export interface SessionInfo {
     icon: EnvironmentIcon | null;
     isDefault: boolean;
   };
+  // StatusLine metrics (from Claude Code heartbeat)
+  model?: string;
+  costUsd?: number;
+  contextUsage?: number;
+  linesAdded?: number;
+  linesRemoved?: number;
+}
+
+// Debounce tracking - prevent notification spam when status oscillates quickly
+const lastNotificationTime = new Map<string, number>();
+const NOTIFICATION_DEBOUNCE_MS = 30000; // 30 seconds between notifications for same session
+
+/**
+ * Clear notification debounce for a session (e.g., when user interacts with it)
+ */
+export function clearNotificationDebounce(sessionName: string): void {
+  lastNotificationTime.delete(sessionName);
+}
+
+/**
+ * Clear all notification debounces (e.g., on page refresh)
+ */
+export function clearAllNotificationDebounces(): void {
+  lastNotificationTime.clear();
 }
 
 export function requestNotificationPermission(): void {
@@ -75,6 +99,16 @@ export function showSessionNotification(
     return;
   }
 
+  // Debounce check - avoid spam when status oscillates quickly
+  const now = Date.now();
+  const lastTime = lastNotificationTime.get(session.name);
+  if (lastTime && now - lastTime < NOTIFICATION_DEBOUNCE_MS) {
+    console.log(
+      `[Notifications] Debounced - last notification was ${Math.round((now - lastTime) / 1000)}s ago (min: ${NOTIFICATION_DEBOUNCE_MS / 1000}s)`
+    );
+    return;
+  }
+
   // Get appropriate message based on attention reason
   const body = session.attentionReason
     ? notificationMessages[session.attentionReason]
@@ -90,8 +124,14 @@ export function showSessionNotification(
       tag: `${session.name}-${session.status}-${session.attentionReason || 'unknown'}`,
     });
 
+    // Track notification time for debouncing
+    lastNotificationTime.set(session.name, now);
+
     notification.onclick = () => {
       const url = `?session=${encodeURIComponent(session.name)}&machine=${machineId}`;
+
+      // Clear debounce when user interacts
+      clearNotificationDebounce(session.name);
 
       window.focus();
       window.location.href = url;

@@ -143,10 +143,9 @@ describe('Doctor Command', () => {
     } as any);
 
     vi.mocked(getHooksStatus).mockReturnValue({
-      installed: true,
-      path: '/test/hooks',
+      installed: false, // No legacy hooks = pass status
+      path: '',
       isSymlink: false,
-      needsUpdate: false,
     });
 
     vi.mocked(isAgentRunning).mockReturnValue({ running: true, pid: 12345 });
@@ -295,38 +294,36 @@ describe('Doctor Command', () => {
     expect(consoleLogs.some((log) => log.includes('invalid'))).toBe(true);
   });
 
-  it('shows hooks not installed warning', async () => {
+  it('shows statusLine as status tracking method when no legacy hooks', async () => {
     await setupAllMocks({
       getHooksStatus: {
         installed: false,
         path: '',
         isSymlink: false,
-        needsUpdate: false,
       },
     });
 
     const { doctorCommand } = await import('../../../src/commands/doctor.js');
     await doctorCommand.parseAsync(['node', 'doctor']);
 
-    expect(consoleLogs.some((log) => log.includes('Not installed'))).toBe(true);
-    expect(consoleLogs.some((log) => log.includes('247 hooks install'))).toBe(true);
+    expect(consoleLogs.some((log) => log.includes('Status tracking'))).toBe(true);
+    expect(consoleLogs.some((log) => log.includes('statusLine'))).toBe(true);
   });
 
-  it('shows hooks update available warning', async () => {
+  it('shows legacy hooks warning when old hooks still installed', async () => {
     await setupAllMocks({
       getHooksStatus: {
         installed: true,
         path: '/test/hooks',
         isSymlink: false,
-        needsUpdate: true,
       },
     });
 
     const { doctorCommand } = await import('../../../src/commands/doctor.js');
     await doctorCommand.parseAsync(['node', 'doctor']);
 
-    expect(consoleLogs.some((log) => log.includes('update available'))).toBe(true);
-    expect(consoleLogs.some((log) => log.includes('247 hooks update'))).toBe(true);
+    expect(consoleLogs.some((log) => log.includes('Legacy hooks'))).toBe(true);
+    expect(consoleLogs.some((log) => log.includes('247 hooks uninstall'))).toBe(true);
   });
 
   it('shows agent not running warning', async () => {
@@ -435,10 +432,9 @@ describe('Doctor Command', () => {
   it('shows warnings message when only warnings exist', async () => {
     await setupAllMocks({
       getHooksStatus: {
-        installed: false,
-        path: '',
+        installed: true, // Legacy hooks warning
+        path: '/test/hooks',
         isSymlink: false,
-        needsUpdate: false,
       },
       isAgentRunning: { running: false },
     });

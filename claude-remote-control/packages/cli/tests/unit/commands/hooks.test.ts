@@ -1,7 +1,7 @@
 /**
  * Hooks Command Tests
  *
- * Tests for the hooks command that manages Claude Code hooks.
+ * Tests for the deprecated hooks command (now uses statusLine).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
@@ -30,7 +30,6 @@ vi.mock('ora', () => ({
 
 // Mock hooks installer
 vi.mock('../../../src/hooks/installer.js', () => ({
-  installHooks: vi.fn(),
   uninstallHooks: vi.fn(),
   getHooksStatus: vi.fn(),
 }));
@@ -76,132 +75,68 @@ describe('Hooks Command', () => {
     exitMock.mockRestore();
   });
 
-  describe('install subcommand', () => {
-    it('shows info when hooks already installed', async () => {
+  describe('install subcommand (deprecated)', () => {
+    it('shows deprecation message', async () => {
+      const { getHooksStatus } = await import('../../../src/hooks/installer.js');
+      vi.mocked(getHooksStatus).mockReturnValue({
+        installed: false,
+        path: '',
+        isSymlink: false,
+      });
+
+      const { hooksCommand } = await import('../../../src/commands/hooks.js');
+      await hooksCommand.parseAsync(['node', 'hooks', 'install']);
+
+      expect(consoleLogs.some((log) => log.includes('deprecated'))).toBe(true);
+      expect(consoleLogs.some((log) => log.includes('statusLine'))).toBe(true);
+    });
+
+    it('shows old hooks warning when present', async () => {
       const { getHooksStatus } = await import('../../../src/hooks/installer.js');
       vi.mocked(getHooksStatus).mockReturnValue({
         installed: true,
         path: '/test/hooks',
         isSymlink: false,
-        needsUpdate: false,
       });
 
       const { hooksCommand } = await import('../../../src/commands/hooks.js');
       await hooksCommand.parseAsync(['node', 'hooks', 'install']);
 
-      expect(mockSpinner.info).toHaveBeenCalledWith('Hooks are already installed');
-    });
-
-    it('suggests update when available and already installed', async () => {
-      const { getHooksStatus } = await import('../../../src/hooks/installer.js');
-      vi.mocked(getHooksStatus).mockReturnValue({
-        installed: true,
-        path: '/test/hooks',
-        isSymlink: false,
-        needsUpdate: true,
-      });
-
-      const { hooksCommand } = await import('../../../src/commands/hooks.js');
-      await hooksCommand.parseAsync(['node', 'hooks', 'install']);
-
-      expect(consoleLogs.some((log) => log.includes('update is available'))).toBe(true);
-      expect(consoleLogs.some((log) => log.includes('--force'))).toBe(true);
-    });
-
-    it('installs hooks successfully', async () => {
-      const { getHooksStatus, installHooks } = await import('../../../src/hooks/installer.js');
-      vi.mocked(getHooksStatus).mockReturnValue({
-        installed: false,
-        path: '',
-        isSymlink: false,
-        needsUpdate: false,
-      });
-      vi.mocked(installHooks).mockReturnValue({
-        success: true,
-        path: '/test/hooks/247-hooks',
-      });
-
-      const { hooksCommand } = await import('../../../src/commands/hooks.js');
-      await hooksCommand.parseAsync(['node', 'hooks', 'install']);
-
-      expect(mockSpinner.succeed).toHaveBeenCalledWith('Hooks installed successfully');
-    });
-
-    it('force reinstalls when --force is set', async () => {
-      const { getHooksStatus, installHooks } = await import('../../../src/hooks/installer.js');
-      vi.mocked(getHooksStatus).mockReturnValue({
-        installed: true,
-        path: '/test/hooks',
-        isSymlink: false,
-        needsUpdate: false,
-      });
-      vi.mocked(installHooks).mockReturnValue({
-        success: true,
-        path: '/test/hooks/247-hooks',
-      });
-
-      const { hooksCommand } = await import('../../../src/commands/hooks.js');
-      await hooksCommand.parseAsync(['node', 'hooks', 'install', '--force']);
-
-      expect(installHooks).toHaveBeenCalled();
-      expect(mockSpinner.succeed).toHaveBeenCalled();
-    });
-
-    it('shows failure message on install error', async () => {
-      const { getHooksStatus, installHooks } = await import('../../../src/hooks/installer.js');
-      vi.mocked(getHooksStatus).mockReturnValue({
-        installed: false,
-        path: '',
-        isSymlink: false,
-        needsUpdate: false,
-      });
-      vi.mocked(installHooks).mockReturnValue({
-        success: false,
-        error: 'Permission denied',
-      });
-
-      const { hooksCommand } = await import('../../../src/commands/hooks.js');
-
-      try {
-        await hooksCommand.parseAsync(['node', 'hooks', 'install']);
-      } catch {
-        // Expected process.exit
-      }
-
-      expect(mockSpinner.fail).toHaveBeenCalledWith(expect.stringContaining('Permission denied'));
+      expect(consoleLogs.some((log) => log.includes('Old hooks detected'))).toBe(true);
+      expect(consoleLogs.some((log) => log.includes('uninstall'))).toBe(true);
     });
   });
 
   describe('uninstall subcommand', () => {
-    it('shows info when hooks not installed', async () => {
+    it('shows success when no hooks installed', async () => {
       const { getHooksStatus } = await import('../../../src/hooks/installer.js');
       vi.mocked(getHooksStatus).mockReturnValue({
         installed: false,
         path: '',
         isSymlink: false,
-        needsUpdate: false,
       });
 
       const { hooksCommand } = await import('../../../src/commands/hooks.js');
       await hooksCommand.parseAsync(['node', 'hooks', 'uninstall']);
 
-      expect(mockSpinner.info).toHaveBeenCalledWith('Hooks are not installed');
+      expect(mockSpinner.succeed).toHaveBeenCalledWith(
+        'No old hooks installed - nothing to clean up'
+      );
     });
 
-    it('uninstalls hooks successfully', async () => {
+    it('uninstalls old hooks successfully', async () => {
       const { getHooksStatus, uninstallHooks } = await import('../../../src/hooks/installer.js');
       vi.mocked(getHooksStatus).mockReturnValue({
         installed: true,
         path: '/test/hooks',
         isSymlink: false,
-        needsUpdate: false,
       });
       vi.mocked(uninstallHooks).mockReturnValue({ success: true });
 
       const { hooksCommand } = await import('../../../src/commands/hooks.js');
       await hooksCommand.parseAsync(['node', 'hooks', 'uninstall']);
 
-      expect(mockSpinner.succeed).toHaveBeenCalledWith('Hooks uninstalled successfully');
+      expect(mockSpinner.succeed).toHaveBeenCalledWith('Old hooks removed successfully');
     });
 
     it('shows failure message on uninstall error', async () => {
@@ -210,7 +145,6 @@ describe('Hooks Command', () => {
         installed: true,
         path: '/test/hooks',
         isSymlink: false,
-        needsUpdate: false,
       });
       vi.mocked(uninstallHooks).mockReturnValue({
         success: false,
@@ -230,128 +164,57 @@ describe('Hooks Command', () => {
   });
 
   describe('status subcommand', () => {
-    it('shows not installed status', async () => {
+    it('shows statusLine API info', async () => {
       const { getHooksStatus } = await import('../../../src/hooks/installer.js');
       vi.mocked(getHooksStatus).mockReturnValue({
         installed: false,
         path: '',
         isSymlink: false,
-        needsUpdate: false,
       });
 
       const { hooksCommand } = await import('../../../src/commands/hooks.js');
       await hooksCommand.parseAsync(['node', 'hooks', 'status']);
 
-      expect(consoleLogs.some((log) => log.includes('Not installed'))).toBe(true);
-      expect(consoleLogs.some((log) => log.includes('247 hooks install'))).toBe(true);
+      expect(consoleLogs.some((log) => log.includes('statusLine API'))).toBe(true);
     });
 
-    it('shows installed status with details', async () => {
+    it('warns about old hooks when present', async () => {
       const { getHooksStatus } = await import('../../../src/hooks/installer.js');
       vi.mocked(getHooksStatus).mockReturnValue({
         installed: true,
         path: '/home/user/.claude-plugins/247-hooks',
         isSymlink: true,
-        needsUpdate: false,
       });
 
       const { hooksCommand } = await import('../../../src/commands/hooks.js');
       await hooksCommand.parseAsync(['node', 'hooks', 'status']);
 
-      expect(consoleLogs.some((log) => log.includes('Installed'))).toBe(true);
-      expect(consoleLogs.some((log) => log.includes('Symlink (dev mode)'))).toBe(true);
-      expect(consoleLogs.some((log) => log.includes('Up to date'))).toBe(true);
+      expect(consoleLogs.some((log) => log.includes('Old hooks still installed'))).toBe(true);
+      expect(consoleLogs.some((log) => log.includes('uninstall'))).toBe(true);
     });
 
-    it('shows update available', async () => {
-      const { getHooksStatus } = await import('../../../src/hooks/installer.js');
-      vi.mocked(getHooksStatus).mockReturnValue({
-        installed: true,
-        path: '/home/user/.claude-plugins/247-hooks',
-        isSymlink: false,
-        needsUpdate: true,
-      });
-
-      const { hooksCommand } = await import('../../../src/commands/hooks.js');
-      await hooksCommand.parseAsync(['node', 'hooks', 'status']);
-
-      expect(consoleLogs.some((log) => log.includes('Update available'))).toBe(true);
-    });
-  });
-
-  describe('update subcommand', () => {
-    it('shows info when hooks not installed', async () => {
+    it('shows clean status when no old hooks', async () => {
       const { getHooksStatus } = await import('../../../src/hooks/installer.js');
       vi.mocked(getHooksStatus).mockReturnValue({
         installed: false,
         path: '',
         isSymlink: false,
-        needsUpdate: false,
       });
 
+      const { hooksCommand } = await import('../../../src/commands/hooks.js');
+      await hooksCommand.parseAsync(['node', 'hooks', 'status']);
+
+      expect(consoleLogs.some((log) => log.includes('No old hooks installed'))).toBe(true);
+    });
+  });
+
+  describe('update subcommand (deprecated)', () => {
+    it('shows deprecation message', async () => {
       const { hooksCommand } = await import('../../../src/commands/hooks.js');
       await hooksCommand.parseAsync(['node', 'hooks', 'update']);
 
-      expect(mockSpinner.info).toHaveBeenCalledWith('Hooks are not installed');
-    });
-
-    it('shows success when already up to date', async () => {
-      const { getHooksStatus } = await import('../../../src/hooks/installer.js');
-      vi.mocked(getHooksStatus).mockReturnValue({
-        installed: true,
-        path: '/test/hooks',
-        isSymlink: false,
-        needsUpdate: false,
-      });
-
-      const { hooksCommand } = await import('../../../src/commands/hooks.js');
-      await hooksCommand.parseAsync(['node', 'hooks', 'update']);
-
-      expect(mockSpinner.succeed).toHaveBeenCalledWith('Hooks are already up to date');
-    });
-
-    it('updates hooks when update available', async () => {
-      const { getHooksStatus, installHooks } = await import('../../../src/hooks/installer.js');
-      vi.mocked(getHooksStatus).mockReturnValue({
-        installed: true,
-        path: '/test/hooks',
-        isSymlink: false,
-        needsUpdate: true,
-      });
-      vi.mocked(installHooks).mockReturnValue({
-        success: true,
-        path: '/test/hooks/247-hooks',
-      });
-
-      const { hooksCommand } = await import('../../../src/commands/hooks.js');
-      await hooksCommand.parseAsync(['node', 'hooks', 'update']);
-
-      expect(installHooks).toHaveBeenCalled();
-      expect(mockSpinner.succeed).toHaveBeenCalledWith('Hooks updated successfully');
-    });
-
-    it('shows failure message on update error', async () => {
-      const { getHooksStatus, installHooks } = await import('../../../src/hooks/installer.js');
-      vi.mocked(getHooksStatus).mockReturnValue({
-        installed: true,
-        path: '/test/hooks',
-        isSymlink: false,
-        needsUpdate: true,
-      });
-      vi.mocked(installHooks).mockReturnValue({
-        success: false,
-        error: 'Update failed',
-      });
-
-      const { hooksCommand } = await import('../../../src/commands/hooks.js');
-
-      try {
-        await hooksCommand.parseAsync(['node', 'hooks', 'update']);
-      } catch {
-        // Expected process.exit
-      }
-
-      expect(mockSpinner.fail).toHaveBeenCalledWith(expect.stringContaining('Update failed'));
+      expect(consoleLogs.some((log) => log.includes('deprecated'))).toBe(true);
+      expect(consoleLogs.some((log) => log.includes('statusLine'))).toBe(true);
     });
   });
 });

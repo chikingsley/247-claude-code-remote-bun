@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, X, Archive } from 'lucide-react';
+import { Clock, X, Archive, DollarSign, Code } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/time';
 import { StatusRing } from '@/components/ui/StatusRing';
@@ -17,6 +17,10 @@ export interface SessionMiniCardProps {
     attentionReason?: AttentionReason;
     machineId: string;
     createdAt: number;
+    // StatusLine metrics
+    costUsd?: number;
+    linesAdded?: number;
+    linesRemoved?: number;
   };
   isActive: boolean;
   onClick: () => void;
@@ -138,9 +142,26 @@ export function SessionMiniCard({
             >
               {session.project}
             </div>
-            <div className="mt-1.5 flex items-center gap-1 text-[10px] text-white/30">
-              <Clock className="h-3 w-3" />
-              <span data-testid="session-time">{formatRelativeTime(session.createdAt)}</span>
+            <div className="mt-1.5 flex items-center gap-2 text-[10px] text-white/30">
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span data-testid="session-time">{formatRelativeTime(session.createdAt)}</span>
+              </span>
+              {/* Cost badge */}
+              {session.costUsd !== undefined && (
+                <span className="flex items-center gap-0.5 text-emerald-400/60">
+                  <DollarSign className="h-2.5 w-2.5" />
+                  {session.costUsd < 0.01 ? '<0.01' : session.costUsd.toFixed(2)}
+                </span>
+              )}
+              {/* Lines changed */}
+              {(session.linesAdded !== undefined || session.linesRemoved !== undefined) && (
+                <span className="flex items-center gap-1">
+                  <Code className="h-2.5 w-2.5" />
+                  <span className="text-green-400/60">+{session.linesAdded || 0}</span>
+                  <span className="text-red-400/60">-{session.linesRemoved || 0}</span>
+                </span>
+              )}
             </div>
           </div>
         </div>

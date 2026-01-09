@@ -330,6 +330,9 @@ export function handleStatusConnection(ws: WebSocket, url?: URL): void {
           lastStatusChange = hookData.lastStatusChange;
         }
 
+        const envId = getSessionEnvironment(name);
+        const envMeta = envId ? getEnvironmentMetadata(envId) : undefined;
+
         sessions.push({
           name,
           project,
@@ -337,10 +340,25 @@ export function handleStatusConnection(ws: WebSocket, url?: URL): void {
           status,
           attentionReason,
           statusSource,
-          lastActivity: '',
+          lastActivity: hookData?.lastActivity,
           lastEvent,
           lastStatusChange,
-          environmentId: getSessionEnvironment(name),
+          environmentId: envId,
+          environment: envMeta
+            ? {
+                id: envMeta.id,
+                name: envMeta.name,
+                provider: envMeta.provider,
+                icon: envMeta.icon,
+                isDefault: envMeta.isDefault,
+              }
+            : undefined,
+          // StatusLine metrics
+          model: hookData?.model,
+          costUsd: hookData?.costUsd,
+          contextUsage: hookData?.contextUsage,
+          linesAdded: hookData?.linesAdded,
+          linesRemoved: hookData?.linesRemoved,
         });
       }
 

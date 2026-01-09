@@ -231,17 +231,17 @@ describe('Status Command', () => {
       installed: true,
       path: '/home/user/.claude-plugins/247-hooks',
       isSymlink: true,
-      needsUpdate: false,
     });
 
     const { statusCommand } = await import('../../../src/commands/status.js');
     await statusCommand.parseAsync(['node', 'status']);
 
-    expect(consoleLogs.some((log) => log.includes('Installed'))).toBe(true);
-    expect(consoleLogs.some((log) => log.includes('Symlink (dev)'))).toBe(true);
+    // Now shows statusLine info and warns about legacy hooks
+    expect(consoleLogs.some((log) => log.includes('statusLine API'))).toBe(true);
+    expect(consoleLogs.some((log) => log.includes('Legacy hooks still installed'))).toBe(true);
   });
 
-  it('shows hooks update available', async () => {
+  it('shows clean status when no legacy hooks', async () => {
     const { configExists, loadConfig } = await import('../../../src/lib/config.js');
     const { getAgentPaths } = await import('../../../src/lib/paths.js');
     const { isAgentRunning } = await import('../../../src/lib/process.js');
@@ -259,15 +259,16 @@ describe('Status Command', () => {
     } as any);
     vi.mocked(isAgentRunning).mockReturnValue({ running: false });
     vi.mocked(getHooksStatus).mockReturnValue({
-      installed: true,
-      path: '/home/user/.claude-plugins/247-hooks',
+      installed: false,
+      path: '',
       isSymlink: false,
-      needsUpdate: true,
     });
 
     const { statusCommand } = await import('../../../src/commands/status.js');
     await statusCommand.parseAsync(['node', 'status']);
 
-    expect(consoleLogs.some((log) => log.includes('Update available'))).toBe(true);
+    expect(consoleLogs.some((log) => log.includes('statusLine API'))).toBe(true);
+    // No legacy hooks warning when none are installed
+    expect(consoleLogs.some((log) => log.includes('Legacy hooks'))).toBe(false);
   });
 });

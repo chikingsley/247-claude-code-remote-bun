@@ -35,8 +35,7 @@ describe('Agent Paths', () => {
       expect(paths).toBeDefined();
       expect(typeof paths.cliRoot).toBe('string');
       expect(typeof paths.agentRoot).toBe('string');
-      expect(typeof paths.hooksSource).toBe('string');
-      expect(typeof paths.hooksDestination).toBe('string');
+      expect(typeof paths.hooksDestination).toBe('string'); // For legacy cleanup
       expect(typeof paths.configDir).toBe('string');
       expect(typeof paths.configPath).toBe('string');
       expect(typeof paths.dataDir).toBe('string');

@@ -17,6 +17,12 @@ export interface DbSession {
   archived_at: number | null;
   created_at: number;
   updated_at: number;
+  // StatusLine metrics
+  model: string | null;
+  cost_usd: number | null;
+  context_usage: number | null;
+  lines_added: number | null;
+  lines_removed: number | null;
 }
 
 export interface DbStatusHistory {
@@ -61,6 +67,12 @@ export interface UpsertSessionInput {
   lastActivity: number;
   lastStatusChange: number;
   environmentId?: string | null;
+  // StatusLine metrics
+  model?: string | null;
+  costUsd?: number | null;
+  contextUsage?: number | null;
+  linesAdded?: number | null;
+  linesRemoved?: number | null;
 }
 
 export interface UpsertEnvironmentInput {
@@ -75,7 +87,7 @@ export interface UpsertEnvironmentInput {
 // SQL Schema Definitions
 // ============================================================================
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const CREATE_TABLES_SQL = `
 -- Sessions: current state of terminal sessions
@@ -91,7 +103,13 @@ CREATE TABLE IF NOT EXISTS sessions (
   environment_id TEXT,
   archived_at INTEGER,
   created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL,
+  -- StatusLine metrics (v4)
+  model TEXT,
+  cost_usd REAL,
+  context_usage INTEGER,
+  lines_added INTEGER,
+  lines_removed INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_name ON sessions(name);

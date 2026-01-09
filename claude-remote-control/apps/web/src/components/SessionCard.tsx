@@ -14,6 +14,9 @@ import {
   FileText,
   CheckCircle,
   Archive,
+  DollarSign,
+  Cpu,
+  Code,
 } from 'lucide-react';
 import { type SessionInfo } from '@/lib/notifications';
 import { type SessionStatus, type AttentionReason } from '247-shared';
@@ -431,6 +434,59 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
                   </span>
                 )}
               </div>
+
+              {/* StatusLine metrics */}
+              {(session.costUsd !== undefined ||
+                session.contextUsage !== undefined ||
+                session.linesAdded !== undefined ||
+                session.linesRemoved !== undefined) && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  {/* Cost */}
+                  {session.costUsd !== undefined && (
+                    <span
+                      className="flex items-center gap-1 text-emerald-400/70"
+                      title="Session cost"
+                    >
+                      <DollarSign className="h-3 w-3" />
+                      {session.costUsd < 0.01 ? '<$0.01' : `$${session.costUsd.toFixed(2)}`}
+                    </span>
+                  )}
+                  {/* Context usage */}
+                  {session.contextUsage !== undefined && (
+                    <span
+                      className={cn(
+                        'flex items-center gap-1',
+                        session.contextUsage > 80
+                          ? 'text-red-400/70'
+                          : session.contextUsage > 60
+                            ? 'text-yellow-400/70'
+                            : 'text-blue-400/70'
+                      )}
+                      title="Context window usage"
+                    >
+                      <Cpu className="h-3 w-3" />
+                      {session.contextUsage}%
+                    </span>
+                  )}
+                  {/* Lines changed */}
+                  {(session.linesAdded !== undefined || session.linesRemoved !== undefined) && (
+                    <span
+                      className="flex items-center gap-1 text-white/40"
+                      title="Lines of code changed"
+                    >
+                      <Code className="h-3 w-3" />
+                      <span className="text-green-400/70">+{session.linesAdded || 0}</span>
+                      <span className="text-red-400/70">-{session.linesRemoved || 0}</span>
+                    </span>
+                  )}
+                  {/* Model name */}
+                  {session.model && (
+                    <span className="text-white/30" title="Model">
+                      {session.model}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

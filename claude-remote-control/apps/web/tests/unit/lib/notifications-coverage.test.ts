@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   requestNotificationPermission,
   showSessionNotification,
+  clearAllNotificationDebounces,
   type SessionInfo,
 } from '@/lib/notifications';
 
@@ -18,6 +19,9 @@ describe('Notifications Module', () => {
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Clear notification debounce state between tests
+    clearAllNotificationDebounces();
 
     // Create mock notification instance
     mockNotification = {
@@ -193,7 +197,7 @@ describe('Notifications Module', () => {
         createdAt: Date.now(),
         attentionReason: 'permission',
         statusSource: 'hook',
-        lastActivity: '2024-01-01T00:00:00Z',
+        lastActivity: Date.now(),
         lastEvent: 'PreToolUse',
         lastStatusChange: Date.now(),
         archivedAt: undefined,

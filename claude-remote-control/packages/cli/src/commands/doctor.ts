@@ -82,23 +82,20 @@ export const doctorCommand = new Command('doctor')
       });
     }
 
-    // 5. Check hooks
+    // 5. Check for legacy hooks (should be removed)
     const hooksStatus = getHooksStatus();
     if (hooksStatus.installed) {
       results.push({
-        name: 'Claude Code hooks',
-        status: hooksStatus.needsUpdate ? 'warn' : 'pass',
-        message: hooksStatus.needsUpdate
-          ? 'Installed (update available)'
-          : 'Installed and up to date',
-        hint: hooksStatus.needsUpdate ? 'Run "247 hooks update" to update' : undefined,
+        name: 'Legacy hooks (deprecated)',
+        status: 'warn',
+        message: 'Old hooks still installed',
+        hint: 'Run "247 hooks uninstall" to clean up',
       });
     } else {
       results.push({
-        name: 'Claude Code hooks',
-        status: 'warn',
-        message: 'Not installed',
-        hint: 'Run "247 hooks install" to install',
+        name: 'Status tracking',
+        status: 'pass',
+        message: 'Using statusLine API (auto-configured)',
       });
     }
 

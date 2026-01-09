@@ -5,7 +5,7 @@
 export { createProjectRoutes } from './projects.js';
 export { createEnvironmentRoutes } from './environments.js';
 export { createSessionRoutes } from './sessions.js';
-export { createHooksRoutes } from './hooks.js';
+export { createHeartbeatRoutes } from './heartbeat.js';
 export {
   createEditorRoutes,
   isProjectAllowed,

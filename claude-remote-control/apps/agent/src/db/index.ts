@@ -94,6 +94,9 @@ function runMigrations(database: Database.Database): void {
     if (currentVersion < 3) {
       migrateToV3(database);
     }
+    if (currentVersion < 4) {
+      migrateToV4(database);
+    }
 
     // Record the new version
     database
@@ -125,11 +128,30 @@ function ensureRequiredColumns(database: Database.Database): void {
     database.exec('ALTER TABLE environments ADD COLUMN icon TEXT');
   }
 
-  // Check sessions.archived_at column
+  // Check sessions columns
   const sessionColumns = database.pragma('table_info(sessions)') as Array<{ name: string }>;
-  if (!sessionColumns.some((c) => c.name === 'archived_at')) {
+  const sessionColumnNames = new Set(sessionColumns.map((c) => c.name));
+
+  // v3: archived_at
+  if (!sessionColumnNames.has('archived_at')) {
     console.log('[DB] Adding missing archived_at column to sessions');
     database.exec('ALTER TABLE sessions ADD COLUMN archived_at INTEGER');
+  }
+
+  // v4: StatusLine metrics
+  const metricsColumns = [
+    { name: 'model', sql: 'ALTER TABLE sessions ADD COLUMN model TEXT' },
+    { name: 'cost_usd', sql: 'ALTER TABLE sessions ADD COLUMN cost_usd REAL' },
+    { name: 'context_usage', sql: 'ALTER TABLE sessions ADD COLUMN context_usage INTEGER' },
+    { name: 'lines_added', sql: 'ALTER TABLE sessions ADD COLUMN lines_added INTEGER' },
+    { name: 'lines_removed', sql: 'ALTER TABLE sessions ADD COLUMN lines_removed INTEGER' },
+  ];
+
+  for (const col of metricsColumns) {
+    if (!sessionColumnNames.has(col.name)) {
+      console.log(`[DB] Adding missing ${col.name} column to sessions`);
+      database.exec(col.sql);
+    }
   }
 }
 
@@ -158,6 +180,29 @@ function migrateToV3(database: Database.Database): void {
   if (!hasArchivedAt) {
     console.log('[DB] v3 migration: Adding archived_at column to sessions');
     database.exec('ALTER TABLE sessions ADD COLUMN archived_at INTEGER');
+  }
+}
+
+/**
+ * Migration to v4: Add StatusLine metric columns to sessions table
+ */
+function migrateToV4(database: Database.Database): void {
+  const columns = database.pragma('table_info(sessions)') as Array<{ name: string }>;
+  const columnNames = new Set(columns.map((c) => c.name));
+
+  const metricsColumns = [
+    { name: 'model', sql: 'ALTER TABLE sessions ADD COLUMN model TEXT' },
+    { name: 'cost_usd', sql: 'ALTER TABLE sessions ADD COLUMN cost_usd REAL' },
+    { name: 'context_usage', sql: 'ALTER TABLE sessions ADD COLUMN context_usage INTEGER' },
+    { name: 'lines_added', sql: 'ALTER TABLE sessions ADD COLUMN lines_added INTEGER' },
+    { name: 'lines_removed', sql: 'ALTER TABLE sessions ADD COLUMN lines_removed INTEGER' },
+  ];
+
+  for (const col of metricsColumns) {
+    if (!columnNames.has(col.name)) {
+      console.log(`[DB] v4 migration: Adding ${col.name} column to sessions`);
+      database.exec(col.sql);
+    }
   }
 }
 

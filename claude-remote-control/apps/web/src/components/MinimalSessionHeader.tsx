@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, Sparkles, Copy, Check, ArrowLeft } from 'lucide-react';
+import { Search, Sparkles, Copy, Check, ArrowLeft, DollarSign, Cpu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SessionStatus } from './ui/status-badge';
 
@@ -17,6 +17,10 @@ interface MinimalSessionHeaderProps {
   onStartClaude: () => void;
   onCopySelection: () => void;
   onToggleSearch: () => void;
+  // StatusLine metrics
+  model?: string;
+  costUsd?: number;
+  contextUsage?: number;
 }
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
@@ -43,6 +47,9 @@ export function MinimalSessionHeader({
   onStartClaude,
   onCopySelection,
   onToggleSearch,
+  model,
+  costUsd,
+  contextUsage,
 }: MinimalSessionHeaderProps) {
   const displayName = sessionName.split('--')[1] || sessionName;
   const isNewSession = sessionName.endsWith('--new');
@@ -103,6 +110,8 @@ export function MinimalSessionHeader({
   }
 
   // Desktop: Full header with menu button and session name
+  const hasMetrics = model !== undefined || costUsd !== undefined || contextUsage !== undefined;
+
   return (
     <div className="flex h-12 items-center gap-3 border-b border-white/5 bg-[#0d0d14]/90 px-3 backdrop-blur-sm">
       {/* Left: Back button */}
@@ -133,6 +142,52 @@ export function MinimalSessionHeader({
         <span className="truncate font-mono text-sm text-white/70">
           {isNewSession ? 'New Session' : displayName}
         </span>
+
+        {/* StatusLine Metrics - elegant inline display */}
+        {hasMetrics && (
+          <div className="ml-2 hidden items-center gap-1.5 md:flex">
+            <span className="text-white/10">·</span>
+
+            {/* Model */}
+            {model && (
+              <span
+                className="rounded-full bg-white/5 px-2 py-0.5 font-mono text-[10px] font-medium text-white/40 transition-colors hover:bg-white/10 hover:text-white/60"
+                title="Model"
+              >
+                {model}
+              </span>
+            )}
+
+            {/* Cost */}
+            {costUsd !== undefined && (
+              <span
+                className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-medium text-emerald-400/80"
+                title="Session cost"
+              >
+                <DollarSign className="h-2.5 w-2.5" />
+                {costUsd < 0.01 ? '<0.01' : costUsd.toFixed(2)}
+              </span>
+            )}
+
+            {/* Context Usage */}
+            {contextUsage !== undefined && (
+              <span
+                className={cn(
+                  'flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-medium',
+                  contextUsage > 80
+                    ? 'bg-red-500/10 text-red-400/80'
+                    : contextUsage > 60
+                      ? 'bg-yellow-500/10 text-yellow-400/80'
+                      : 'bg-blue-500/10 text-blue-400/80'
+                )}
+                title="Context window usage"
+              >
+                <Cpu className="h-2.5 w-2.5" />
+                {contextUsage}%
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Right: Action buttons */}

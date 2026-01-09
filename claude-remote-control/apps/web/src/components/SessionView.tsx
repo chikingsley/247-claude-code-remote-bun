@@ -66,6 +66,10 @@ export function SessionView({
       status={sessionInfo?.status as SessionStatus}
       onMenuClick={onMenuClick}
       isMobile={isMobile}
+      // StatusLine metrics
+      model={sessionInfo?.model}
+      costUsd={sessionInfo?.costUsd}
+      contextUsage={sessionInfo?.contextUsage}
     />
   );
 }

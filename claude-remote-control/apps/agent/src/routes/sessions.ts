@@ -38,17 +38,35 @@ export function createSessionRoutes(): Router {
         let lastEvent: string | undefined;
         let lastStatusChange: number | undefined;
 
+        // Try in-memory status first (active sessions with heartbeat)
         const hookData = tmuxSessionStatus.get(name);
+        // Fallback to DB for persisted metrics (survives refresh)
+        const dbSession = sessionsDb.getSession(name);
+
         if (hookData) {
           status = hookData.status;
           attentionReason = hookData.attentionReason;
           statusSource = 'hook';
           lastEvent = hookData.lastEvent;
           lastStatusChange = hookData.lastStatusChange;
+        } else if (dbSession) {
+          // Use DB data if no active hookData
+          status = dbSession.status;
+          attentionReason = dbSession.attention_reason ?? undefined;
+          statusSource = 'hook';
+          lastEvent = dbSession.last_event ?? undefined;
+          lastStatusChange = dbSession.last_status_change;
         }
 
         const envId = getSessionEnvironment(name);
         const envMeta = envId ? getEnvironmentMetadata(envId) : undefined;
+
+        // Merge metrics: prefer hookData (fresh), fallback to DB (persisted)
+        const model = hookData?.model ?? dbSession?.model ?? undefined;
+        const costUsd = hookData?.costUsd ?? dbSession?.cost_usd ?? undefined;
+        const contextUsage = hookData?.contextUsage ?? dbSession?.context_usage ?? undefined;
+        const linesAdded = hookData?.linesAdded ?? dbSession?.lines_added ?? undefined;
+        const linesRemoved = hookData?.linesRemoved ?? dbSession?.lines_removed ?? undefined;
 
         sessions.push({
           name,
@@ -57,7 +75,7 @@ export function createSessionRoutes(): Router {
           status,
           attentionReason,
           statusSource,
-          lastActivity: '',
+          lastActivity: hookData?.lastActivity ?? dbSession?.last_activity,
           lastEvent,
           lastStatusChange,
           environmentId: envId,
@@ -70,6 +88,12 @@ export function createSessionRoutes(): Router {
                 isDefault: envMeta.isDefault,
               }
             : undefined,
+          // StatusLine metrics (merged from memory and DB)
+          model,
+          costUsd,
+          contextUsage,
+          linesAdded,
+          linesRemoved,
         });
       }
 
@@ -107,6 +131,12 @@ export function createSessionRoutes(): Router {
               isDefault: envMeta.isDefault,
             }
           : undefined,
+        // StatusLine metrics from DB
+        model: session.model ?? undefined,
+        costUsd: session.cost_usd ?? undefined,
+        contextUsage: session.context_usage ?? undefined,
+        linesAdded: session.lines_added ?? undefined,
+        linesRemoved: session.lines_removed ?? undefined,
       };
     });
 

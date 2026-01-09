@@ -25,8 +25,8 @@ describe('Database Schema', () => {
       expect(Number.isInteger(SCHEMA_VERSION)).toBe(true);
     });
 
-    it('current version is 3', () => {
-      expect(SCHEMA_VERSION).toBe(3);
+    it('current version is 4', () => {
+      expect(SCHEMA_VERSION).toBe(4);
     });
   });
 
@@ -149,6 +149,12 @@ describe('Database Schema', () => {
       expect(columnNames).toContain('archived_at');
       expect(columnNames).toContain('created_at');
       expect(columnNames).toContain('updated_at');
+      // StatusLine metrics (v4)
+      expect(columnNames).toContain('model');
+      expect(columnNames).toContain('cost_usd');
+      expect(columnNames).toContain('context_usage');
+      expect(columnNames).toContain('lines_added');
+      expect(columnNames).toContain('lines_removed');
 
       db.close();
     });
@@ -206,6 +212,12 @@ describe('Database Schema', () => {
           archived_at: null,
           created_at: Date.now(),
           updated_at: Date.now(),
+          // StatusLine metrics
+          model: null,
+          cost_usd: null,
+          context_usage: null,
+          lines_added: null,
+          lines_removed: null,
         };
 
         expect(session.id).toBe(1);
@@ -229,6 +241,11 @@ describe('Database Schema', () => {
             archived_at: null,
             created_at: Date.now(),
             updated_at: Date.now(),
+            model: null,
+            cost_usd: null,
+            context_usage: null,
+            lines_added: null,
+            lines_removed: null,
           };
 
           expect(session.attention_reason).toBe(reason);
@@ -252,10 +269,43 @@ describe('Database Schema', () => {
             archived_at: null,
             created_at: Date.now(),
             updated_at: Date.now(),
+            model: null,
+            cost_usd: null,
+            context_usage: null,
+            lines_added: null,
+            lines_removed: null,
           };
 
           expect(session.status).toBe(status);
         });
+      });
+
+      it('validates session with StatusLine metrics', () => {
+        const session: DbSession = {
+          id: 1,
+          name: 'test--session-1',
+          project: 'test',
+          status: 'working',
+          attention_reason: null,
+          last_event: 'PreToolUse',
+          last_activity: Date.now(),
+          last_status_change: Date.now(),
+          environment_id: null,
+          archived_at: null,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          model: 'Opus 4.5',
+          cost_usd: 4.1,
+          context_usage: 36,
+          lines_added: 26,
+          lines_removed: 2,
+        };
+
+        expect(session.model).toBe('Opus 4.5');
+        expect(session.cost_usd).toBe(4.1);
+        expect(session.context_usage).toBe(36);
+        expect(session.lines_added).toBe(26);
+        expect(session.lines_removed).toBe(2);
       });
     });
 

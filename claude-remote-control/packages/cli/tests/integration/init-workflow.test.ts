@@ -289,30 +289,19 @@ describe('247 init workflow', () => {
     });
   });
 
-  describe('hooks installation', () => {
-    it('installs hooks after config creation', async () => {
+  describe('statusLine configuration', () => {
+    it('completes without mentioning hooks (deprecated)', async () => {
       promptResponses = [{ machineName: 'test' }, { projectsPath: '~/Dev' }];
 
       const { initCommand } = await import('../../src/commands/init.js');
       await initCommand.parseAsync(['node', '247', 'init']);
 
-      // Should mention hooks in output
-      const allOutput = output.logs.join(' ');
-      expect(allOutput.includes('Hooks') || allOutput.includes('hooks')).toBe(true);
-    });
-
-    it('continues if hooks source is missing', async () => {
-      // Remove hooks source
-      fsState.directories.delete('/mock/hooks/.claude-plugin');
-      fsState.files.delete('/mock/hooks/.claude-plugin/plugin.json');
-
-      promptResponses = [{ machineName: 'test' }, { projectsPath: '~/Dev' }];
-
-      const { initCommand } = await import('../../src/commands/init.js');
-      await initCommand.parseAsync(['node', '247', 'init']);
-
-      // Config should still be saved
+      // Config should be saved - statusLine is auto-configured by agent at startup
       expect(fsState.files.has(mockPaths.configPath)).toBe(true);
+
+      // Should show completion message
+      const allOutput = output.logs.join(' ');
+      expect(allOutput.includes('complete') || allOutput.includes('Complete')).toBe(true);
     });
   });
 

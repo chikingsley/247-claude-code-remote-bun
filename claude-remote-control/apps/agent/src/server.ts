@@ -20,13 +20,17 @@ import {
   createProjectRoutes,
   createEnvironmentRoutes,
   createSessionRoutes,
-  createHooksRoutes,
+  createHeartbeatRoutes,
   createEditorRoutes,
   createFilesRoutes,
   isProjectAllowed,
   updateEditorActivity,
   getOrStartEditor,
 } from './routes/index.js';
+
+// StatusLine setup and heartbeat monitor
+import { ensureStatusLineConfigured } from './setup-statusline.js';
+import { startHeartbeatMonitor, stopHeartbeatMonitor } from './heartbeat-monitor.js';
 
 // Status and WebSocket
 import { tmuxSessionStatus, cleanupStatusMaps, getActiveTmuxSessions } from './status.js';
@@ -71,11 +75,17 @@ export async function createServer() {
     }
   });
 
+  // Configure statusLine for Claude Code integration
+  ensureStatusLineConfigured();
+
+  // Start heartbeat timeout monitor
+  startHeartbeatMonitor();
+
   // Mount API routes
   app.use('/api', createProjectRoutes());
   app.use('/api/environments', createEnvironmentRoutes());
   app.use('/api/sessions', createSessionRoutes());
-  app.use('/api/hooks', createHooksRoutes());
+  app.use('/api/heartbeat', createHeartbeatRoutes());
   app.use('/api/editor', createEditorRoutes());
   app.use('/api/files', createFilesRoutes());
 
@@ -150,6 +160,7 @@ export async function createServer() {
   // Graceful shutdown
   const shutdown = () => {
     console.log('[Server] Shutting down...');
+    stopHeartbeatMonitor();
     shutdownAllEditors();
     closeDatabase();
     server.close();

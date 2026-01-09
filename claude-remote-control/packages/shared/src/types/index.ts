@@ -71,7 +71,7 @@ export interface WSSessionInfo {
   lastEvent?: string;
   lastStatusChange?: number;
   createdAt: number;
-  lastActivity?: string;
+  lastActivity?: number;
   archivedAt?: number; // Timestamp when session was archived (undefined = active)
   environmentId?: string; // Track which environment this session uses
   // Environment metadata for UI display
@@ -82,6 +82,12 @@ export interface WSSessionInfo {
     icon: EnvironmentIcon | null;
     isDefault: boolean;
   };
+  // StatusLine metrics (from Claude Code heartbeat)
+  model?: string; // Current model display name
+  costUsd?: number; // Total cost in USD
+  contextUsage?: number; // Context window usage percentage (0-100)
+  linesAdded?: number; // Total lines of code added
+  linesRemoved?: number; // Total lines of code removed
 }
 
 // WebSocket message types - Client to Agent (Status channel)

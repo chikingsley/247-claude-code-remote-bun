@@ -21,10 +21,7 @@ export interface AgentPaths {
   /** Where the agent server code is located */
   agentRoot: string;
 
-  /** Where the hooks package source is located */
-  hooksSource: string;
-
-  /** Where hooks should be installed for Claude Code */
+  /** Where old hooks were installed (for cleanup) */
   hooksDestination: string;
 
   /** Configuration directory (~/.247/) */
@@ -63,16 +60,13 @@ export function getAgentPaths(): AgentPaths {
   const isDev = existsSync(join(monorepoRoot, 'pnpm-workspace.yaml'));
 
   let agentRoot: string;
-  let hooksSource: string;
 
   if (isDev) {
-    // Development: agent and hooks are in the monorepo
+    // Development: agent is in the monorepo
     agentRoot = resolve(monorepoRoot, 'apps', 'agent');
-    hooksSource = resolve(monorepoRoot, 'packages', 'hooks');
   } else {
     // Production: agent code is bundled with CLI
     agentRoot = join(cliRoot, 'agent');
-    hooksSource = join(cliRoot, 'hooks');
   }
 
   // Use testable home directory (allows override via AGENT_247_HOME)
@@ -93,7 +87,6 @@ export function getAgentPaths(): AgentPaths {
   cachedPaths = {
     cliRoot,
     agentRoot,
-    hooksSource,
     hooksDestination: join(home, '.claude-plugins', '247-hooks'),
     configDir,
     configPath: join(configDir, 'config.json'),

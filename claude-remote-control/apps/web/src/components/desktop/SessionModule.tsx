@@ -12,6 +12,7 @@ import {
   MessageSquare,
   FileText,
   CheckCircle,
+  Code,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/time';
@@ -358,6 +359,15 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
                   </motion.span>
                 </AnimatePresence>
               </div>
+
+              {/* Lines changed - cost/model/context shown in session header */}
+              {(session.linesAdded !== undefined || session.linesRemoved !== undefined) && (
+                <div className="mt-2 flex items-center gap-1 font-mono text-[10px] text-white/40">
+                  <Code className="h-3 w-3" />
+                  <span className="text-green-400/70">+{session.linesAdded || 0}</span>
+                  <span className="text-red-400/70">-{session.linesRemoved || 0}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

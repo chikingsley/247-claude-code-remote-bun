@@ -55,17 +55,15 @@ export const statusCommand = new Command('status')
 
     console.log();
 
-    // Hooks status
+    // Status tracking
+    console.log(chalk.dim('Status Tracking:'));
+    console.log(`  ${chalk.green('✓')} Using statusLine API (auto-configured by agent)`);
+
+    // Check for legacy hooks
     const hooks = getHooksStatus();
-    const hooksIcon = hooks.installed ? chalk.green('✓') : chalk.yellow('!');
-    console.log(chalk.dim('Claude Code Hooks:'));
-    console.log(`  ${hooksIcon} ${hooks.installed ? 'Installed' : 'Not installed'}`);
     if (hooks.installed) {
-      console.log(`  Path: ${hooks.path}`);
-      console.log(`  Type: ${hooks.isSymlink ? 'Symlink (dev)' : 'Copy'}`);
-      if (hooks.needsUpdate) {
-        console.log(chalk.yellow('  Update available'));
-      }
+      console.log(`  ${chalk.yellow('!')} Legacy hooks still installed at ${hooks.path}`);
+      console.log(chalk.dim('  Run "247 hooks uninstall" to clean up'));
     }
 
     console.log();

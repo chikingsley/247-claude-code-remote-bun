@@ -7,7 +7,6 @@ import { existsSync } from 'fs';
 import { loadConfig, configExists, getProfilePath } from '../lib/config.js';
 import { getAgentPaths } from '../lib/paths.js';
 import { startAgentDaemon, isAgentRunning } from '../lib/process.js';
-import { installHooks, getHooksStatus } from '../hooks/installer.js';
 
 export const startCommand = new Command('start')
   .description('Start the 247 agent')
@@ -21,7 +20,9 @@ export const startCommand = new Command('start')
     // Check configuration
     if (!configExists(profileName)) {
       if (profileName) {
-        console.log(chalk.red(`Profile '${profileName}' not found. Run: 247 profile create ${profileName}\n`));
+        console.log(
+          chalk.red(`Profile '${profileName}' not found. Run: 247 profile create ${profileName}\n`)
+        );
       } else {
         console.log(chalk.red('Configuration not found. Run: 247 init\n'));
       }
@@ -42,25 +43,11 @@ export const startCommand = new Command('start')
       return;
     }
 
-    // Auto-install/update hooks
-    const hooksStatus = getHooksStatus();
-    if (!hooksStatus.installed || hooksStatus.needsUpdate) {
-      const spinner = ora('Updating Claude Code hooks...').start();
-      try {
-        const result = installHooks();
-        if (result.success) {
-          spinner.succeed(result.installed ? 'Hooks installed' : 'Hooks updated');
-        } else {
-          spinner.warn(`Hooks: ${result.error}`);
-        }
-      } catch (err) {
-        spinner.warn(`Hooks: ${(err as Error).message}`);
-      }
-    }
-
     if (options.foreground) {
       // Run in foreground
-      console.log(chalk.blue(`Starting agent${profileLabel} in foreground on port ${config.agent.port}...\n`));
+      console.log(
+        chalk.blue(`Starting agent${profileLabel} in foreground on port ${config.agent.port}...\n`)
+      );
 
       const paths = getAgentPaths();
       const configPath = getProfilePath(profileName);

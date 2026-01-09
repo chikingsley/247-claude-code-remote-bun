@@ -5,7 +5,6 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { createServiceManager } from '../service/index.js';
 import { isAgentRunning, stopAgent } from '../lib/process.js';
-import { installHooks } from '../hooks/installer.js';
 
 const execAsync = promisify(exec);
 
@@ -88,15 +87,6 @@ export const updateCommand = new Command('update')
         updateSpinner.fail(`Failed to update: ${(err as Error).message}`);
         console.log(chalk.dim('\nTry running manually: npm install -g 247-cli@latest\n'));
         process.exit(1);
-      }
-
-      // Update hooks
-      const hooksSpinner = ora('Updating hooks...').start();
-      const hooksResult = installHooks();
-      if (hooksResult.success) {
-        hooksSpinner.succeed('Hooks updated');
-      } else {
-        hooksSpinner.warn(`Could not update hooks: ${hooksResult.error}`);
       }
 
       // Restart agent if it was running

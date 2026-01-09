@@ -59,11 +59,13 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
   const stmt = db.prepare(`
     INSERT INTO sessions (
       name, project, status, attention_reason, last_event,
-      last_activity, last_status_change, environment_id, created_at, updated_at
+      last_activity, last_status_change, environment_id, created_at, updated_at,
+      model, cost_usd, context_usage, lines_added, lines_removed
     )
     VALUES (
       @name, @project, @status, @attentionReason, @lastEvent,
-      @lastActivity, @lastStatusChange, @environmentId, @createdAt, @updatedAt
+      @lastActivity, @lastStatusChange, @environmentId, @createdAt, @updatedAt,
+      @model, @costUsd, @contextUsage, @linesAdded, @linesRemoved
     )
     ON CONFLICT(name) DO UPDATE SET
       status = @status,
@@ -72,7 +74,12 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
       last_activity = @lastActivity,
       last_status_change = @lastStatusChange,
       environment_id = COALESCE(@environmentId, environment_id),
-      updated_at = @updatedAt
+      updated_at = @updatedAt,
+      model = COALESCE(@model, model),
+      cost_usd = COALESCE(@costUsd, cost_usd),
+      context_usage = COALESCE(@contextUsage, context_usage),
+      lines_added = COALESCE(@linesAdded, lines_added),
+      lines_removed = COALESCE(@linesRemoved, lines_removed)
   `);
 
   stmt.run({
@@ -86,6 +93,11 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
     environmentId: input.environmentId ?? null,
     createdAt: existing?.created_at ?? now,
     updatedAt: now,
+    model: input.model ?? null,
+    costUsd: input.costUsd ?? null,
+    contextUsage: input.contextUsage ?? null,
+    linesAdded: input.linesAdded ?? null,
+    linesRemoved: input.linesRemoved ?? null,
   });
 
   // Record status history if status changed
@@ -300,6 +312,12 @@ export function toHookStatus(session: DbSession): {
   lastStatusChange: number;
   project?: string;
   archivedAt?: number;
+  // StatusLine metrics
+  model?: string;
+  costUsd?: number;
+  contextUsage?: number;
+  linesAdded?: number;
+  linesRemoved?: number;
 } {
   return {
     status: session.status,
@@ -309,5 +327,11 @@ export function toHookStatus(session: DbSession): {
     lastStatusChange: session.last_status_change,
     project: session.project,
     archivedAt: session.archived_at ?? undefined,
+    // StatusLine metrics
+    model: session.model ?? undefined,
+    costUsd: session.cost_usd ?? undefined,
+    contextUsage: session.context_usage ?? undefined,
+    linesAdded: session.lines_added ?? undefined,
+    linesRemoved: session.lines_removed ?? undefined,
   };
 }

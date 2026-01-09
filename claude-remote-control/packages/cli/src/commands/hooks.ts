@@ -1,67 +1,54 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { installHooks, uninstallHooks, getHooksStatus } from '../hooks/installer.js';
+import { uninstallHooks, getHooksStatus } from '../hooks/installer.js';
 
-export const hooksCommand = new Command('hooks')
-  .description('Manage Claude Code hooks');
+export const hooksCommand = new Command('hooks').description(
+  'Manage Claude Code hooks (deprecated - now uses statusLine)'
+);
 
 hooksCommand
   .command('install')
-  .description('Install Claude Code hooks')
-  .option('-f, --force', 'Force reinstallation even if already installed')
-  .action(async (options) => {
-    const spinner = ora('Installing Claude Code hooks...').start();
+  .description('Install Claude Code hooks (deprecated)')
+  .action(async () => {
+    console.log(chalk.yellow('\n⚠️  The hooks system has been deprecated.\n'));
+    console.log("247 now uses Claude Code's statusLine API for status tracking.");
+    console.log('The agent automatically configures this when it starts.\n');
+    console.log(chalk.dim('No manual installation is required anymore.'));
+    console.log(chalk.dim('Just run "247 start" and the agent will handle everything.\n'));
 
-    try {
-      const status = getHooksStatus();
-
-      if (status.installed && !options.force) {
-        spinner.info('Hooks are already installed');
-        console.log(chalk.dim(`  Path: ${status.path}`));
-        console.log(chalk.dim(`  Type: ${status.isSymlink ? 'Symlink (dev)' : 'Copy'}`));
-
-        if (status.needsUpdate) {
-          console.log(chalk.yellow('\n  An update is available. Run with --force to update.'));
-        }
-        return;
-      }
-
-      const result = installHooks();
-
-      if (result.success) {
-        spinner.succeed('Hooks installed successfully');
-        console.log(chalk.dim(`  Path: ${result.path}`));
-      } else {
-        spinner.fail(`Failed to install hooks: ${result.error}`);
-        process.exit(1);
-      }
-    } catch (err) {
-      spinner.fail(`Error: ${(err as Error).message}`);
-      process.exit(1);
+    const status = getHooksStatus();
+    if (status.installed) {
+      console.log(chalk.yellow('Old hooks detected at: ' + status.path));
+      console.log('Run "247 hooks uninstall" to clean up the old hooks.\n');
     }
   });
 
 hooksCommand
   .command('uninstall')
-  .description('Uninstall Claude Code hooks')
+  .description('Uninstall old Claude Code hooks')
   .action(async () => {
-    const spinner = ora('Uninstalling Claude Code hooks...').start();
+    const spinner = ora('Checking for old hooks...').start();
 
     try {
       const status = getHooksStatus();
 
       if (!status.installed) {
-        spinner.info('Hooks are not installed');
+        spinner.succeed('No old hooks installed - nothing to clean up');
         return;
       }
 
+      spinner.text = 'Removing old hooks...';
       const result = uninstallHooks();
 
       if (result.success) {
-        spinner.succeed('Hooks uninstalled successfully');
+        spinner.succeed('Old hooks removed successfully');
+        console.log(chalk.dim(`\nRemoved: ${status.path}`));
+        console.log(
+          chalk.dim('The new statusLine system is automatically configured by the agent.\n')
+        );
       } else {
-        spinner.fail(`Failed to uninstall hooks: ${result.error}`);
+        spinner.fail(`Failed to remove hooks: ${result.error}`);
         process.exit(1);
       }
     } catch (err) {
@@ -72,71 +59,30 @@ hooksCommand
 
 hooksCommand
   .command('status')
-  .description('Show hooks installation status')
+  .description('Show hooks status')
   .action(async () => {
-    try {
-      const status = getHooksStatus();
+    console.log(chalk.bold('\n247 Status Tracking\n'));
+    console.log(chalk.green('✓ Using new statusLine API'));
+    console.log(chalk.dim('  Status tracking is automatically configured when the agent starts.'));
+    console.log(chalk.dim('  Claude Code sends heartbeats every ~300ms while working.\n'));
 
-      console.log(chalk.bold('\nClaude Code Hooks Status\n'));
-
-      if (!status.installed) {
-        console.log(chalk.yellow('● Not installed'));
-        console.log(chalk.dim('\nRun "247 hooks install" to install the hooks.\n'));
-        return;
-      }
-
-      console.log(chalk.green('● Installed'));
-      console.log(`  Path: ${status.path}`);
-      console.log(`  Type: ${status.isSymlink ? 'Symlink (dev mode)' : 'File copy'}`);
-
-      if (status.needsUpdate) {
-        console.log(chalk.yellow('\n  Update available!'));
-        console.log(chalk.dim('  Run "247 hooks install --force" to update.'));
-      } else {
-        console.log(chalk.green('  Up to date'));
-      }
-
-      console.log();
-      console.log(chalk.dim('The hooks notify the 247 agent when Claude Code sessions stop,'));
-      console.log(chalk.dim('enabling automatic status updates in the dashboard.'));
-      console.log();
-    } catch (err) {
-      console.error(chalk.red(`Error: ${(err as Error).message}`));
-      process.exit(1);
+    const status = getHooksStatus();
+    if (status.installed) {
+      console.log(chalk.yellow('⚠️  Old hooks still installed'));
+      console.log(chalk.dim(`  Path: ${status.path}`));
+      console.log(chalk.dim('  Run "247 hooks uninstall" to clean up.\n'));
+    } else {
+      console.log(chalk.green('✓ No old hooks installed\n'));
     }
   });
 
 hooksCommand
   .command('update')
-  .description('Update hooks if a new version is available')
+  .description('Update hooks (deprecated)')
   .action(async () => {
-    const spinner = ora('Checking for updates...').start();
-
-    try {
-      const status = getHooksStatus();
-
-      if (!status.installed) {
-        spinner.info('Hooks are not installed');
-        console.log(chalk.dim('\nRun "247 hooks install" to install them.\n'));
-        return;
-      }
-
-      if (!status.needsUpdate) {
-        spinner.succeed('Hooks are already up to date');
-        return;
-      }
-
-      spinner.text = 'Updating hooks...';
-      const result = installHooks();
-
-      if (result.success) {
-        spinner.succeed('Hooks updated successfully');
-      } else {
-        spinner.fail(`Failed to update hooks: ${result.error}`);
-        process.exit(1);
-      }
-    } catch (err) {
-      spinner.fail(`Error: ${(err as Error).message}`);
-      process.exit(1);
-    }
+    console.log(chalk.yellow('\n⚠️  The hooks system has been deprecated.\n'));
+    console.log("247 now uses Claude Code's statusLine API for status tracking.");
+    console.log(
+      'No manual updates are required - the agent configures everything automatically.\n'
+    );
   });

@@ -12,7 +12,6 @@ import {
   getProfilePath,
 } from '../lib/config.js';
 import { ensureDirectories } from '../lib/paths.js';
-import { installHooks } from '../hooks/installer.js';
 
 export const initCommand = new Command('init')
   .description('Initialize 247 agent configuration')
@@ -108,24 +107,6 @@ export const initCommand = new Command('init')
     } catch (err) {
       configSpinner.fail(`Failed to create configuration: ${(err as Error).message}`);
       process.exit(1);
-    }
-
-    // Install hooks
-    const hooksSpinner = ora('Installing Claude Code hooks...').start();
-    try {
-      const hooksResult = installHooks();
-      if (hooksResult.success) {
-        if (hooksResult.installed) {
-          hooksSpinner.succeed('Hooks installed');
-        } else {
-          hooksSpinner.succeed('Hooks already up to date');
-        }
-        console.log(chalk.dim(`  → ${hooksResult.path}`));
-      } else {
-        hooksSpinner.warn(`Hooks installation skipped: ${hooksResult.error}`);
-      }
-    } catch (err) {
-      hooksSpinner.warn(`Hooks installation skipped: ${(err as Error).message}`);
     }
 
     // Success message
