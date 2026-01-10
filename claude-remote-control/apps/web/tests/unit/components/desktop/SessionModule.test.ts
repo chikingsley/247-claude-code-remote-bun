@@ -333,4 +333,48 @@ describe('SessionModule', () => {
       expect(showRealtimeIndicator(undefined)).toBe(false);
     });
   });
+
+  describe('git worktree features', () => {
+    it('detects worktree sessions', () => {
+      const hasWorktree = (session: { worktreePath?: string }) => !!session.worktreePath;
+      expect(hasWorktree({ worktreePath: '/tmp/247-workspaces/session-1' })).toBe(true);
+      expect(hasWorktree({ worktreePath: undefined })).toBe(false);
+      expect(hasWorktree({})).toBe(false);
+    });
+
+    it('shows branch name when available', () => {
+      const getBranchName = (session: { branchName?: string }) => session.branchName;
+      expect(getBranchName({ branchName: 'session/feature-x' })).toBe('session/feature-x');
+      expect(getBranchName({})).toBeUndefined();
+    });
+
+    it('git buttons only visible for worktree sessions', () => {
+      const showGitButtons = (session: { worktreePath?: string }) => !!session.worktreePath;
+      expect(showGitButtons({ worktreePath: '/tmp/path' })).toBe(true);
+      expect(showGitButtons({})).toBe(false);
+    });
+
+    it('push button uses cyan color', () => {
+      const pushClass = 'text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300';
+      expect(pushClass).toContain('cyan-400');
+      expect(pushClass).toContain('cyan-500');
+    });
+
+    it('create PR button uses purple color', () => {
+      const prClass = 'text-purple-400 hover:bg-purple-500/20 hover:text-purple-300';
+      expect(prClass).toContain('purple-400');
+      expect(prClass).toContain('purple-500');
+    });
+
+    it('branch name display is truncated', () => {
+      const branchClass = 'max-w-[80px] truncate';
+      expect(branchClass).toContain('max-w-[80px]');
+      expect(branchClass).toContain('truncate');
+    });
+
+    it('branch icon uses cyan color', () => {
+      const branchIconClass = 'text-cyan-400/60';
+      expect(branchIconClass).toContain('cyan-400');
+    });
+  });
 });

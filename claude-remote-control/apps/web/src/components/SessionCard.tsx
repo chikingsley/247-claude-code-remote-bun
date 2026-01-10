@@ -17,6 +17,8 @@ import {
   DollarSign,
   Cpu,
   Code,
+  GitBranch,
+  GitPullRequest,
 } from 'lucide-react';
 import { type SessionInfo } from '@/lib/notifications';
 import { type SessionStatus, type AttentionReason } from '247-shared';
@@ -33,8 +35,14 @@ interface SessionCardProps {
   onClick: () => void;
   onKill?: () => Promise<void>;
   onArchive?: () => Promise<void>;
+  onPushBranch?: () => Promise<void>;
+  onCreatePR?: () => void;
   onMouseEnter?: (e: React.MouseEvent) => void;
   onMouseLeave?: () => void;
+  /** Session has a worktree with a branch */
+  hasWorktree?: boolean;
+  /** Branch name for display */
+  branchName?: string;
   /** Mobile mode - larger touch targets */
   isMobile?: boolean;
 }
@@ -121,8 +129,12 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
       onClick,
       onKill,
       onArchive,
+      onPushBranch,
+      onCreatePR,
       onMouseEnter,
       onMouseLeave,
+      hasWorktree,
+      branchName,
       isMobile = false,
     },
     ref
@@ -131,6 +143,7 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [isKilling, setIsKilling] = useState(false);
     const [isArchiving, setIsArchiving] = useState(false);
+    const [isPushing, setIsPushing] = useState(false);
     const [, setTick] = useState(0);
 
     // Update time display every 10 seconds
@@ -193,6 +206,22 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
       } finally {
         setIsArchiving(false);
       }
+    };
+
+    const handlePushClick = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!onPushBranch || isPushing) return;
+      setIsPushing(true);
+      try {
+        await onPushBranch();
+      } finally {
+        setIsPushing(false);
+      }
+    };
+
+    const handleCreatePRClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onCreatePR?.();
     };
 
     // Show archive button for "done" sessions (idle or task_complete)
@@ -304,6 +333,47 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
               isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
             )}
           >
+            {/* Git buttons - only show for worktree sessions */}
+            {hasWorktree && (
+              <>
+                {/* Push branch button */}
+                {onPushBranch && (
+                  <button
+                    onClick={handlePushClick}
+                    disabled={isPushing}
+                    className={cn(
+                      'rounded-lg',
+                      'bg-transparent text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300',
+                      'touch-manipulation transition-all',
+                      'disabled:cursor-not-allowed disabled:opacity-50',
+                      isMobile ? 'min-h-[44px] min-w-[44px] p-2.5' : 'p-1.5'
+                    )}
+                    title={branchName ? `Push ${branchName}` : 'Push branch'}
+                  >
+                    {isPushing ? (
+                      <Loader2 className={cn('animate-spin', isMobile ? 'h-5 w-5' : 'h-4 w-4')} />
+                    ) : (
+                      <GitBranch className={isMobile ? 'h-5 w-5' : 'h-4 w-4'} />
+                    )}
+                  </button>
+                )}
+                {/* Create PR button */}
+                {onCreatePR && (
+                  <button
+                    onClick={handleCreatePRClick}
+                    className={cn(
+                      'rounded-lg',
+                      'bg-transparent text-purple-400 hover:bg-purple-500/20 hover:text-purple-300',
+                      'touch-manipulation transition-all',
+                      isMobile ? 'min-h-[44px] min-w-[44px] p-2.5' : 'p-1.5'
+                    )}
+                    title="Create Pull Request"
+                  >
+                    <GitPullRequest className={isMobile ? 'h-5 w-5' : 'h-4 w-4'} />
+                  </button>
+                )}
+              </>
+            )}
             {/* Archive button */}
             {canArchive && (
               <button
@@ -425,6 +495,15 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
                   <Clock className="h-3 w-3" />
                   <span>{formatRelativeTime(session.createdAt)}</span>
                 </div>
+                {branchName && (
+                  <span
+                    className="flex items-center gap-1 text-cyan-400/60"
+                    title={`Branch: ${branchName}`}
+                  >
+                    <GitBranch className="h-3 w-3" />
+                    <span className="max-w-[100px] truncate text-xs">{branchName}</span>
+                  </span>
+                )}
                 {session.statusSource === 'hook' && (
                   <span
                     className="flex items-center gap-0.5 text-emerald-400/60"

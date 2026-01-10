@@ -100,6 +100,9 @@ function runMigrations(database: Database.Database): void {
     if (currentVersion < 5) {
       migrateToV5(database);
     }
+    if (currentVersion < 6) {
+      migrateToV6(database);
+    }
 
     // Record the new version
     database
@@ -172,6 +175,19 @@ function ensureRequiredColumns(database: Database.Database): void {
   ];
 
   for (const col of ralphColumns) {
+    if (!sessionColumnNames.has(col.name)) {
+      console.log(`[DB] Adding missing ${col.name} column to sessions`);
+      database.exec(col.sql);
+    }
+  }
+
+  // v6: Worktree isolation columns
+  const worktreeColumns = [
+    { name: 'worktree_path', sql: 'ALTER TABLE sessions ADD COLUMN worktree_path TEXT' },
+    { name: 'branch_name', sql: 'ALTER TABLE sessions ADD COLUMN branch_name TEXT' },
+  ];
+
+  for (const col of worktreeColumns) {
     if (!sessionColumnNames.has(col.name)) {
       console.log(`[DB] Adding missing ${col.name} column to sessions`);
       database.exec(col.sql);
@@ -253,6 +269,26 @@ function migrateToV5(database: Database.Database): void {
   for (const col of ralphColumns) {
     if (!columnNames.has(col.name)) {
       console.log(`[DB] v5 migration: Adding ${col.name} column to sessions`);
+      database.exec(col.sql);
+    }
+  }
+}
+
+/**
+ * Migration to v6: Add worktree isolation columns to sessions table
+ */
+function migrateToV6(database: Database.Database): void {
+  const columns = database.pragma('table_info(sessions)') as Array<{ name: string }>;
+  const columnNames = new Set(columns.map((c) => c.name));
+
+  const worktreeColumns = [
+    { name: 'worktree_path', sql: 'ALTER TABLE sessions ADD COLUMN worktree_path TEXT' },
+    { name: 'branch_name', sql: 'ALTER TABLE sessions ADD COLUMN branch_name TEXT' },
+  ];
+
+  for (const col of worktreeColumns) {
+    if (!columnNames.has(col.name)) {
+      console.log(`[DB] v6 migration: Adding ${col.name} column to sessions`);
       database.exec(col.sql);
     }
   }

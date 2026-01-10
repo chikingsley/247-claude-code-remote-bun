@@ -13,6 +13,9 @@ import {
   FileText,
   CheckCircle,
   Code,
+  GitBranch,
+  GitPullRequest,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/time';
@@ -30,6 +33,8 @@ export interface SessionModuleProps {
   onClick: () => void;
   onKill?: () => Promise<void>;
   onArchive?: () => Promise<void>;
+  onPushBranch?: () => Promise<void>;
+  onCreatePR?: () => void;
   onMouseEnter?: (e: React.MouseEvent) => void;
   onMouseLeave?: () => void;
 }
@@ -76,6 +81,8 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
       onClick,
       onKill,
       onArchive,
+      onPushBranch,
+      onCreatePR,
       onMouseEnter,
       onMouseLeave,
     },
@@ -85,6 +92,7 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [isKilling, setIsKilling] = useState(false);
     const [isArchiving, setIsArchiving] = useState(false);
+    const [isPushing, setIsPushing] = useState(false);
     const [, setTick] = useState(0);
 
     // Update time display every 10 seconds
@@ -141,9 +149,27 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
       }
     };
 
+    const handlePushClick = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!onPushBranch || isPushing) return;
+      setIsPushing(true);
+      try {
+        await onPushBranch();
+      } finally {
+        setIsPushing(false);
+      }
+    };
+
+    const handleCreatePRClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onCreatePR?.();
+    };
+
     const canArchive =
       onArchive &&
       (status === 'idle' || (status === 'needs_attention' && attentionReason === 'task_complete'));
+
+    const hasWorktree = !!session.worktreePath;
 
     // Collapsed mode - Beacon Strip
     if (isCollapsed) {
@@ -241,6 +267,37 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
               'opacity-0 transition-opacity group-hover:opacity-100'
             )}
           >
+            {/* Git buttons - only for worktree sessions */}
+            {hasWorktree && (
+              <>
+                {onPushBranch && (
+                  <button
+                    onClick={handlePushClick}
+                    disabled={isPushing}
+                    className={cn(
+                      'rounded p-1 text-cyan-400 transition-colors hover:bg-cyan-500/20 hover:text-cyan-300',
+                      'disabled:cursor-not-allowed disabled:opacity-50'
+                    )}
+                    title={session.branchName ? `Push ${session.branchName}` : 'Push branch'}
+                  >
+                    {isPushing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <GitBranch className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                )}
+                {onCreatePR && (
+                  <button
+                    onClick={handleCreatePRClick}
+                    className="rounded p-1 text-purple-400 transition-colors hover:bg-purple-500/20 hover:text-purple-300"
+                    title="Create Pull Request"
+                  >
+                    <GitPullRequest className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </>
+            )}
             {canArchive && (
               <button
                 onClick={handleArchiveClick}
@@ -307,6 +364,15 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
                 <span className="text-white/15">·</span>
                 <Clock className="h-3 w-3" />
                 <span>{formatRelativeTime(session.createdAt)}</span>
+                {session.branchName && (
+                  <span
+                    className="flex items-center gap-1 text-cyan-400/60"
+                    title={`Branch: ${session.branchName}`}
+                  >
+                    <GitBranch className="h-3 w-3" />
+                    <span className="max-w-[80px] truncate">{session.branchName}</span>
+                  </span>
+                )}
                 {session.statusSource === 'hook' && (
                   <span title="Real-time">
                     <Zap className="h-3 w-3 text-emerald-400/60" />

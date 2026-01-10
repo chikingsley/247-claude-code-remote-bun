@@ -34,6 +34,9 @@ export interface SessionInfo {
   contextUsage?: number;
   linesAdded?: number;
   linesRemoved?: number;
+  // Git worktree isolation
+  worktreePath?: string;
+  branchName?: string;
 }
 
 // Debounce tracking - prevent notification spam when status oscillates quickly

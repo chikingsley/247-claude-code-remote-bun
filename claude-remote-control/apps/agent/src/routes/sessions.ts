@@ -11,9 +11,16 @@ import {
   getSessionEnvironment,
   clearSessionEnvironment,
 } from '../db/environments.js';
+import { executionManager } from '../services/index.js';
 
 export function createSessionRoutes(): Router {
   const router = Router();
+
+  // Get execution capacity (max parallel sessions)
+  router.get('/capacity', (_req, res) => {
+    const capacity = executionManager.getCapacity();
+    res.json(capacity);
+  });
 
   // Enhanced sessions endpoint with detailed info
   router.get('/', async (_req, res) => {
@@ -94,6 +101,9 @@ export function createSessionRoutes(): Router {
           contextUsage,
           linesAdded,
           linesRemoved,
+          // Git worktree isolation
+          worktreePath: dbSession?.worktree_path ?? undefined,
+          branchName: dbSession?.branch_name ?? undefined,
         });
       }
 
@@ -137,6 +147,9 @@ export function createSessionRoutes(): Router {
         contextUsage: session.context_usage ?? undefined,
         linesAdded: session.lines_added ?? undefined,
         linesRemoved: session.lines_removed ?? undefined,
+        // Git worktree isolation
+        worktreePath: session.worktree_path ?? undefined,
+        branchName: session.branch_name ?? undefined,
       };
     });
 
@@ -192,6 +205,7 @@ export function createSessionRoutes(): Router {
       sessionsDb.clearSessionEnvironmentId(sessionName);
       tmuxSessionStatus.delete(sessionName);
       clearSessionEnvironment(sessionName);
+      executionManager.unregister(sessionName);
       broadcastSessionRemoved(sessionName);
 
       res.json({ success: true, message: `Session ${sessionName} killed` });
@@ -224,6 +238,7 @@ export function createSessionRoutes(): Router {
     }
 
     tmuxSessionStatus.delete(sessionName);
+    executionManager.unregister(sessionName);
 
     const envId = getSessionEnvironment(sessionName);
     const envMeta = envId ? getEnvironmentMetadata(envId) : undefined;
@@ -257,6 +272,99 @@ export function createSessionRoutes(): Router {
       message: `Session ${sessionName} archived`,
       session: archivedInfo,
     });
+  });
+
+  // Push branch to remote (for worktree sessions)
+  router.post('/:sessionName/push', async (req, res) => {
+    const { sessionName } = req.params;
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    if (!/^[\w-]+$/.test(sessionName)) {
+      return res.status(400).json({ error: 'Invalid session name' });
+    }
+
+    const session = sessionsDb.getSession(sessionName);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    if (!session.worktree_path || !session.branch_name) {
+      return res.status(400).json({ error: 'Session has no worktree' });
+    }
+
+    try {
+      await execAsync(`git push -u origin "${session.branch_name}"`, {
+        cwd: session.worktree_path,
+      });
+
+      console.log(`[Push] Pushed branch ${session.branch_name} for session ${sessionName}`);
+
+      res.json({
+        success: true,
+        branch: session.branch_name,
+        message: `Branch ${session.branch_name} pushed to origin`,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[Push] Failed to push branch for session ${sessionName}:`, errorMessage);
+      res.status(500).json({ error: `Failed to push branch: ${errorMessage}` });
+    }
+  });
+
+  // Create PR via gh CLI (for worktree sessions)
+  router.post('/:sessionName/create-pr', async (req, res) => {
+    const { sessionName } = req.params;
+    const { title, body } = req.body as { title?: string; body?: string };
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    if (!/^[\w-]+$/.test(sessionName)) {
+      return res.status(400).json({ error: 'Invalid session name' });
+    }
+
+    if (!title) {
+      return res.status(400).json({ error: 'PR title is required' });
+    }
+
+    const session = sessionsDb.getSession(sessionName);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    if (!session.worktree_path || !session.branch_name) {
+      return res.status(400).json({ error: 'Session has no worktree' });
+    }
+
+    try {
+      // Push branch first
+      await execAsync(`git push -u origin "${session.branch_name}"`, {
+        cwd: session.worktree_path,
+      });
+
+      // Create PR using gh CLI
+      const prBody = body || '';
+      const { stdout } = await execAsync(
+        `gh pr create --title "${title.replace(/"/g, '\\"')}" --body "${prBody.replace(/"/g, '\\"')}"`,
+        { cwd: session.worktree_path }
+      );
+
+      const prUrl = stdout.trim();
+      console.log(`[PR] Created PR for session ${sessionName}: ${prUrl}`);
+
+      res.json({
+        success: true,
+        prUrl,
+        branch: session.branch_name,
+        message: `PR created: ${prUrl}`,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[PR] Failed to create PR for session ${sessionName}:`, errorMessage);
+      res.status(500).json({ error: `Failed to create PR: ${errorMessage}` });
+    }
   });
 
   return router;

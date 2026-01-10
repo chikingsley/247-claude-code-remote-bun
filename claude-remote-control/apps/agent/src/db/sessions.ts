@@ -61,13 +61,15 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
       name, project, status, attention_reason, last_event,
       last_activity, last_status_change, environment_id, created_at, updated_at,
       model, cost_usd, context_usage, lines_added, lines_removed,
-      ralph_enabled, ralph_config, ralph_iteration, ralph_status
+      ralph_enabled, ralph_config, ralph_iteration, ralph_status,
+      worktree_path, branch_name
     )
     VALUES (
       @name, @project, @status, @attentionReason, @lastEvent,
       @lastActivity, @lastStatusChange, @environmentId, @createdAt, @updatedAt,
       @model, @costUsd, @contextUsage, @linesAdded, @linesRemoved,
-      @ralphEnabled, @ralphConfig, @ralphIteration, @ralphStatus
+      @ralphEnabled, @ralphConfig, @ralphIteration, @ralphStatus,
+      @worktreePath, @branchName
     )
     ON CONFLICT(name) DO UPDATE SET
       status = @status,
@@ -85,7 +87,9 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
       ralph_enabled = COALESCE(@ralphEnabled, ralph_enabled),
       ralph_config = COALESCE(@ralphConfig, ralph_config),
       ralph_iteration = COALESCE(@ralphIteration, ralph_iteration),
-      ralph_status = COALESCE(@ralphStatus, ralph_status)
+      ralph_status = COALESCE(@ralphStatus, ralph_status),
+      worktree_path = COALESCE(@worktreePath, worktree_path),
+      branch_name = COALESCE(@branchName, branch_name)
   `);
 
   stmt.run({
@@ -108,6 +112,8 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
     ralphConfig: input.ralphConfig ? JSON.stringify(input.ralphConfig) : null,
     ralphIteration: input.ralphIteration ?? null,
     ralphStatus: input.ralphStatus ?? null,
+    worktreePath: input.worktreePath ?? null,
+    branchName: input.branchName ?? null,
   });
 
   // Record status history if status changed
@@ -419,6 +425,9 @@ export function toHookStatus(session: DbSession): {
   contextUsage?: number;
   linesAdded?: number;
   linesRemoved?: number;
+  // Worktree isolation
+  worktreePath?: string;
+  branchName?: string;
 } {
   return {
     status: session.status,
@@ -434,5 +443,73 @@ export function toHookStatus(session: DbSession): {
     contextUsage: session.context_usage ?? undefined,
     linesAdded: session.lines_added ?? undefined,
     linesRemoved: session.lines_removed ?? undefined,
+    // Worktree isolation
+    worktreePath: session.worktree_path ?? undefined,
+    branchName: session.branch_name ?? undefined,
   };
+}
+
+// ============================================================================
+// Worktree Functions
+// ============================================================================
+
+/**
+ * Update worktree info for a session
+ */
+export function updateSessionWorktree(
+  name: string,
+  worktreePath: string,
+  branchName: string
+): boolean {
+  const db = getDatabase();
+  const result = db
+    .prepare(
+      `
+    UPDATE sessions SET
+      worktree_path = ?,
+      branch_name = ?,
+      updated_at = ?
+    WHERE name = ?
+  `
+    )
+    .run(worktreePath, branchName, Date.now(), name);
+  return result.changes > 0;
+}
+
+/**
+ * Clear worktree info for a session (after cleanup)
+ */
+export function clearSessionWorktree(name: string): boolean {
+  const db = getDatabase();
+  const result = db
+    .prepare(
+      `
+    UPDATE sessions SET
+      worktree_path = NULL,
+      branch_name = NULL,
+      updated_at = ?
+    WHERE name = ?
+  `
+    )
+    .run(Date.now(), name);
+  return result.changes > 0;
+}
+
+/**
+ * Get sessions with worktrees that can be cleaned up
+ * (archived and last activity older than maxAge)
+ */
+export function getCleanableWorktreeSessions(maxAgeMs: number): DbSession[] {
+  const db = getDatabase();
+  const cutoff = Date.now() - maxAgeMs;
+  return db
+    .prepare(
+      `
+    SELECT * FROM sessions
+    WHERE worktree_path IS NOT NULL
+    AND archived_at IS NOT NULL
+    AND last_activity < ?
+  `
+    )
+    .all(cutoff) as DbSession[];
 }

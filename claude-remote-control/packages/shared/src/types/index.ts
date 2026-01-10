@@ -126,6 +126,9 @@ export interface WSSessionInfo {
   contextUsage?: number; // Context window usage percentage (0-100)
   linesAdded?: number; // Total lines of code added
   linesRemoved?: number; // Total lines of code removed
+  // Git worktree isolation
+  worktreePath?: string; // Path to worktree if session uses isolation
+  branchName?: string; // Branch name for worktree session
 }
 
 // WebSocket message types - Client to Agent (Status channel)

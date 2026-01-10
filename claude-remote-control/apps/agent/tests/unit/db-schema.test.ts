@@ -25,8 +25,8 @@ describe('Database Schema', () => {
       expect(Number.isInteger(SCHEMA_VERSION)).toBe(true);
     });
 
-    it('current version is 5', () => {
-      expect(SCHEMA_VERSION).toBe(5);
+    it('current version is 6', () => {
+      expect(SCHEMA_VERSION).toBe(6);
     });
   });
 
@@ -155,6 +155,9 @@ describe('Database Schema', () => {
       expect(columnNames).toContain('context_usage');
       expect(columnNames).toContain('lines_added');
       expect(columnNames).toContain('lines_removed');
+      // Git worktree isolation (v6)
+      expect(columnNames).toContain('worktree_path');
+      expect(columnNames).toContain('branch_name');
 
       db.close();
     });
@@ -218,6 +221,14 @@ describe('Database Schema', () => {
           context_usage: null,
           lines_added: null,
           lines_removed: null,
+          // Ralph mode fields
+          ralph_enabled: 0,
+          ralph_config: null,
+          ralph_iteration: 0,
+          ralph_status: null,
+          // Worktree isolation
+          worktree_path: null,
+          branch_name: null,
         };
 
         expect(session.id).toBe(1);
@@ -246,6 +257,12 @@ describe('Database Schema', () => {
             context_usage: null,
             lines_added: null,
             lines_removed: null,
+            ralph_enabled: 0,
+            ralph_config: null,
+            ralph_iteration: 0,
+            ralph_status: null,
+            worktree_path: null,
+            branch_name: null,
           };
 
           expect(session.attention_reason).toBe(reason);
@@ -274,6 +291,12 @@ describe('Database Schema', () => {
             context_usage: null,
             lines_added: null,
             lines_removed: null,
+            ralph_enabled: 0,
+            ralph_config: null,
+            ralph_iteration: 0,
+            ralph_status: null,
+            worktree_path: null,
+            branch_name: null,
           };
 
           expect(session.status).toBe(status);
@@ -299,6 +322,12 @@ describe('Database Schema', () => {
           context_usage: 36,
           lines_added: 26,
           lines_removed: 2,
+          ralph_enabled: 0,
+          ralph_config: null,
+          ralph_iteration: 0,
+          ralph_status: null,
+          worktree_path: null,
+          branch_name: null,
         };
 
         expect(session.model).toBe('Opus 4.5');

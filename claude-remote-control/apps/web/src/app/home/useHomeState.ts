@@ -141,6 +141,7 @@ export function useHomeState() {
       params.set('session', newSessionName);
       params.set('machine', machineId);
       params.set('create', 'true');
+      params.set('worktree', 'true'); // Enable worktree by default for session isolation
       router.replace(`?${params.toString()}`, { scroll: false });
     },
     [searchParams, router]

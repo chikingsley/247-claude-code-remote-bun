@@ -28,6 +28,9 @@ export interface DbSession {
   ralph_config: string | null; // JSON string
   ralph_iteration: number;
   ralph_status: string | null;
+  // Worktree isolation (v6)
+  worktree_path: string | null;
+  branch_name: string | null;
 }
 
 export interface DbStatusHistory {
@@ -83,6 +86,9 @@ export interface UpsertSessionInput {
   ralphConfig?: Record<string, unknown> | null;
   ralphIteration?: number;
   ralphStatus?: string | null;
+  // Worktree isolation (v6)
+  worktreePath?: string | null;
+  branchName?: string | null;
 }
 
 export interface UpsertEnvironmentInput {
@@ -97,7 +103,7 @@ export interface UpsertEnvironmentInput {
 // SQL Schema Definitions
 // ============================================================================
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export const CREATE_TABLES_SQL = `
 -- Sessions: current state of terminal sessions
@@ -124,7 +130,10 @@ CREATE TABLE IF NOT EXISTS sessions (
   ralph_enabled INTEGER DEFAULT 0,
   ralph_config TEXT,
   ralph_iteration INTEGER DEFAULT 0,
-  ralph_status TEXT
+  ralph_status TEXT,
+  -- Worktree isolation (v6)
+  worktree_path TEXT,
+  branch_name TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_name ON sessions(name);
