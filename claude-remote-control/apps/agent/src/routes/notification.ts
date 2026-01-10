@@ -27,6 +27,15 @@ function tmuxSessionExists(sessionName: string): boolean {
 }
 
 /**
+ * Notification types from Claude Code
+ * - permission_prompt: Claude needs permission to use a tool
+ * - idle_prompt: Claude waiting for user input (fires after 60+ seconds idle)
+ * - elicitation_dialog: Claude needs MCP tool input
+ * - auth_success: Authentication success (informational)
+ */
+type NotificationType = 'permission_prompt' | 'idle_prompt' | 'elicitation_dialog' | 'auth_success';
+
+/**
  * Notification hook payload from Claude Code
  * Sent when Claude needs user attention (permission, input, etc.)
  */
@@ -37,20 +46,70 @@ interface NotificationPayload {
   cwd?: string;
   permission_mode?: string;
   hook_event_name?: string;
+  // Claude Code notification fields
+  notification_type?: NotificationType;
+  message?: string;
+  // Tool permission fields (when notification_type is permission_prompt)
   tool_name?: string;
   tool_input?: Record<string, unknown>;
 }
 
 /**
- * Determine attention reason from notification payload
+ * Determine attention reason from notification payload.
+ * Uses notification_type as the primary signal for precise status detection.
+ * Also checks permission_mode to detect plan approval waiting state.
  */
 function getAttentionReason(payload: NotificationPayload): AttentionReason {
-  // If there's a tool_name, Claude is asking for permission to use that tool
-  if (payload.tool_name) {
-    return 'permission';
+  // Check permission_mode for plan approval detection
+  // When Claude is in plan mode and needs approval, permission_mode will be 'plan'
+  if (payload.permission_mode === 'plan') {
+    return 'plan_approval';
   }
-  // Default to input if we can't determine the reason
-  return 'input';
+
+  // Use notification_type as the primary signal (most reliable)
+  switch (payload.notification_type) {
+    case 'permission_prompt':
+      return 'permission';
+    case 'idle_prompt':
+      return 'input';
+    case 'elicitation_dialog':
+      // MCP elicitation is similar to permission request
+      return 'permission';
+    case 'auth_success':
+      // Auth success is informational, but we mark as input in case user needs to continue
+      return 'input';
+    default:
+      // Fallback: check for tool_name (backwards compatibility)
+      if (payload.tool_name) {
+        return 'permission';
+      }
+      // Default to input
+      return 'input';
+  }
+}
+
+/**
+ * Get a descriptive event name for logging and display
+ */
+function getEventName(payload: NotificationPayload): string {
+  // Check for plan mode first
+  if (payload.permission_mode === 'plan') {
+    return 'Plan ready for approval';
+  }
+
+  switch (payload.notification_type) {
+    case 'permission_prompt':
+      return payload.tool_name ? `Permission: ${payload.tool_name}` : 'Permission';
+    case 'idle_prompt':
+      return 'Waiting for input';
+    case 'elicitation_dialog':
+      return 'MCP input required';
+    case 'auth_success':
+      return 'Auth success';
+    default:
+      // Fallback for older payloads
+      return payload.tool_name ? `Permission: ${payload.tool_name}` : 'Notification';
+  }
 }
 
 /**
@@ -79,13 +138,14 @@ router.post('/', (req, res) => {
 
   const existing = tmuxSessionStatus.get(tmux_session);
   const attentionReason = getAttentionReason(payload);
+  const eventName = getEventName(payload);
   const statusChanged = !existing || existing.status !== 'needs_attention';
 
   const hookData: HookStatus = {
     status: 'needs_attention',
     attentionReason,
     hasBeenWorking: existing?.hasBeenWorking ?? true,
-    lastEvent: payload.tool_name ? `Permission: ${payload.tool_name}` : 'Notification',
+    lastEvent: eventName,
     lastActivity: now,
     lastStatusChange: statusChanged ? now : existing?.lastStatusChange || now,
     project,
@@ -105,7 +165,7 @@ router.post('/', (req, res) => {
     project: project || tmux_session.split('--')[0] || '',
     status: 'needs_attention',
     attentionReason,
-    lastEvent: hookData.lastEvent,
+    lastEvent: eventName,
     lastActivity: now,
     lastStatusChange: statusChanged ? now : (existing?.lastStatusChange ?? now),
     // Preserve existing metrics
@@ -127,7 +187,7 @@ router.post('/', (req, res) => {
       status: 'needs_attention',
       attentionReason,
       statusSource: 'hook',
-      lastEvent: hookData.lastEvent,
+      lastEvent: eventName,
       lastStatusChange: hookData.lastStatusChange,
       createdAt: dbSession?.created_at || now,
       lastActivity: now,
@@ -149,7 +209,7 @@ router.post('/', (req, res) => {
     });
 
     console.log(
-      `[Notification] ${tmux_session}: → needs_attention (${attentionReason}${payload.tool_name ? `: ${payload.tool_name}` : ''})`
+      `[Notification] ${tmux_session}: → needs_attention (${attentionReason}) - ${eventName}`
     );
   }
 

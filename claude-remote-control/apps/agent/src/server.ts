@@ -22,6 +22,7 @@ import {
   createSessionRoutes,
   createHeartbeatRoutes,
   createNotificationRoutes,
+  createStopRoutes,
   createEditorRoutes,
   createFilesRoutes,
   isProjectAllowed,
@@ -88,6 +89,7 @@ export async function createServer() {
   app.use('/api/sessions', createSessionRoutes());
   app.use('/api/heartbeat', createHeartbeatRoutes());
   app.use('/api/notification', createNotificationRoutes());
+  app.use('/api/stop', createStopRoutes());
   app.use('/api/editor', createEditorRoutes());
   app.use('/api/files', createFilesRoutes());
 
