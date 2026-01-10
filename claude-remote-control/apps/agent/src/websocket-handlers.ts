@@ -414,10 +414,11 @@ ${ralphConfig.prompt}
         if (ralphConfig.completionPromise)
           ralphArgs.push(`--completion-promise "${ralphConfig.completionPromise}"`);
 
-        // Escape the prompt for single-quotes (safer for shell - avoids nested quote issues)
-        const promptEscapedForSingleQuotes = ralphConfig.prompt
-          .replace(/\n/g, ' ')
-          .replace(/'/g, "'\\''");
+        // Sanitize prompt: remove shell special characters and escape for single-quotes
+        const promptSanitized = ralphConfig.prompt
+          .replace(/[&><;|`$!(){}[\]\\]/g, '') // Remove shell special chars
+          .replace(/\n/g, ' ') // Replace newlines with spaces
+          .replace(/'/g, "'\\''"); // Escape single quotes for shell
 
         // Build args string
         const argsStr = ralphArgs.length > 0 ? ` ${ralphArgs.join(' ')}` : '';
@@ -425,7 +426,7 @@ ${ralphConfig.prompt}
         // Launch Claude with the ralph-loop command as initial prompt (single-quoted)
         // Format: /pluginName:commandName - so /ralph-loop:ralph-loop
         const claudeFlagsStr = claudeFlags.length > 0 ? `${claudeFlags.join(' ')} ` : '';
-        const fullCommand = `claude ${claudeFlagsStr}'/ralph-loop:ralph-loop ${promptEscapedForSingleQuotes}${argsStr}'`;
+        const fullCommand = `claude ${claudeFlagsStr}'/ralph-loop:ralph-loop ${promptSanitized}${argsStr}'`;
         console.log(`[Ralph] Writing command to terminal: ${fullCommand.substring(0, 100)}...`);
         terminal.write(`${fullCommand}\r`);
       })();
