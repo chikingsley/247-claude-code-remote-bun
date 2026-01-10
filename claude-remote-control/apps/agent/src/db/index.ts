@@ -97,6 +97,9 @@ function runMigrations(database: Database.Database): void {
     if (currentVersion < 4) {
       migrateToV4(database);
     }
+    if (currentVersion < 5) {
+      migrateToV5(database);
+    }
 
     // Record the new version
     database
@@ -153,6 +156,27 @@ function ensureRequiredColumns(database: Database.Database): void {
       database.exec(col.sql);
     }
   }
+
+  // v5: Ralph mode columns
+  const ralphColumns = [
+    {
+      name: 'ralph_enabled',
+      sql: 'ALTER TABLE sessions ADD COLUMN ralph_enabled INTEGER DEFAULT 0',
+    },
+    { name: 'ralph_config', sql: 'ALTER TABLE sessions ADD COLUMN ralph_config TEXT' },
+    {
+      name: 'ralph_iteration',
+      sql: 'ALTER TABLE sessions ADD COLUMN ralph_iteration INTEGER DEFAULT 0',
+    },
+    { name: 'ralph_status', sql: 'ALTER TABLE sessions ADD COLUMN ralph_status TEXT' },
+  ];
+
+  for (const col of ralphColumns) {
+    if (!sessionColumnNames.has(col.name)) {
+      console.log(`[DB] Adding missing ${col.name} column to sessions`);
+      database.exec(col.sql);
+    }
+  }
 }
 
 /**
@@ -201,6 +225,34 @@ function migrateToV4(database: Database.Database): void {
   for (const col of metricsColumns) {
     if (!columnNames.has(col.name)) {
       console.log(`[DB] v4 migration: Adding ${col.name} column to sessions`);
+      database.exec(col.sql);
+    }
+  }
+}
+
+/**
+ * Migration to v5: Add Ralph mode columns to sessions table
+ */
+function migrateToV5(database: Database.Database): void {
+  const columns = database.pragma('table_info(sessions)') as Array<{ name: string }>;
+  const columnNames = new Set(columns.map((c) => c.name));
+
+  const ralphColumns = [
+    {
+      name: 'ralph_enabled',
+      sql: 'ALTER TABLE sessions ADD COLUMN ralph_enabled INTEGER DEFAULT 0',
+    },
+    { name: 'ralph_config', sql: 'ALTER TABLE sessions ADD COLUMN ralph_config TEXT' },
+    {
+      name: 'ralph_iteration',
+      sql: 'ALTER TABLE sessions ADD COLUMN ralph_iteration INTEGER DEFAULT 0',
+    },
+    { name: 'ralph_status', sql: 'ALTER TABLE sessions ADD COLUMN ralph_status TEXT' },
+  ];
+
+  for (const col of ralphColumns) {
+    if (!columnNames.has(col.name)) {
+      console.log(`[DB] v5 migration: Adding ${col.name} column to sessions`);
       database.exec(col.sql);
     }
   }

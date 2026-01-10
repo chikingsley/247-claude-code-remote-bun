@@ -60,12 +60,14 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
     INSERT INTO sessions (
       name, project, status, attention_reason, last_event,
       last_activity, last_status_change, environment_id, created_at, updated_at,
-      model, cost_usd, context_usage, lines_added, lines_removed
+      model, cost_usd, context_usage, lines_added, lines_removed,
+      ralph_enabled, ralph_config, ralph_iteration, ralph_status
     )
     VALUES (
       @name, @project, @status, @attentionReason, @lastEvent,
       @lastActivity, @lastStatusChange, @environmentId, @createdAt, @updatedAt,
-      @model, @costUsd, @contextUsage, @linesAdded, @linesRemoved
+      @model, @costUsd, @contextUsage, @linesAdded, @linesRemoved,
+      @ralphEnabled, @ralphConfig, @ralphIteration, @ralphStatus
     )
     ON CONFLICT(name) DO UPDATE SET
       status = @status,
@@ -79,7 +81,11 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
       cost_usd = COALESCE(@costUsd, cost_usd),
       context_usage = COALESCE(@contextUsage, context_usage),
       lines_added = COALESCE(@linesAdded, lines_added),
-      lines_removed = COALESCE(@linesRemoved, lines_removed)
+      lines_removed = COALESCE(@linesRemoved, lines_removed),
+      ralph_enabled = COALESCE(@ralphEnabled, ralph_enabled),
+      ralph_config = COALESCE(@ralphConfig, ralph_config),
+      ralph_iteration = COALESCE(@ralphIteration, ralph_iteration),
+      ralph_status = COALESCE(@ralphStatus, ralph_status)
   `);
 
   stmt.run({
@@ -98,6 +104,10 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
     contextUsage: input.contextUsage ?? null,
     linesAdded: input.linesAdded ?? null,
     linesRemoved: input.linesRemoved ?? null,
+    ralphEnabled: input.ralphEnabled !== undefined ? (input.ralphEnabled ? 1 : 0) : null,
+    ralphConfig: input.ralphConfig ? JSON.stringify(input.ralphConfig) : null,
+    ralphIteration: input.ralphIteration ?? null,
+    ralphStatus: input.ralphStatus ?? null,
   });
 
   // Record status history if status changed
@@ -299,6 +309,97 @@ export function setSessionEnvironmentId(sessionName: string, environmentId: stri
 export function clearSessionEnvironmentId(sessionName: string): void {
   const db = getDatabase();
   db.prepare('DELETE FROM session_environments WHERE session_name = ?').run(sessionName);
+}
+
+// ============================================================================
+// Ralph Mode Functions (Legacy - kept for backwards compatibility)
+// ============================================================================
+
+/**
+ * Enable Ralph mode for a session (legacy)
+ */
+export function enableRalph(name: string, config: Record<string, unknown>): boolean {
+  const db = getDatabase();
+  const result = db
+    .prepare(
+      `
+    UPDATE sessions SET
+      ralph_enabled = 1,
+      ralph_config = ?,
+      ralph_iteration = 0,
+      ralph_status = 'running',
+      updated_at = ?
+    WHERE name = ?
+  `
+    )
+    .run(JSON.stringify(config), Date.now(), name);
+  return result.changes > 0;
+}
+
+/**
+ * Disable Ralph mode for a session (legacy)
+ */
+export function disableRalph(name: string): boolean {
+  const db = getDatabase();
+  const result = db
+    .prepare(
+      `
+    UPDATE sessions SET
+      ralph_enabled = 0,
+      ralph_status = NULL,
+      updated_at = ?
+    WHERE name = ?
+  `
+    )
+    .run(Date.now(), name);
+  return result.changes > 0;
+}
+
+/**
+ * Update Ralph status for a session (legacy)
+ */
+export function updateRalphStatus(name: string, status: string): boolean {
+  const db = getDatabase();
+  const result = db
+    .prepare(
+      `
+    UPDATE sessions SET
+      ralph_status = ?,
+      updated_at = ?
+    WHERE name = ?
+  `
+    )
+    .run(status, Date.now(), name);
+  return result.changes > 0;
+}
+
+/**
+ * Increment Ralph iteration counter (legacy)
+ */
+export function incrementRalphIteration(name: string): number {
+  const db = getDatabase();
+  db.prepare(
+    `
+    UPDATE sessions SET
+      ralph_iteration = ralph_iteration + 1,
+      updated_at = ?
+    WHERE name = ?
+  `
+  ).run(Date.now(), name);
+
+  // Return new iteration count
+  const session = getSession(name);
+  return session?.ralph_iteration ?? 0;
+}
+
+/**
+ * Get Ralph-enabled sessions (legacy)
+ */
+export function getRalphEnabledSessions(): DbSession[] {
+  const db = getDatabase();
+  return db
+    .prepare('SELECT * FROM sessions WHERE ralph_enabled = 1 AND archived_at IS NULL')
+    .all() as DbSession[];
 }
 
 /**
