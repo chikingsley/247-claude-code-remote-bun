@@ -1,6 +1,7 @@
 import * as pty from '@homebridge/node-pty-prebuilt-multiarch';
 import { exec, execSync } from 'child_process';
 import { promisify } from 'util';
+import { generateInitScript, writeInitScript, cleanupInitScript } from './lib/init-script';
 
 const execAsync = promisify(exec);
 
@@ -40,11 +41,22 @@ export function createTerminal(
 
   // Use tmux for session persistence
   // For existing sessions: use attach-session (more reliable)
-  // For new sessions: use new-session with -A flag
-  // Note: We DON'T use -e flags here because they pollute tmux's global environment
-  const tmuxArgs = existingSession
-    ? ['attach-session', '-t', sessionName]
-    : ['new-session', '-A', '-s', sessionName, '-c', cwd];
+  // For new sessions: use new-session with init script for clean setup
+  let tmuxArgs: string[];
+  let initScriptPath: string | null = null;
+
+  if (existingSession) {
+    tmuxArgs = ['attach-session', '-t', sessionName];
+  } else {
+    // Generate and write init script for new sessions
+    const scriptContent = generateInitScript({ sessionName, customEnvVars });
+    initScriptPath = writeInitScript(sessionName, scriptContent);
+    console.log(`[Terminal] Init script written to: ${initScriptPath}`);
+
+    // Spawn tmux with the init script
+    // The script exports env vars, configures tmux, then runs exec bash -i
+    tmuxArgs = ['new-session', '-s', sessionName, '-c', cwd, `bash --init-file ${initScriptPath}`];
+  }
 
   console.log(`[Terminal] Spawning: tmux ${tmuxArgs.join(' ')}`);
 
@@ -55,10 +67,8 @@ export function createTerminal(
     cwd,
     env: {
       ...process.env,
-      // Note: customEnvVars are NOT included here to avoid polluting the pty environment
-      // They will be injected per-session using tmux send-keys
       TERM: 'xterm-256color',
-      CLAUDE_TMUX_SESSION: sessionName, // Always set for hook detection
+      CLAUDE_TMUX_SESSION: sessionName, // Also set at PTY level for hook detection
       PATH: `/opt/homebrew/bin:${process.env.PATH}`,
       // Ensure UTF-8 encoding for proper accent/unicode support
       LANG: process.env.LANG || 'en_US.UTF-8',
@@ -101,39 +111,22 @@ export function createTerminal(
     readyCallbacks.length = 0; // Clear the array
   };
 
-  // Configure tmux options and inject environment variables
+  // Handle session initialization and readiness
   if (!existingSession) {
+    // For new sessions, the init script handles env vars and tmux config
+    // Fire ready callbacks once shell is likely initialized
     setTimeout(() => {
-      exec(`tmux set-option -t "${sessionName}" history-limit 10000`);
-      exec(`tmux set-option -t "${sessionName}" mouse on`);
+      console.log(`[Terminal] New session '${sessionName}' ready (init script executed)`);
+      fireReadyCallbacks();
+    }, 150);
 
-      // ALWAYS inject CLAUDE_TMUX_SESSION into the shell for hook detection
-      // This is critical for hooks to identify which session they belong to
-      const baseExport = `export CLAUDE_TMUX_SESSION="${sessionName}"`;
-
-      // Add custom environment variables if present (filter out empty values)
-      const nonEmptyVars = Object.entries(customEnvVars).filter(
-        ([, value]) => value && value.trim() !== ''
-      );
-      const allExports =
-        nonEmptyVars.length > 0
-          ? `${baseExport}; ${nonEmptyVars
-              .map(([key, value]) => `export ${key}="${value.replace(/"/g, '\\"')}"`)
-              .join('; ')}`
-          : baseExport;
-
-      console.log(
-        `[Terminal] Injecting CLAUDE_TMUX_SESSION and ${nonEmptyVars.length} custom vars into NEW session '${sessionName}'`
-      );
-      // Séquences ANSI pour effacer les lignes après exécution
-      // \033[1A = remonter d'une ligne, \033[2K = effacer la ligne
-      // On efface 2 lignes: la commande tapée + le prompt précédent
-      const clearSequence = `printf '\\033[1A\\033[2K\\033[1A\\033[2K'`;
-      exec(`tmux send-keys -t "${sessionName}" "${allExports}; ${clearSequence}" C-m`, () => {
-        // Fire ready callbacks after init commands are sent
-        fireReadyCallbacks();
-      });
-    }, 100);
+    // Cleanup init script after shell has started (give it time to read the file)
+    if (initScriptPath) {
+      setTimeout(() => {
+        cleanupInitScript(sessionName);
+        console.log(`[Terminal] Init script cleaned up for '${sessionName}'`);
+      }, 5000);
+    }
   } else {
     // For existing sessions, just ensure mouse is enabled
     // isReady is already true for existing sessions (set above)

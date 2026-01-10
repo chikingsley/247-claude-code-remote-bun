@@ -1,6 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
 
+// Track init script writes for testing
+let writtenInitScripts: { path: string; content: string }[] = [];
+
+// Mock fs module for init script handling
+vi.mock('fs', () => ({
+  writeFileSync: vi.fn((path: string, content: string) => {
+    writtenInitScripts.push({ path, content });
+  }),
+  unlinkSync: vi.fn(),
+}));
+
 // Create mock PTY process
 const createMockPtyProcess = () => {
   const emitter = new EventEmitter();
@@ -70,6 +81,7 @@ describe('Terminal', () => {
     mockPtyProcess = createMockPtyProcess();
     execSyncResponses = {};
     execAsyncResponses = {};
+    writtenInitScripts = [];
   });
 
   afterEach(() => {
@@ -207,22 +219,43 @@ describe('Terminal', () => {
       expect(mockPtyProcess.kill).toHaveBeenCalled();
     });
 
-    it('injects env vars with ANSI clear sequence for new sessions', async () => {
-      const { exec } = await import('child_process');
+    it('writes init script with env vars for new sessions', async () => {
       execSyncResponses['has-session'] = new Error('not found');
 
       vi.resetModules();
       const { createTerminal } = await import('../../src/terminal.js');
-      createTerminal('/tmp/test', 'ansi-test', { MY_VAR: 'value' });
+      createTerminal('/tmp/test', 'init-script-test', { MY_VAR: 'my-value' });
 
-      // Wait for setTimeout to fire
-      await new Promise((r) => setTimeout(r, 150));
+      // Verify init script was written
+      expect(writtenInitScripts.length).toBe(1);
+      const script = writtenInitScripts[0];
 
-      // Verify exec was called with the clear sequence
-      expect(exec).toHaveBeenCalledWith(
-        expect.stringMatching(/send-keys.*export.*printf.*\\033\[1A.*\\033\[2K/),
-        expect.any(Function)
-      );
+      // Check script path
+      expect(script.path).toMatch(/247-init-init-script-test\.sh$/);
+
+      // Check script contains required exports
+      expect(script.content).toContain('export CLAUDE_TMUX_SESSION="init-script-test"');
+      expect(script.content).toContain('export MY_VAR="my-value"');
+
+      // Check script contains tmux config
+      expect(script.content).toContain('tmux set-option');
+      expect(script.content).toContain('history-limit 10000');
+      expect(script.content).toContain('mouse on');
+
+      // Check script ends with interactive shell
+      expect(script.content).toContain('exec bash -i');
+    });
+
+    it('does not write init script for existing sessions', async () => {
+      // Session exists
+      execSyncResponses['has-session'] = '';
+
+      vi.resetModules();
+      const { createTerminal } = await import('../../src/terminal.js');
+      createTerminal('/tmp/test', 'existing-session');
+
+      // No init script should be written
+      expect(writtenInitScripts.length).toBe(0);
     });
 
     it('onReady fires immediately for existing sessions', async () => {
@@ -253,8 +286,8 @@ describe('Terminal', () => {
       // Should NOT fire immediately
       expect(readyCallback).not.toHaveBeenCalled();
 
-      // Wait for setTimeout (100ms) + exec callback
-      await new Promise((r) => setTimeout(r, 150));
+      // Wait for setTimeout (150ms for init script)
+      await new Promise((r) => setTimeout(r, 200));
 
       // Should now have fired
       expect(readyCallback).toHaveBeenCalledTimes(1);
@@ -272,8 +305,8 @@ describe('Terminal', () => {
       terminal.onReady(callback1);
       terminal.onReady(callback2);
 
-      // Wait for init to complete
-      await new Promise((r) => setTimeout(r, 150));
+      // Wait for init to complete (150ms + buffer)
+      await new Promise((r) => setTimeout(r, 200));
 
       expect(callback1).toHaveBeenCalledTimes(1);
       expect(callback2).toHaveBeenCalledTimes(1);
@@ -286,8 +319,8 @@ describe('Terminal', () => {
       const { createTerminal } = await import('../../src/terminal.js');
       const terminal = createTerminal('/tmp/test', 'late-ready-test');
 
-      // Wait for init to complete
-      await new Promise((r) => setTimeout(r, 150));
+      // Wait for init to complete (150ms + buffer)
+      await new Promise((r) => setTimeout(r, 200));
 
       // Now call onReady after terminal is ready
       const lateCallback = vi.fn();
