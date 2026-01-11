@@ -182,6 +182,7 @@ export function HomeContent() {
         <div className="relative flex flex-1 flex-col overflow-hidden">
           {selectedSession ? (
             <SessionView
+              key={`${selectedSession.machineId}-${selectedSession.project}-${selectedSession.sessionName.endsWith('--new') ? 'new' : selectedSession.sessionName}`}
               sessionName={selectedSession.sessionName}
               project={selectedSession.project}
               agentUrl={getAgentUrl()}
