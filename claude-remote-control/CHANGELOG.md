@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-01-11
+
+### Breaking Changes
+
+- remove managed projects, issues and planning features (#11) (4a66334)
+
+### Features
+
+- **agent**: add animated rabbit loader to terminal init (#10) (7004fb3)
+- **web**: make git worktree optional when creating sessions (#9) (90b8899)
+
+### Bug Fixes
+
+- **agent**: restore animated rabbit loader accidentally removed in 4a66334 (529ebba)
+- **web**: remove worktree param when creating non-worktree session (#12) (8643cc3)
+
+### Refactoring
+
+- remove managed projects, issues and planning features (#11) (4a66334)
+
 ## [1.7.0] - 2026-01-11
 
 ### Features
