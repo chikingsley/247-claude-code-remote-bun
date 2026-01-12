@@ -138,9 +138,6 @@ importers:
 
   apps/provisioning:
     dependencies:
-      247-shared:
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@hono/node-server':
         specifier: ^1.13.8
         version: 1.19.8(hono@4.11.3)
