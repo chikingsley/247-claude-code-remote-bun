@@ -11,6 +11,7 @@ import { InstallBanner } from '@/components/InstallBanner';
 import { SlideOverPanel } from '@/components/ui/SlideOverPanel';
 import { ConnectionGuide } from '@/components/ConnectionGuide';
 import { EnvironmentsList } from '@/components/EnvironmentsList';
+import { DeployAgentModal, type DeployedAgent } from '@/components/DeployAgentModal';
 import { LoadingView } from './LoadingView';
 import { NoConnectionView } from './NoConnectionView';
 import { CloudWelcomeView } from './CloudWelcomeView';
@@ -97,6 +98,9 @@ export function HomeContent() {
     disabled: !isMobile,
   });
 
+  // State for deploy modal
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+
   // Handler for disconnecting Fly.io
   const handleFlyioDisconnect = async () => {
     if (!PROVISIONING_URL) return;
@@ -111,10 +115,20 @@ export function HomeContent() {
     }
   };
 
-  // Handler for launching cloud agent (Phase 4 - not yet implemented)
+  // Handler for launching cloud agent - opens the deploy modal
   const handleLaunchAgent = () => {
-    // TODO: Phase 4 - Deploy agent to Fly.io
-    alert('Cloud agent deployment coming soon! This feature is under development.');
+    setDeployModalOpen(true);
+  };
+
+  // Handler for successful agent deployment - auto-connect to the new agent
+  const handleDeploySuccess = (agent: DeployedAgent) => {
+    // Save the agent as a connection and connect to it
+    // Use 'custom' method since it's a cloud-hosted agent via Fly.io
+    handleConnectionSaved({
+      url: `wss://${agent.hostname}`,
+      name: `Cloud Agent (${agent.region})`,
+      method: 'custom',
+    });
   };
 
   if (loading || auth.isLoading) {
@@ -125,16 +139,23 @@ export function HomeContent() {
   // This prompts the user to connect Fly.io to deploy a cloud agent
   if (!agentConnection && auth.isAuthenticated && auth.user) {
     return (
-      <CloudWelcomeView
-        user={auth.user}
-        flyioStatus={flyioStatus}
-        flyioLoading={flyioLoading}
-        onSignOut={auth.signOut}
-        onConnectionSaved={handleConnectionSaved}
-        onFlyioConnected={refreshFlyioStatus}
-        onFlyioDisconnect={handleFlyioDisconnect}
-        onLaunchAgent={handleLaunchAgent}
-      />
+      <>
+        <CloudWelcomeView
+          user={auth.user}
+          flyioStatus={flyioStatus}
+          flyioLoading={flyioLoading}
+          onSignOut={auth.signOut}
+          onConnectionSaved={handleConnectionSaved}
+          onFlyioConnected={refreshFlyioStatus}
+          onFlyioDisconnect={handleFlyioDisconnect}
+          onLaunchAgent={handleLaunchAgent}
+        />
+        <DeployAgentModal
+          open={deployModalOpen}
+          onOpenChange={setDeployModalOpen}
+          onSuccess={handleDeploySuccess}
+        />
+      </>
     );
   }
 
