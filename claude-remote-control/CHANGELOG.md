@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.0] - 2026-01-12
+
+### Features
+
+- **ci**: add automatic provisioning deployment to Fly.io (53b68b9)
+
+### Bug Fixes
+
+- **ci**: use lowercase image name for Docker registry (1ed0594)
+
 ## [2.12.1] - 2026-01-12
 
 ### Bug Fixes
