@@ -275,7 +275,9 @@
       "Bash(fly machine start:*)",
       "Bash(fly machines list:*)",
       "Bash(fly scale count:*)",
-      "Bash(fly machine update:*)"
+      "Bash(fly machine update:*)",
+      "Bash(fly status:*)",
+      "WebFetch(domain:fly.io)"
     ]
   },
   "remote": {
