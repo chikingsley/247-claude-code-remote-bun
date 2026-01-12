@@ -39,7 +39,9 @@ FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Create user 'ariana' with sudo privileges
-RUN useradd -m -s /bin/bash -u 1000 ariana && \
+# Delete ubuntu user if exists (Ubuntu 24.04 has a default ubuntu user with UID 1000)
+RUN userdel -r ubuntu 2>/dev/null || true && \
+    useradd -m -s /bin/bash -u 1000 ariana && \
     echo 'ariana ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
     mkdir -p /home/ariana/.local/bin && \
     chown -R ariana:ariana /home/ariana
