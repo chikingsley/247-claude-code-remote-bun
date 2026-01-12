@@ -12,7 +12,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/247-cloud-agent
+  # Hardcoded lowercase - github.repository_owner returns QuivrHQ which fails Docker's lowercase requirement
+  IMAGE_NAME: quivrhq/247-cloud-agent
 
 jobs:
   build-and-push:
