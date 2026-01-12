@@ -25,8 +25,11 @@ COPY packages/shared ./packages/shared
 COPY apps/agent ./apps/agent
 COPY apps/cloud-agent/package.cloud.json ./apps/agent/package.json
 
-# Install dependencies (this will compile node-pty for Linux)
-RUN cd apps/agent && pnpm install --frozen-lockfile=false
+# Install all dependencies
+RUN pnpm install --frozen-lockfile=false
+
+# Build shared package first (required by agent)
+RUN cd packages/shared && pnpm build
 
 # Build the agent
 RUN cd apps/agent && pnpm build
