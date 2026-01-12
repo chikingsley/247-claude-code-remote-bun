@@ -8,8 +8,9 @@ FROM node:22-slim AS builder
 
 WORKDIR /build
 
-# Install build dependencies for node-pty
-RUN apt-get update && apt-get install -y \
+# Install build dependencies for node-pty (with retry for transient mirror issues)
+RUN for i in 1 2 3; do apt-get update && break || sleep 15; done && \
+    apt-get install -y \
     python3 \
     make \
     g++ \
@@ -41,16 +42,11 @@ FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-# Create user 'ariana' with sudo privileges
-# Delete ubuntu user if exists (Ubuntu 24.04 has a default ubuntu user with UID 1000)
-RUN userdel -r ubuntu 2>/dev/null || true && \
-    useradd -m -s /bin/bash -u 1000 ariana && \
-    echo 'ariana ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
-    mkdir -p /home/ariana/.local/bin && \
-    chown -R ariana:ariana /home/ariana
-
-# Install base packages
-RUN apt-get update && apt-get install -y \
+# Install base packages first (with retry for transient mirror issues)
+RUN for i in 1 2 3; do \
+      apt-get update && break || sleep 15; \
+    done && \
+    apt-get install -y \
     curl wget git build-essential cmake \
     software-properties-common apt-transport-https \
     ca-certificates gnupg lsb-release \
@@ -60,12 +56,21 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/* \
     && locale-gen en_US.UTF-8
 
+# Create user 'ariana' with sudo privileges (after sudo is installed)
+# Delete ubuntu user if exists (Ubuntu 24.04 has a default ubuntu user with UID 1000)
+RUN userdel -r ubuntu 2>/dev/null || true && \
+    useradd -m -s /bin/bash -u 1000 ariana && \
+    echo 'ariana ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+    mkdir -p /home/ariana/.local/bin && \
+    chown -R ariana:ariana /home/ariana
+
 ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
 # Python 3 + tools
-RUN apt-get update && apt-get install -y \
+RUN for i in 1 2 3; do apt-get update && break || sleep 15; done && \
+    apt-get install -y \
     python3 python3-pip python3-venv python3-dev \
     && pip3 install --break-system-packages poetry uv \
     && rm -rf /var/lib/apt/lists/*
@@ -97,7 +102,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
     dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
     tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
-    apt-get update && apt-get install -y gh && \
+    for i in 1 2 3; do apt-get update && break || sleep 15; done && \
+    apt-get install -y gh && \
     rm -rf /var/lib/apt/lists/*
 
 # Claude Code CLI
@@ -116,7 +122,8 @@ USER root
 ENV PATH=$PATH:/home/ariana/.deno/bin
 
 # Java 11 + Maven + Gradle
-RUN apt-get update && apt-get install -y openjdk-11-jdk maven && \
+RUN for i in 1 2 3; do apt-get update && break || sleep 15; done && \
+    apt-get install -y openjdk-11-jdk maven && \
     wget -q https://services.gradle.org/distributions/gradle-8.12-bin.zip && \
     unzip -d /opt gradle-8.12-bin.zip && rm gradle-8.12-bin.zip && \
     rm -rf /var/lib/apt/lists/*
@@ -132,7 +139,8 @@ RUN wget -q https://dot.net/v1/dotnet-install.sh && \
 ENV DOTNET_ROOT=/usr/share/dotnet
 
 # PHP 8.3 + Composer (Ubuntu 24.04 has PHP 8.3 in main repos)
-RUN apt-get update && apt-get install -y php php-cli php-mbstring php-xml php-curl && \
+RUN for i in 1 2 3; do apt-get update && break || sleep 15; done && \
+    apt-get install -y php php-cli php-mbstring php-xml php-curl && \
     curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
     rm -rf /var/lib/apt/lists/*
 
