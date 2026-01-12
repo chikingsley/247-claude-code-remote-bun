@@ -14,18 +14,24 @@ import {
   Server,
   Clock,
   Github,
+  Cloud,
+  Loader2,
 } from 'lucide-react';
+import { useState } from 'react';
 import {
   AgentConnectionSettings,
   type saveAgentConnection,
 } from '@/components/AgentConnectionSettings';
 import { InstallationGuide } from '@/components/InstallationGuide';
-import { cn } from '@/lib/utils';
+
+// Check if cloud auth is enabled
+const isCloudEnabled = !!process.env.NEXT_PUBLIC_PROVISIONING_URL;
 
 interface NoConnectionViewProps {
   modalOpen: boolean;
   onModalOpenChange: (open: boolean) => void;
   onConnectionSaved: (connection: ReturnType<typeof saveAgentConnection>) => void;
+  onCloudSignIn?: () => Promise<void>;
 }
 
 // Animation variants
@@ -138,34 +144,114 @@ function StatusBadge() {
   );
 }
 
-// CTA Button
-function CTAButton({ onClick }: { onClick: () => void }) {
+// Dual CTA Cards - Local vs Cloud
+function DualCTACards({
+  onLocalClick,
+  onCloudClick,
+  isCloudLoading,
+}: {
+  onLocalClick: () => void;
+  onCloudClick: () => void;
+  isCloudLoading: boolean;
+}) {
   return (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      className={cn(
-        'group relative inline-flex items-center justify-center gap-3 overflow-hidden rounded-2xl px-10 py-5 font-semibold transition-all',
-        'bg-gradient-to-r from-orange-500 to-amber-500 text-white',
-        'shadow-xl shadow-orange-500/25',
-        'hover:shadow-2xl hover:shadow-orange-500/30'
-      )}
-    >
-      {/* Animated shine */}
+    <div className="grid w-full max-w-2xl gap-4 sm:grid-cols-2">
+      {/* LOCAL Card */}
       <motion.div
-        className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent"
-        animate={{ translateX: ['-100%', '200%'] }}
-        transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-      />
+        whileHover={{ scale: 1.02, y: -4 }}
+        whileTap={{ scale: 0.98 }}
+        className="group relative cursor-pointer overflow-hidden rounded-2xl border border-l-2 border-white/10 border-l-emerald-500/50 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/[0.07]"
+        onClick={onLocalClick}
+      >
+        {/* Icon */}
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10">
+          <Server className="h-6 w-6 text-emerald-400" />
+        </div>
 
-      {/* Glow ring */}
-      <div className="absolute -inset-1 -z-10 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 opacity-50 blur-lg transition-opacity group-hover:opacity-75" />
+        {/* Title */}
+        <h3 className="mb-1 text-lg font-semibold text-white">Local</h3>
+        <p className="mb-4 text-sm text-white/50">Run on your machine</p>
 
-      <Wifi className="h-5 w-5" />
-      <span className="text-lg">Connect Your Agent</span>
-      <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-    </motion.button>
+        {/* Features */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-400">
+            Full privacy
+          </span>
+          <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-white/50">
+            24/7 uptime
+          </span>
+        </div>
+
+        {/* Button */}
+        <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-medium text-white transition-all hover:bg-white/10">
+          <Wifi className="h-4 w-4" />
+          Connect Agent
+        </button>
+
+        {/* Footer */}
+        <p className="mt-3 text-center text-xs text-white/30">Already have 247 installed?</p>
+      </motion.div>
+
+      {/* CLOUD Card */}
+      {isCloudEnabled && (
+        <motion.div
+          whileHover={{ scale: 1.02, y: -4 }}
+          whileTap={{ scale: 0.98 }}
+          className="group relative cursor-pointer overflow-hidden rounded-2xl border border-l-2 border-white/10 border-l-orange-500/50 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-orange-500/30 hover:bg-white/[0.07]"
+          onClick={onCloudClick}
+        >
+          {/* Glow effect */}
+          <div className="pointer-events-none absolute -right-20 -top-20 h-40 w-40 rounded-full bg-orange-500/10 opacity-0 blur-3xl transition-opacity group-hover:opacity-100" />
+
+          {/* Icon */}
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/10">
+            <Cloud className="h-6 w-6 text-orange-400" />
+          </div>
+
+          {/* Title */}
+          <h3 className="mb-1 text-lg font-semibold text-white">Cloud</h3>
+          <p className="mb-4 text-sm text-white/50">Run in the cloud</p>
+
+          {/* Features */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            <span className="rounded-full bg-orange-500/10 px-2.5 py-1 text-xs text-orange-400">
+              No setup
+            </span>
+            <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-white/50">BYOC</span>
+          </div>
+
+          {/* Button */}
+          <button
+            disabled={isCloudLoading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-3 text-sm font-medium text-white shadow-lg shadow-orange-500/25 transition-all hover:shadow-orange-500/40 disabled:opacity-50"
+          >
+            {isCloudLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Github className="h-4 w-4" />
+            )}
+            Sign in with GitHub
+          </button>
+
+          {/* Footer */}
+          <p className="mt-3 text-center text-xs text-white/30">Bring your Fly.io account</p>
+        </motion.div>
+      )}
+
+      {/* Single card fallback when cloud is disabled */}
+      {!isCloudEnabled && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center justify-center rounded-2xl border border-dashed border-white/10 p-6"
+        >
+          <div className="text-center">
+            <Cloud className="mx-auto mb-2 h-8 w-8 text-white/20" />
+            <p className="text-sm text-white/30">Cloud coming soon</p>
+          </div>
+        </motion.div>
+      )}
+    </div>
   );
 }
 
@@ -335,7 +421,22 @@ export function NoConnectionView({
   modalOpen,
   onModalOpenChange,
   onConnectionSaved,
+  onCloudSignIn,
 }: NoConnectionViewProps) {
+  const [isCloudLoading, setIsCloudLoading] = useState(false);
+
+  const handleCloudSignIn = async () => {
+    if (!isCloudEnabled || !onCloudSignIn) return;
+    setIsCloudLoading(true);
+    try {
+      await onCloudSignIn();
+    } catch (error) {
+      console.error('Cloud sign-in error:', error);
+    } finally {
+      setIsCloudLoading(false);
+    }
+  };
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#0a0a10] selection:bg-orange-500/20">
       <HeroBackground />
@@ -369,13 +470,17 @@ export function NoConnectionView({
             variants={itemVariants}
             className="mt-6 max-w-2xl text-balance text-center text-lg leading-relaxed text-white/60 sm:text-xl"
           >
-            Access your local Claude Code sessions securely from any device,{' '}
+            Access your Claude Code sessions securely from any device,{' '}
             <span className="text-white/80">24 hours a day, 7 days a week</span>.
           </motion.p>
 
-          {/* CTA Button */}
-          <motion.div variants={itemVariants} className="mt-10">
-            <CTAButton onClick={() => onModalOpenChange(true)} />
+          {/* Dual CTA Cards */}
+          <motion.div variants={itemVariants} className="mt-10 flex w-full justify-center">
+            <DualCTACards
+              onLocalClick={() => onModalOpenChange(true)}
+              onCloudClick={handleCloudSignIn}
+              isCloudLoading={isCloudLoading}
+            />
           </motion.div>
 
           {/* Security Badge */}
@@ -384,7 +489,7 @@ export function NoConnectionView({
             className="mt-8 flex items-center gap-2 text-sm text-white/40"
           >
             <Lock className="h-4 w-4" />
-            <span>End-to-end encrypted. Your data never leaves your machine.</span>
+            <span>End-to-end encrypted. Your data stays on your infrastructure.</span>
           </motion.div>
 
           {/* Open Source Badge */}

@@ -13,6 +13,7 @@ import { ConnectionGuide } from '@/components/ConnectionGuide';
 import { EnvironmentsList } from '@/components/EnvironmentsList';
 import { LoadingView } from './LoadingView';
 import { NoConnectionView } from './NoConnectionView';
+import { CloudWelcomeView } from './CloudWelcomeView';
 import { Header } from './Header';
 import { useHomeState } from './useHomeState';
 import { useIsMobile } from '@/hooks/useMediaQuery';
@@ -20,8 +21,26 @@ import { useViewportHeight } from '@/hooks/useViewportHeight';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useSessionPolling } from '@/contexts/SessionPollingContext';
 
+// Check if cloud auth is enabled
+const isCloudEnabled = !!process.env.NEXT_PUBLIC_PROVISIONING_URL;
+
+// Import useAuth only if cloud is enabled (will be tree-shaken if not used)
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const authModule = isCloudEnabled ? require('@/contexts/AuthContext') : null;
+
+// Default auth state when cloud is disabled
+const defaultAuthState = {
+  user: null,
+  isLoading: false,
+  isAuthenticated: false,
+  signInWithGitHub: async () => {},
+  signOut: async () => {},
+};
+
 export function HomeContent() {
   const isMobile = useIsMobile();
+  // Call useAuth unconditionally (it's a no-op when cloud is disabled via AuthProvider check)
+  const auth = authModule ? authModule.useAuth() : defaultAuthState;
 
   // Set CSS variable for viewport height (handles mobile keyboard)
   useViewportHeight();
@@ -68,16 +87,33 @@ export function HomeContent() {
     disabled: !isMobile,
   });
 
-  if (loading) {
+  if (loading || auth.isLoading) {
     return <LoadingView />;
   }
 
+  // Show CloudWelcomeView if authenticated but no local agent connected
+  // This prompts the user to connect Fly.io to deploy a cloud agent
+  if (!agentConnection && auth.isAuthenticated && auth.user) {
+    return (
+      <CloudWelcomeView
+        user={auth.user}
+        onSignOut={auth.signOut}
+        onConnectionSaved={handleConnectionSaved}
+        onFlyioConnected={() => {
+          // TODO: Handle Fly.io connection success - trigger agent deployment flow
+        }}
+      />
+    );
+  }
+
+  // Show NoConnectionView if not authenticated and no local agent
   if (!agentConnection) {
     return (
       <NoConnectionView
         modalOpen={connectionModalOpen}
         onModalOpenChange={setConnectionModalOpen}
         onConnectionSaved={handleConnectionSaved}
+        onCloudSignIn={isCloudEnabled ? auth.signInWithGitHub : undefined}
       />
     );
   }
