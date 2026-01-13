@@ -14,7 +14,6 @@
   },
   "enabledPlugins": {
     "vercel@claude-plugins-official": true,
-    "ralph-loop@claude-plugins-official": true,
-    "247-orchestrator@247-plugins": true
+    "ralph-loop@claude-plugins-official": true
   }
 }
