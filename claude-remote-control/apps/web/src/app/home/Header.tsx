@@ -12,6 +12,7 @@ import {
   Menu,
   HelpCircle,
   Settings,
+  Cloud,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SelectedSession } from './types';
@@ -33,6 +34,8 @@ interface HeaderProps {
   onOpenGuide?: () => void;
   /** Callback to open Environments panel */
   onOpenEnvironments?: () => void;
+  /** Callback to open Cloud Config panel */
+  onOpenCloudConfig?: () => void;
 }
 
 export function Header({
@@ -48,6 +51,7 @@ export function Header({
   onMobileMenuClick,
   onOpenGuide,
   onOpenEnvironments,
+  onOpenCloudConfig,
 }: HeaderProps) {
   if (isFullscreen && selectedSession) {
     return null;
@@ -172,6 +176,17 @@ export function Header({
                 title="Environments"
               >
                 <Settings className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Cloud Config button - desktop only */}
+            {!isMobile && onOpenCloudConfig && (
+              <button
+                onClick={onOpenCloudConfig}
+                className="rounded-lg p-2 text-purple-400/70 transition-colors hover:bg-purple-500/10 hover:text-purple-300"
+                title="Cloud Configuration"
+              >
+                <Cloud className="h-4 w-4" />
               </button>
             )}
 

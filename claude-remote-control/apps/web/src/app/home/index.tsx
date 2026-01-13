@@ -12,6 +12,8 @@ import { SlideOverPanel } from '@/components/ui/SlideOverPanel';
 import { ConnectionGuide } from '@/components/ConnectionGuide';
 import { EnvironmentsList } from '@/components/EnvironmentsList';
 import { DeployAgentModal, type DeployedAgent } from '@/components/DeployAgentModal';
+import { CloudConfigPanel } from '@/components/CloudConfigPanel';
+import { FlyioLinkModal } from '@/components/FlyioLinkModal';
 import { LoadingView } from './LoadingView';
 import { NoConnectionView } from './NoConnectionView';
 import { CloudWelcomeView } from './CloudWelcomeView';
@@ -97,6 +99,8 @@ export function HomeContent() {
   // Slide-over panel states
   const [guideOpen, setGuideOpen] = useState(false);
   const [environmentsOpen, setEnvironmentsOpen] = useState(false);
+  const [cloudConfigOpen, setCloudConfigOpen] = useState(false);
+  const [flyioLinkModalOpen, setFlyioLinkModalOpen] = useState(false);
 
   // Pull-to-refresh for mobile PWA
   const { refreshMachine } = useSessionPolling();
@@ -275,6 +279,7 @@ export function HomeContent() {
           onNewSession={() => setNewSessionOpen(true)}
           onOpenGuide={() => setGuideOpen(true)}
           onOpenEnvironments={() => setEnvironmentsOpen(true)}
+          onOpenCloudConfig={isCloudEnabled ? () => setCloudConfigOpen(true) : undefined}
           isMobile={false}
           onMobileMenuClick={() => {}}
         />
@@ -355,6 +360,47 @@ export function HomeContent() {
       >
         <EnvironmentsList machines={currentMachine ? [currentMachine] : []} />
       </SlideOverPanel>
+
+      {/* Cloud Config Slide-Over Panel */}
+      {isCloudEnabled && (
+        <SlideOverPanel
+          open={cloudConfigOpen}
+          onClose={() => setCloudConfigOpen(false)}
+          title="Cloud Configuration"
+        >
+          <CloudConfigPanel
+            isAuthenticated={auth.isAuthenticated}
+            flyioStatus={flyioStatus}
+            flyioLoading={flyioLoading}
+            agents={agents}
+            agentsLoading={agentsLoading}
+            onSignIn={auth.signInWithGitHub}
+            onFlyioDisconnect={handleFlyioDisconnect}
+            onLaunchAgent={() => {
+              setCloudConfigOpen(false);
+              setDeployModalOpen(true);
+            }}
+            onConnectAgent={(agent) => {
+              setCloudConfigOpen(false);
+              handleConnectAgent(agent);
+            }}
+            onStartAgent={startAgent}
+            onStopAgent={stopAgent}
+            onDeleteAgent={deleteAgent}
+            onReconnectFlyio={() => {
+              setCloudConfigOpen(false);
+              setFlyioLinkModalOpen(true);
+            }}
+          />
+        </SlideOverPanel>
+      )}
+
+      {/* Fly.io Link Modal for reconnection */}
+      <FlyioLinkModal
+        open={flyioLinkModalOpen}
+        onOpenChange={setFlyioLinkModalOpen}
+        onSuccess={refreshFlyioStatus}
+      />
 
       {/* PWA Install Banner - only on mobile */}
       {isMobile && <InstallBanner />}
