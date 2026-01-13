@@ -127,7 +127,7 @@ npm install -g 247-cli
 
 ```bash
 # Add the 247 marketplace
-claude marketplace add https://github.com/quivr/247
+claude marketplace add https://github.com/QuivrHQ/247
 
 # Install the plugin
 claude plugin install 247-orchestrator

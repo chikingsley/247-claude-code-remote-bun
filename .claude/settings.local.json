@@ -306,7 +306,13 @@
       "Bash(test:*)",
       "Bash(fly certs add:*)",
       "Bash(fly certs show:*)",
-      "Bash(vercel env:*)"
+      "Bash(vercel env:*)",
+      "WebFetch(domain:www.eesel.ai)",
+      "WebFetch(domain:premiumplus.io)",
+      "WebFetch(domain:www.voiceflow.com)",
+      "WebFetch(domain:www.quivr.com)",
+      "Bash(CLAUDE_PROJECT_DIR=/Users/stan/Dev/BrainStorming .claude/hooks/run-tests.sh:*)",
+      "Bash(pnpm:*)"
     ]
   },
   "remote": {

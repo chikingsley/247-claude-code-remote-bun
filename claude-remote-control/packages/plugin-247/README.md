@@ -16,7 +16,7 @@ Multi-agent orchestration plugin for 247 - spawn and control parallel Claude Cod
 
 ```bash
 # Add the 247 marketplace
-claude marketplace add https://github.com/quivr/247
+claude marketplace add https://github.com/QuivrHQ/247
 
 # Install the plugin
 claude plugin install 247-orchestrator
@@ -26,7 +26,7 @@ claude plugin install 247-orchestrator
 
 ```bash
 # Clone the repo
-git clone https://github.com/quivr/247
+git clone https://github.com/QuivrHQ/247
 cd 247
 
 # Install the plugin locally
