@@ -29,4 +29,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `packages/shared` | TypeScript types shared between web and agent |
 | `packages/hooks` | Claude Code plugin for stop notifications |
 
-Les .github/workflows must be at the root, not in claude-remote-control
+## Important Rules
+
+- **Never put `.github/workflows` inside `claude-remote-control/`** - All GitHub workflows must be at the repository root (`.github/workflows/`)
