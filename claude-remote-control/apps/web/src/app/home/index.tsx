@@ -470,6 +470,13 @@ export function HomeContent() {
         onSuccess={refreshFlyioStatus}
       />
 
+      {/* Deploy Agent Modal */}
+      <DeployAgentModal
+        open={deployModalOpen}
+        onOpenChange={setDeployModalOpen}
+        onSuccess={handleDeploySuccess}
+      />
+
       {/* PWA Install Banner - only on mobile */}
       {isMobile && <InstallBanner />}
     </main>
