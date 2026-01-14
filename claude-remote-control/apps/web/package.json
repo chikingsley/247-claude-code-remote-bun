@@ -1,6 +1,6 @@
 {
   "name": "247-web",
-  "version": "2.20.4",
+  "version": "2.21.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
