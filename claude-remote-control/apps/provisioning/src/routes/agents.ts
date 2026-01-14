@@ -228,16 +228,16 @@ agentsRoutes.post('/', async (c) => {
           type: 'http',
           port: 4678,
           path: '/health',
-          interval: '30s',
-          timeout: '10s',
-          grace_period: '30s',
+          interval: '60s',
+          timeout: '30s',
+          grace_period: '120s',
         },
       },
       mounts: volumeResult.volume
         ? [
             {
               volume: volumeResult.volume.id,
-              path: '/home/ariana',
+              path: '/home/quivr',
             },
           ]
         : undefined,

@@ -161,8 +161,9 @@ COPY --from=builder /build/apps/agent/dist ./dist
 RUN mkdir -p /home/quivr/.247/data && \
     chown -R quivr:quivr /home/quivr/.247
 
-# Copy cloud-specific config
+# Copy cloud-specific config (to home for non-volume case, to /opt for entrypoint to copy)
 COPY apps/cloud-agent/config.cloud.json /home/quivr/.247/config.json
+COPY apps/cloud-agent/config.cloud.json /opt/247-agent/config.json
 RUN chown quivr:quivr /home/quivr/.247/config.json
 
 # =============================================================================
