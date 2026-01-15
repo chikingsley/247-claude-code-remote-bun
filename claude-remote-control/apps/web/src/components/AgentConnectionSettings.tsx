@@ -503,7 +503,7 @@ export function AgentConnectionSettings({
     }
   };
 
-  // Save connection
+  // Save connection - only calls callback, parent handles persistence
   const handleSave = () => {
     let url = getCurrentUrl();
     if (!url) return;
@@ -524,7 +524,6 @@ export function AgentConnectionSettings({
       method,
     };
 
-    saveAgentConnection(connection);
     setShowSuccess(true);
 
     setTimeout(() => {
@@ -534,9 +533,8 @@ export function AgentConnectionSettings({
     }, 1500);
   };
 
-  // Handle disconnect
+  // Handle disconnect - only calls callback, parent handles persistence
   const handleDisconnect = () => {
-    clearAgentConnection();
     onDisconnect?.();
     onOpenChange(false);
   };

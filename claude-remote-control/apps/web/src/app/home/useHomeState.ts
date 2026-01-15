@@ -4,14 +4,23 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSessionPolling } from '@/contexts/SessionPollingContext';
 import {
-  loadAgentConnections,
-  addAgentConnection,
-  removeAgentConnection,
-  type StoredAgentConnection,
-  type AgentConnection,
-} from '@/components/AgentConnectionSettings';
+  useAgentConnections,
+  type AgentConnection as DbAgentConnection,
+} from '@/hooks/useAgentConnections';
 import type { LocalMachine, SelectedSession } from './types';
 import { DEFAULT_MACHINE_ID } from './types';
+
+// Legacy type for backward compatibility with AgentConnectionSettings component
+export interface AgentConnection {
+  url: string;
+  name?: string;
+  method: 'localhost' | 'tailscale' | 'custom' | 'cloud';
+  isCloud?: boolean;
+  cloudAgentId?: string;
+}
+
+// Type for stored connections (from API)
+export type StoredAgentConnection = DbAgentConnection;
 
 // Helper to convert StoredAgentConnection to LocalMachine
 function connectionToMachine(connection: StoredAgentConnection): LocalMachine {
@@ -35,9 +44,14 @@ export function useHomeState() {
     getArchivedSessions,
   } = useSessionPolling();
 
-  // Multi-agent support: store array of connections
-  const [agentConnections, setAgentConnections] = useState<StoredAgentConnection[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Use the API-based hook for agent connections
+  const {
+    connections: agentConnections,
+    loading: connectionsLoading,
+    addConnection,
+    removeConnection,
+  } = useAgentConnections();
+
   const [connectionModalOpen, setConnectionModalOpen] = useState(false);
   const [newSessionOpen, setNewSessionOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<SelectedSession | null>(null);
@@ -46,21 +60,18 @@ export function useHomeState() {
   const hasRestoredFromUrl = useRef(false);
   const allSessions = getAllSessions();
 
-  // Load all agent connections from localStorage
+  // Sync connections to polling context when they change
   useEffect(() => {
-    const connections = loadAgentConnections();
-    setAgentConnections(connections);
-
-    if (connections.length > 0) {
-      // Convert all connections to machines and pass to polling context
-      const machines = connections.map(connectionToMachine);
+    if (agentConnections.length > 0) {
+      const machines = agentConnections.map(connectionToMachine);
       setPollingMachines(machines);
     } else {
       setPollingMachines([]);
     }
+  }, [agentConnections, setPollingMachines]);
 
-    setLoading(false);
-  }, [setPollingMachines]);
+  // Loading state
+  const loading = connectionsLoading;
 
   // Legacy compatibility: get first connection as "agentConnection"
   const agentConnection = useMemo(() => {
@@ -218,75 +229,54 @@ export function useHomeState() {
     [selectedSession, clearSessionFromUrl]
   );
 
-  // Add a new connection (does NOT replace existing ones)
+  // Add a new connection (uses API)
   const handleConnectionSaved = useCallback(
-    (connection: AgentConnection) => {
-      // Add the new connection to storage and state
-      const newConnection = addAgentConnection({
-        url: connection.url,
-        name: connection.name || 'Agent',
-        method: connection.method,
-      });
-
-      setAgentConnections((prev) => {
-        // Check if this connection already exists (by URL)
-        const existingIndex = prev.findIndex(
-          (c) => c.url.toLowerCase() === connection.url.toLowerCase()
-        );
-
-        if (existingIndex >= 0) {
-          // Update existing connection
-          const updated = [...prev];
-          updated[existingIndex] = newConnection;
-          return updated;
-        } else {
-          // Add new connection
-          return [...prev, newConnection];
-        }
-      });
-
-      // Update polling machines with all connections
-      setAgentConnections((current) => {
-        const machines = current.map(connectionToMachine);
-        setPollingMachines(machines);
-        return current;
-      });
-    },
-    [setPollingMachines]
-  );
-
-  // Remove a specific connection by ID
-  const handleConnectionRemoved = useCallback(
-    (connectionId: string) => {
-      // Remove from localStorage
-      removeAgentConnection(connectionId);
-
-      // Update state
-      setAgentConnections((prev) => {
-        const updated = prev.filter((c) => c.id !== connectionId);
-        // Update polling machines
-        const machines = updated.map(connectionToMachine);
-        setPollingMachines(machines);
-        return updated;
-      });
-
-      // If selected session was on this machine, clear it
-      if (selectedSession?.machineId === connectionId) {
-        setSelectedSession(null);
-        clearSessionFromUrl();
+    async (connection: AgentConnection) => {
+      try {
+        await addConnection({
+          url: connection.url,
+          name: connection.name || 'Agent',
+          method: connection.method,
+        });
+        // The hook automatically updates the connections state
+      } catch (error) {
+        console.error('Failed to save connection:', error);
       }
     },
-    [selectedSession, clearSessionFromUrl, setPollingMachines]
+    [addConnection]
+  );
+
+  // Remove a specific connection by ID (uses API)
+  const handleConnectionRemoved = useCallback(
+    async (connectionId: string) => {
+      try {
+        await removeConnection(connectionId);
+
+        // If selected session was on this machine, clear it
+        if (selectedSession?.machineId === connectionId) {
+          setSelectedSession(null);
+          clearSessionFromUrl();
+        }
+      } catch (error) {
+        console.error('Failed to remove connection:', error);
+      }
+    },
+    [selectedSession, clearSessionFromUrl, removeConnection]
   );
 
   // Legacy: clear all connections (kept for backward compatibility)
-  const handleConnectionCleared = useCallback(() => {
-    // Clear all connections
-    setAgentConnections([]);
-    setPollingMachines([]);
+  const handleConnectionCleared = useCallback(async () => {
+    // Remove all connections one by one
+    for (const conn of agentConnections) {
+      try {
+        await removeConnection(conn.id);
+      } catch (error) {
+        console.error('Failed to remove connection:', error);
+      }
+    }
     setSelectedSession(null);
     clearSessionFromUrl();
-  }, [setPollingMachines, clearSessionFromUrl]);
+  }, [agentConnections, removeConnection, clearSessionFromUrl]);
 
   const getAgentUrl = useCallback(() => {
     if (!selectedSession) return '';

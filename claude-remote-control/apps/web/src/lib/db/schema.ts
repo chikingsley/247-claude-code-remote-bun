@@ -1,0 +1,22 @@
+import { pgTable, text, timestamp, boolean, index } from 'drizzle-orm/pg-core';
+
+// Custom table for agent connections (in public schema)
+// Auth tables (user, session, account) are managed by Neon Auth in neon_auth schema
+export const agentConnection = pgTable(
+  'agent_connection',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull(), // References neon_auth.user.id
+    url: text('url').notNull(),
+    name: text('name').notNull(),
+    method: text('method').notNull().default('tailscale'),
+    isCloud: boolean('is_cloud').default(false),
+    cloudAgentId: text('cloud_agent_id'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => [index('idx_agent_connection_user').on(table.userId)]
+);
+
+export type AgentConnection = typeof agentConnection.$inferSelect;
+export type NewAgentConnection = typeof agentConnection.$inferInsert;
