@@ -7,7 +7,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 
 <p align="center">
-  <img src="https://247.quivr.com/og-image.png" alt="247 Dashboard" width="600" />
+  <img src="./demo.gif" alt="247 Demo" width="700" />
 </p>
 
 ## Why 247?
