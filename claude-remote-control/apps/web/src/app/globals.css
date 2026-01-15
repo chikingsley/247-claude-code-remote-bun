@@ -325,6 +325,14 @@
   }
 }
 
+/* Neon Auth UI fixes - constrain SVG icons in buttons */
+@layer base {
+  button svg:not([width]):not([height]) {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
 /* Motion-safe animations only */
 @media (prefers-reduced-motion: reduce) {
   *,
