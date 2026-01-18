@@ -4,7 +4,6 @@ import { existsSync } from 'fs';
 import { checkNode, checkTmux, checkNativeDeps } from '../lib/prerequisites.js';
 import { configExists, loadConfig } from '../lib/config.js';
 import { isAgentRunning, getAgentHealth } from '../lib/process.js';
-import { getHooksStatus } from '../hooks/installer.js';
 import { createServiceManager } from '../service/index.js';
 import { getAgentPaths } from '../lib/paths.js';
 
@@ -82,24 +81,7 @@ export const doctorCommand = new Command('doctor')
       });
     }
 
-    // 5. Check for legacy hooks (should be removed)
-    const hooksStatus = getHooksStatus();
-    if (hooksStatus.installed) {
-      results.push({
-        name: 'Legacy hooks (deprecated)',
-        status: 'warn',
-        message: 'Old hooks still installed',
-        hint: 'Run "247 hooks uninstall" to clean up',
-      });
-    } else {
-      results.push({
-        name: 'Status tracking',
-        status: 'pass',
-        message: 'Using statusLine API (auto-configured)',
-      });
-    }
-
-    // 6. Check agent process
+    // 5. Check agent process
     const processStatus = isAgentRunning();
     if (processStatus.running) {
       results.push({
@@ -108,7 +90,7 @@ export const doctorCommand = new Command('doctor')
         message: `Running (PID: ${processStatus.pid})`,
       });
 
-      // 7. Check agent health (only if running)
+      // 6. Check agent health (only if running)
       const config = loadConfig();
       if (config) {
         const health = await getAgentHealth(config.agent.port);
@@ -136,7 +118,7 @@ export const doctorCommand = new Command('doctor')
       });
     }
 
-    // 8. Check service installation
+    // 7. Check service installation
     try {
       const serviceManager = createServiceManager();
       const serviceStatus = await serviceManager.status();
@@ -172,7 +154,7 @@ export const doctorCommand = new Command('doctor')
       });
     }
 
-    // 9. Check paths and directories
+    // 8. Check paths and directories
     const paths = getAgentPaths();
 
     // Config directory
@@ -207,7 +189,7 @@ export const doctorCommand = new Command('doctor')
       });
     }
 
-    // 10. Check port availability (if agent not running)
+    // 9. Check port availability (if agent not running)
     if (!processStatus.running) {
       const config = loadConfig();
       if (config) {

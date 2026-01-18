@@ -297,8 +297,6 @@ export function useHomeState() {
   // Legacy: currentMachine is the first machine (for backward compatibility)
   const currentMachine: LocalMachine | null = machines.length > 0 ? machines[0] : null;
 
-  const needsAttention = allSessions.filter((s) => s.status === 'needs_attention').length;
-
   return {
     // State
     loading,
@@ -313,7 +311,6 @@ export function useHomeState() {
     isFullscreen,
     setIsFullscreen,
     allSessions,
-    needsAttention,
     currentMachine, // Legacy: first machine
     machines, // NEW: all machines
 

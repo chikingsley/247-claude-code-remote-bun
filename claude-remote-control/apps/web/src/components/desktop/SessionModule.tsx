@@ -1,28 +1,12 @@
 'use client';
 
 import { forwardRef, useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  X,
-  Archive,
-  Activity,
-  Clock,
-  Zap,
-  Shield,
-  MessageSquare,
-  FileText,
-  CheckCircle,
-  Code,
-  GitBranch,
-  GitPullRequest,
-  Loader2,
-} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, Archive, Clock, Code, GitBranch, GitPullRequest, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/time';
-import { StatusRing, statusStyles } from '@/components/ui/StatusRing';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import type { SessionInfo } from '@/lib/notifications';
-import type { SessionStatus, AttentionReason } from '247-shared';
+import type { SessionInfo } from '@/lib/types';
 
 export interface SessionModuleProps {
   session: SessionInfo;
@@ -34,38 +18,6 @@ export interface SessionModuleProps {
   onArchive?: () => Promise<void>;
   onPushBranch?: () => Promise<void>;
   onCreatePR?: () => void;
-}
-
-const statusLabels: Record<SessionStatus, string> = {
-  init: 'INIT',
-  working: 'WORKING',
-  needs_attention: 'WAITING',
-  idle: 'IDLE',
-};
-
-const _attentionIcons: Record<AttentionReason, typeof MessageSquare> = {
-  permission: Shield,
-  input: MessageSquare,
-  plan_approval: FileText,
-  task_complete: CheckCircle,
-};
-
-const attentionLabels: Record<AttentionReason, string> = {
-  permission: 'PERMISSION',
-  input: 'INPUT',
-  plan_approval: 'PLAN',
-  task_complete: 'DONE',
-};
-
-function formatStatusTime(timestamp: number | undefined): string {
-  if (!timestamp) return '';
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 5) return 'now';
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h`;
 }
 
 export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
@@ -86,21 +38,9 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
       return () => clearInterval(interval);
     }, []);
 
-    const status = session.status as SessionStatus;
-    const attentionReason = session.attentionReason as AttentionReason | undefined;
-    const styles = statusStyles[status];
-    const needsAttention = status === 'needs_attention';
-
-    // Get label based on status/attention
-    const statusLabel =
-      status === 'needs_attention' && attentionReason
-        ? attentionLabels[attentionReason]
-        : statusLabels[status];
-
     // Extract readable session name
     const displayName = session.name.split('--')[1] || session.name;
     const shortcut = index < 9 ? index + 1 : null;
-    const statusTime = formatStatusTime(session.lastStatusChange);
 
     const handleKillClick = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -150,10 +90,6 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
       onCreatePR?.();
     };
 
-    const canArchive =
-      onArchive &&
-      (status === 'idle' || (status === 'needs_attention' && attentionReason === 'task_complete'));
-
     const hasWorktree = !!session.worktreePath;
 
     // Collapsed mode - Beacon Strip
@@ -163,18 +99,20 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
           <button
             ref={ref}
             onClick={onClick}
-            title={`${displayName} - ${statusLabel}`}
+            title={displayName}
             className={cn(
               'group relative flex w-full items-center justify-center rounded-lg p-2',
               'transition-all',
               isActive
-                ? cn('border bg-white/10', styles.border)
-                : 'border border-transparent hover:bg-white/5',
-              needsAttention && !isActive && 'animate-pulse'
+                ? 'border border-orange-500/30 bg-white/10'
+                : 'border border-transparent hover:bg-white/5'
             )}
             data-testid="session-module-collapsed"
           >
-            <StatusRing status={status} size={28} showPulse={needsAttention && !isActive} />
+            {/* Simple session indicator */}
+            <div
+              className={cn('h-7 w-7 rounded-full', isActive ? 'bg-orange-500/30' : 'bg-white/10')}
+            />
 
             {/* Kill button on hover */}
             {onKill && (
@@ -228,16 +166,8 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
             'group relative cursor-pointer rounded-lg border p-3',
             'transition-all duration-200',
             isActive
-              ? cn(
-                  'border-l-2 bg-white/[0.08]',
-                  styles.border,
-                  'shadow-lg',
-                  status === 'working' && 'shadow-cyan-500/10',
-                  status === 'needs_attention' && 'shadow-amber-500/10',
-                  status === 'init' && 'shadow-purple-500/10'
-                )
-              : 'border-white/5 hover:border-white/10 hover:bg-white/[0.04]',
-            needsAttention && !isActive && 'border-amber-500/20 bg-amber-500/5'
+              ? 'border-l-2 border-orange-500/30 bg-white/[0.08] shadow-lg'
+              : 'border-white/5 hover:border-white/10 hover:bg-white/[0.04]'
           )}
           data-testid="session-module"
         >
@@ -279,7 +209,7 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
                 )}
               </>
             )}
-            {canArchive && (
+            {onArchive && (
               <button
                 onClick={handleArchiveClick}
                 className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-500/20 hover:text-gray-300"
@@ -311,9 +241,14 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
           )}
 
           <div className="flex items-start gap-3">
-            {/* Status Ring */}
+            {/* Simple session indicator */}
             <div className="flex-shrink-0 pt-0.5">
-              <StatusRing status={status} size={28} showPulse={needsAttention && !isActive} />
+              <div
+                className={cn(
+                  'h-7 w-7 rounded-full',
+                  isActive ? 'bg-orange-500/30' : 'bg-white/10'
+                )}
+              />
             </div>
 
             {/* Content */}
@@ -345,57 +280,6 @@ export const SessionModule = forwardRef<HTMLButtonElement, SessionModuleProps>(
                     <span className="max-w-[80px] truncate">{session.branchName}</span>
                   </span>
                 )}
-                {session.statusSource === 'hook' && (
-                  <span title="Real-time">
-                    <Zap className="h-3 w-3 text-emerald-400/60" />
-                  </span>
-                )}
-              </div>
-
-              {/* Status bar */}
-              <div className="mt-2 flex items-center gap-2">
-                {/* Status line indicator */}
-                <div className="h-px flex-1 bg-white/5">
-                  <motion.div
-                    className={cn(
-                      'h-full',
-                      status === 'working' && 'bg-cyan-400/50',
-                      status === 'init' && 'bg-purple-400/50',
-                      status === 'needs_attention' && 'bg-amber-400/50',
-                      status === 'idle' && 'bg-gray-500/30'
-                    )}
-                    initial={{ width: '0%' }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 0.5, ease: 'easeOut' }}
-                  />
-                </div>
-
-                {/* Status label */}
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={`${status}-${attentionReason}`}
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    className={cn(
-                      'flex items-center gap-1 rounded px-1.5 py-0.5',
-                      'font-mono text-[9px] font-medium uppercase tracking-wider',
-                      styles.bg,
-                      status === 'working' && 'text-cyan-300',
-                      status === 'init' && 'text-purple-300',
-                      status === 'needs_attention' && 'text-amber-300',
-                      status === 'idle' && 'text-gray-400'
-                    )}
-                  >
-                    {statusLabel}
-                    {statusTime && (
-                      <span className="flex items-center gap-0.5 opacity-60">
-                        <Activity className="h-2.5 w-2.5" />
-                        {statusTime}
-                      </span>
-                    )}
-                  </motion.span>
-                </AnimatePresence>
               </div>
 
               {/* Lines changed - cost/model/context shown in session header */}

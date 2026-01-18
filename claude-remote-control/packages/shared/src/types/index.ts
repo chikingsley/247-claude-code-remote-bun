@@ -18,7 +18,6 @@ export interface Session {
   id: string;
   machineId: string;
   project: string | null;
-  status: SessionStatus;
   tmuxSession: string | null;
   startedAt: Date;
   endedAt: Date | null;
@@ -48,40 +47,19 @@ export type WSMessageFromAgent =
   | { type: 'pong' }
   | { type: 'history'; data: string; lines: number };
 
-// Session status types for real-time updates
-// 4 states: init (starting), working (active), needs_attention (user intervention needed), idle (session ended)
-export type SessionStatus = 'init' | 'working' | 'needs_attention' | 'idle';
-
-// Reason why Claude needs attention
-export type AttentionReason =
-  | 'permission' // Claude needs permission to use a tool
-  | 'input' // Claude is waiting for user input
-  | 'plan_approval' // Claude has a plan to approve (ExitPlanMode)
-  | 'task_complete'; // Claude finished the task
-
-export type StatusSource = 'hook' | 'tmux';
-
-// Session info for status WebSocket (simplified)
+// Session info for WebSocket (simplified)
 export interface WSSessionInfo {
   name: string;
   project: string;
-  status: SessionStatus;
-  attentionReason?: AttentionReason; // Why Claude needs attention (only set when status is 'needs_attention')
-  statusSource: StatusSource;
   lastEvent?: string;
-  lastStatusChange?: number;
   createdAt: number;
   lastActivity?: number;
   archivedAt?: number; // Timestamp when session was archived (undefined = active)
 }
 
-// WebSocket message types - Client to Agent (Status channel)
-export type WSStatusMessageToAgent = { type: 'status-subscribe' } | { type: 'status-unsubscribe' };
-
-// WebSocket message types - Agent to Client (Status channel)
-export type WSStatusMessageFromAgent =
+// WebSocket message types - Agent to Client (Sessions channel)
+export type WSSessionsMessageFromAgent =
   | { type: 'sessions-list'; sessions: WSSessionInfo[] }
-  | { type: 'status-update'; session: WSSessionInfo }
   | { type: 'session-removed'; sessionName: string }
   | { type: 'session-archived'; sessionName: string; session: WSSessionInfo }
   | { type: 'version-info'; agentVersion: string }
@@ -132,17 +110,6 @@ export interface SessionInputResponse {
   sessionName?: string;
   bytesSent?: number;
   error?: string;
-}
-
-// Hook status notification (from Claude Code plugin)
-export interface HookStatusRequest {
-  event: string;
-  status: SessionStatus;
-  attention_reason?: AttentionReason;
-  session_id?: string;
-  tmux_session?: string;
-  project?: string;
-  timestamp?: string;
 }
 
 // Agent configuration

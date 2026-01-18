@@ -5,22 +5,12 @@ import { motion } from 'framer-motion';
 import { Clock, X, Archive, DollarSign, Code } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/time';
-import { StatusRing } from '@/components/ui/StatusRing';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import type { SessionStatus, AttentionReason } from '247-shared';
+import type { SessionInfo } from '@/lib/types';
 
 export interface SessionMiniCardProps {
-  session: {
-    name: string;
-    project: string;
-    status: SessionStatus;
-    attentionReason?: AttentionReason;
+  session: SessionInfo & {
     machineId: string;
-    createdAt: number;
-    // StatusLine metrics
-    costUsd?: number;
-    linesAdded?: number;
-    linesRemoved?: number;
   };
   isActive: boolean;
   onClick: () => void;
@@ -41,12 +31,6 @@ export function SessionMiniCard({
   const [isArchiving, setIsArchiving] = useState(false);
 
   const displayName = session.name.split('--')[1] || session.name;
-
-  // Show archive button for "done" sessions (idle or task_complete)
-  const canArchive =
-    onArchive &&
-    (session.status === 'idle' ||
-      (session.status === 'needs_attention' && session.attentionReason === 'task_complete'));
 
   const handleKillClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -96,9 +80,9 @@ export function SessionMiniCard({
         )}
       >
         {/* Action buttons */}
-        {(onKill || canArchive) && (
+        {(onKill || onArchive) && (
           <div className="absolute right-2 top-2 z-10 flex items-center gap-1">
-            {canArchive && (
+            {onArchive && (
               <button
                 onClick={handleArchiveClick}
                 className={cn(
@@ -130,7 +114,13 @@ export function SessionMiniCard({
         )}
 
         <div className="flex items-start gap-2.5">
-          <StatusRing status={session.status} size={24} showPulse={!isActive} />
+          {/* Simple session indicator */}
+          <div
+            className={cn(
+              'h-6 w-6 flex-shrink-0 rounded-full',
+              isActive ? 'bg-orange-500/30' : 'bg-white/10'
+            )}
+          />
 
           <div className="min-w-0 flex-1 pr-14">
             <div className="truncate font-mono text-sm text-white" data-testid="session-name">

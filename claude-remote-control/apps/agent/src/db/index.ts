@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname, join, resolve } from 'path';
-import { CREATE_TABLES_SQL, SCHEMA_VERSION, RETENTION_CONFIG } from './schema.js';
+import { CREATE_TABLES_SQL, SCHEMA_VERSION, RETENTION_CONFIG, MIGRATION_16 } from './schema.js';
 import type { DbSchemaVersion } from './schema.js';
 
 // Database file location: ~/.247/data/agent.db
@@ -80,13 +80,16 @@ function runMigrations(database: Database.Database): void {
   if (currentVersion < SCHEMA_VERSION) {
     console.log(`[DB] Running migrations from v${currentVersion} to v${SCHEMA_VERSION}`);
 
-    // For fresh databases or v15+, just run the simplified schema
+    // For fresh databases, just run the simplified schema
     if (currentVersion === 0) {
       database.exec(CREATE_TABLES_SQL);
     } else {
-      // For existing databases, run the v15 migration to simplify
+      // For existing databases, run migrations in order
       if (currentVersion < 15) {
         migrateToV15(database);
+      }
+      if (currentVersion < 16) {
+        migrateToV16(database);
       }
     }
 
@@ -187,6 +190,31 @@ function migrateToV15(database: Database.Database): void {
   `);
 
   console.log('[DB] v15 migration: Simplification complete');
+}
+
+/**
+ * Migration to v16: Remove status tracking
+ * Remove status, attention_reason, and last_status_change columns
+ */
+function migrateToV16(database: Database.Database): void {
+  console.log('[DB] v16 migration: Removing status tracking');
+
+  // Check if sessions table has the status columns we want to remove
+  const columns = database.pragma('table_info(sessions)') as Array<{ name: string }>;
+  const columnNames = new Set(columns.map((c) => c.name));
+
+  const hasStatusColumns =
+    columnNames.has('status') ||
+    columnNames.has('attention_reason') ||
+    columnNames.has('last_status_change');
+
+  if (hasStatusColumns) {
+    console.log('[DB] v16 migration: Recreating sessions table without status columns');
+    database.exec(MIGRATION_16);
+    console.log('[DB] v16 migration: Sessions table updated');
+  }
+
+  console.log('[DB] v16 migration: Status tracking removed');
 }
 
 /**

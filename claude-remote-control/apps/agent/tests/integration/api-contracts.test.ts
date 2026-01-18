@@ -8,12 +8,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { EventEmitter } from 'events';
-import type {
-  WSSessionInfo,
-  ArchiveSessionResponse,
-  SessionStatus,
-  AttentionReason,
-} from '247-shared';
+import type { WSSessionInfo, ArchiveSessionResponse } from '247-shared';
 
 // Mock config
 const mockConfig = {
@@ -93,13 +88,8 @@ function isValidWSSessionInfo(obj: unknown): obj is WSSessionInfo {
   if (typeof obj !== 'object' || obj === null) return false;
   const session = obj as Record<string, unknown>;
 
-  const validStatuses = ['init', 'working', 'needs_attention', 'idle'];
-  const validSources = ['hook', 'tmux'];
-
   if (typeof session.name !== 'string') return false;
   if (typeof session.project !== 'string') return false;
-  if (!validStatuses.includes(session.status as string)) return false;
-  if (!validSources.includes(session.statusSource as string)) return false;
   if (typeof session.createdAt !== 'number') return false;
 
   return true;

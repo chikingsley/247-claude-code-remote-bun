@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { ControlPanelHeader, SessionModule } from './desktop';
 import { CreatePRModal } from './CreatePRModal';
 import { type SessionWithMachine } from '@/contexts/SessionPollingContext';
-import { type SessionInfo } from '@/lib/notifications';
+import { type SessionInfo } from '@/lib/types';
 import { cn, buildApiUrl } from '@/lib/utils';
 import { useInstallPrompt } from '@/hooks/useInstallPrompt';
 
@@ -31,8 +31,6 @@ interface HomeSidebarProps {
   onMobileSessionSelect?: () => void;
 }
 
-type FilterType = 'all' | 'active' | 'waiting' | 'done';
-
 export function HomeSidebar({
   sessions,
   archivedSessions,
@@ -51,7 +49,6 @@ export function HomeSidebar({
   // PWA install prompt
   const { isInstallable, isInstalled, isIOS, promptInstall } = useInstallPrompt();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [historyCollapsed, setHistoryCollapsed] = useState(true);
   const [prModalOpen, setPrModalOpen] = useState(false);
@@ -153,39 +150,9 @@ export function HomeSidebar({
       );
     }
 
-    // Apply status filter
-    if (filter !== 'all') {
-      result = result.filter((s) => {
-        if (filter === 'active') return s.status === 'working' || s.status === 'init';
-        if (filter === 'waiting')
-          return s.status === 'needs_attention' && s.attentionReason !== 'task_complete';
-        if (filter === 'done')
-          return (
-            s.status === 'idle' ||
-            (s.status === 'needs_attention' && s.attentionReason === 'task_complete')
-          );
-        return true;
-      });
-    }
-
     // Sort by createdAt only (newest first) - stable chronological order
     return result.sort((a, b) => b.createdAt - a.createdAt);
-  }, [sessions, searchQuery, filter]);
-
-  // Session counts by status
-  const statusCounts = useMemo(() => {
-    return sessions.reduce(
-      (acc, s) => {
-        if (s.status === 'working' || s.status === 'init') acc.active++;
-        else if (s.status === 'needs_attention') {
-          if (s.attentionReason === 'task_complete') acc.done++;
-          else acc.waiting++;
-        } else acc.done++;
-        return acc;
-      },
-      { active: 0, waiting: 0, done: 0 }
-    );
-  }, [sessions]);
+  }, [sessions, searchQuery]);
 
   // Keyboard navigation
   const handleKeyboard = useCallback(
@@ -255,13 +222,6 @@ export function HomeSidebar({
     [onSelectSession, isMobileDrawer, onMobileSessionSelect]
   );
 
-  const filters: { key: FilterType; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: sessions.length },
-    { key: 'active', label: 'Active', count: statusCounts.active },
-    { key: 'waiting', label: 'Needs input', count: statusCounts.waiting },
-    { key: 'done', label: 'Done', count: statusCounts.done },
-  ];
-
   return (
     <>
       <motion.aside
@@ -277,24 +237,21 @@ export function HomeSidebar({
         {/* Control Panel Header - hidden in mobile drawer mode */}
         {!isMobileDrawer && (
           <ControlPanelHeader
-            activeSessions={statusCounts.active}
-            waitingSessions={statusCounts.waiting}
-            idleSessions={statusCounts.done}
+            totalSessions={sessions.length}
             isCollapsed={effectiveCollapsed}
             onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
           />
         )}
 
-        {/* Search & Filters */}
+        {/* Search */}
         <AnimatePresence>
           {!effectiveCollapsed && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="space-y-3 border-b border-white/5 p-3"
+              className="border-b border-white/5 p-3"
             >
-              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
                 <input
@@ -310,27 +267,6 @@ export function HomeSidebar({
                     isMobileDrawer && 'min-h-[44px]'
                   )}
                 />
-              </div>
-
-              {/* Filter pills - with touch-friendly sizing on mobile */}
-              <div className="flex flex-wrap gap-1.5">
-                {filters.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setFilter(f.key)}
-                    className={cn(
-                      'rounded-full px-2.5 py-1 text-xs font-medium transition-all',
-                      // Mobile: larger touch targets
-                      isMobileDrawer && 'min-h-[36px] px-3 py-2',
-                      filter === f.key
-                        ? 'border border-orange-500/30 bg-orange-500/20 text-orange-300'
-                        : 'border border-transparent bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
-                    )}
-                  >
-                    {f.label}
-                    {f.count > 0 && <span className="ml-1.5 opacity-60">{f.count}</span>}
-                  </button>
-                ))}
               </div>
             </motion.div>
           )}
@@ -379,9 +315,7 @@ export function HomeSidebar({
               </div>
               <p className="text-sm text-white/40">No sessions found</p>
               <p className="mt-1 text-xs text-white/20">
-                {searchQuery || filter !== 'all'
-                  ? 'Try adjusting your filters'
-                  : 'Create a new session to get started'}
+                {searchQuery ? 'Try adjusting your search' : 'Create a new session to get started'}
               </p>
             </div>
           )}

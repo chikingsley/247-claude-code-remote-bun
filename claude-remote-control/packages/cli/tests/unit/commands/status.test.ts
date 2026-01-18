@@ -33,11 +33,6 @@ vi.mock('../../../src/lib/process.js', () => ({
   getAgentHealth: vi.fn(),
 }));
 
-// Mock hooks installer
-vi.mock('../../../src/hooks/installer.js', () => ({
-  getHooksStatus: vi.fn(),
-}));
-
 describe('Status Command', () => {
   let consoleLogs: string[];
   let originalConsoleLog: typeof console.log;
@@ -84,7 +79,6 @@ describe('Status Command', () => {
     const { configExists, loadConfig } = await import('../../../src/lib/config.js');
     const { getAgentPaths } = await import('../../../src/lib/paths.js');
     const { isAgentRunning, getAgentHealth } = await import('../../../src/lib/process.js');
-    const { getHooksStatus } = await import('../../../src/hooks/installer.js');
 
     vi.mocked(configExists).mockReturnValue(true);
     vi.mocked(loadConfig).mockReturnValue({
@@ -98,12 +92,6 @@ describe('Status Command', () => {
     } as any);
     vi.mocked(isAgentRunning).mockReturnValue({ running: true, pid: 12345 });
     vi.mocked(getAgentHealth).mockResolvedValue({ healthy: true, sessions: 3 });
-    vi.mocked(getHooksStatus).mockReturnValue({
-      installed: true,
-      path: '/test/hooks',
-      isSymlink: false,
-      needsUpdate: false,
-    });
 
     const { statusCommand } = await import('../../../src/commands/status.js');
     await statusCommand.parseAsync(['node', 'status']);
@@ -117,7 +105,6 @@ describe('Status Command', () => {
     const { configExists, loadConfig } = await import('../../../src/lib/config.js');
     const { getAgentPaths } = await import('../../../src/lib/paths.js');
     const { isAgentRunning } = await import('../../../src/lib/process.js');
-    const { getHooksStatus } = await import('../../../src/hooks/installer.js');
 
     vi.mocked(configExists).mockReturnValue(true);
     vi.mocked(loadConfig).mockReturnValue({
@@ -130,12 +117,6 @@ describe('Status Command', () => {
       configPath: '/test/.247/config.json',
     } as any);
     vi.mocked(isAgentRunning).mockReturnValue({ running: false });
-    vi.mocked(getHooksStatus).mockReturnValue({
-      installed: false,
-      path: '',
-      isSymlink: false,
-      needsUpdate: false,
-    });
 
     const { statusCommand } = await import('../../../src/commands/status.js');
     await statusCommand.parseAsync(['node', 'status']);
@@ -147,7 +128,6 @@ describe('Status Command', () => {
     const { configExists, loadConfig } = await import('../../../src/lib/config.js');
     const { getAgentPaths } = await import('../../../src/lib/paths.js');
     const { isAgentRunning, getAgentHealth } = await import('../../../src/lib/process.js');
-    const { getHooksStatus } = await import('../../../src/hooks/installer.js');
 
     vi.mocked(configExists).mockReturnValue(true);
     vi.mocked(loadConfig).mockReturnValue({
@@ -164,12 +144,6 @@ describe('Status Command', () => {
       healthy: false,
       error: 'Connection refused',
     });
-    vi.mocked(getHooksStatus).mockReturnValue({
-      installed: false,
-      path: '',
-      isSymlink: false,
-      needsUpdate: false,
-    });
 
     const { statusCommand } = await import('../../../src/commands/status.js');
     await statusCommand.parseAsync(['node', 'status']);
@@ -182,7 +156,6 @@ describe('Status Command', () => {
     const { configExists, loadConfig } = await import('../../../src/lib/config.js');
     const { getAgentPaths } = await import('../../../src/lib/paths.js');
     const { isAgentRunning } = await import('../../../src/lib/process.js');
-    const { getHooksStatus } = await import('../../../src/hooks/installer.js');
 
     vi.mocked(configExists).mockReturnValue(true);
     vi.mocked(loadConfig).mockReturnValue({
@@ -195,12 +168,6 @@ describe('Status Command', () => {
       configPath: '/home/user/.247/config.json',
     } as any);
     vi.mocked(isAgentRunning).mockReturnValue({ running: false });
-    vi.mocked(getHooksStatus).mockReturnValue({
-      installed: false,
-      path: '',
-      isSymlink: false,
-      needsUpdate: false,
-    });
 
     const { statusCommand } = await import('../../../src/commands/status.js');
     await statusCommand.parseAsync(['node', 'status']);
@@ -208,67 +175,5 @@ describe('Status Command', () => {
     expect(consoleLogs.some((log) => log.includes('Machine: Test Machine'))).toBe(true);
     expect(consoleLogs.some((log) => log.includes('Port: 4678'))).toBe(true);
     expect(consoleLogs.some((log) => log.includes('/test/projects'))).toBe(true);
-  });
-
-  it('shows hooks status as installed', async () => {
-    const { configExists, loadConfig } = await import('../../../src/lib/config.js');
-    const { getAgentPaths } = await import('../../../src/lib/paths.js');
-    const { isAgentRunning } = await import('../../../src/lib/process.js');
-    const { getHooksStatus } = await import('../../../src/hooks/installer.js');
-
-    vi.mocked(configExists).mockReturnValue(true);
-    vi.mocked(loadConfig).mockReturnValue({
-      machine: { id: 'test-id', name: 'Test Machine' },
-      agent: { port: 4678 },
-      projects: { basePath: '/test/projects', whitelist: [] },
-      editor: { enabled: false },
-    } as any);
-    vi.mocked(getAgentPaths).mockReturnValue({
-      configPath: '/test/.247/config.json',
-    } as any);
-    vi.mocked(isAgentRunning).mockReturnValue({ running: false });
-    vi.mocked(getHooksStatus).mockReturnValue({
-      installed: true,
-      path: '/home/user/.claude-plugins/247-hooks',
-      isSymlink: true,
-    });
-
-    const { statusCommand } = await import('../../../src/commands/status.js');
-    await statusCommand.parseAsync(['node', 'status']);
-
-    // Now shows statusLine info and warns about legacy hooks
-    expect(consoleLogs.some((log) => log.includes('statusLine API'))).toBe(true);
-    expect(consoleLogs.some((log) => log.includes('Legacy hooks still installed'))).toBe(true);
-  });
-
-  it('shows clean status when no legacy hooks', async () => {
-    const { configExists, loadConfig } = await import('../../../src/lib/config.js');
-    const { getAgentPaths } = await import('../../../src/lib/paths.js');
-    const { isAgentRunning } = await import('../../../src/lib/process.js');
-    const { getHooksStatus } = await import('../../../src/hooks/installer.js');
-
-    vi.mocked(configExists).mockReturnValue(true);
-    vi.mocked(loadConfig).mockReturnValue({
-      machine: { id: 'test-id', name: 'Test Machine' },
-      agent: { port: 4678 },
-      projects: { basePath: '/test/projects', whitelist: [] },
-      editor: { enabled: false },
-    } as any);
-    vi.mocked(getAgentPaths).mockReturnValue({
-      configPath: '/test/.247/config.json',
-    } as any);
-    vi.mocked(isAgentRunning).mockReturnValue({ running: false });
-    vi.mocked(getHooksStatus).mockReturnValue({
-      installed: false,
-      path: '',
-      isSymlink: false,
-    });
-
-    const { statusCommand } = await import('../../../src/commands/status.js');
-    await statusCommand.parseAsync(['node', 'status']);
-
-    expect(consoleLogs.some((log) => log.includes('statusLine API'))).toBe(true);
-    // No legacy hooks warning when none are installed
-    expect(consoleLogs.some((log) => log.includes('Legacy hooks'))).toBe(false);
   });
 });

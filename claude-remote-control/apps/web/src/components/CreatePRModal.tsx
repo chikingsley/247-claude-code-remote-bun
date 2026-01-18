@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { type SessionInfo } from '@/lib/notifications';
+import { type SessionInfo } from '@/lib/types';
 import { buildApiUrl } from '@/lib/utils';
 
 interface CreatePRModalProps {

@@ -3,25 +3,17 @@
 import { forwardRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Zap,
   Clock,
-  MessageSquare,
-  Shield,
   Circle,
-  Loader2,
   X,
-  Activity,
-  FileText,
-  CheckCircle,
   Archive,
   DollarSign,
-  Cpu,
   Code,
   GitBranch,
   GitPullRequest,
+  Loader2,
 } from 'lucide-react';
-import { type SessionInfo } from '@/lib/notifications';
-import { type SessionStatus, type AttentionReason } from '247-shared';
+import { type SessionInfo } from '@/lib/types';
 import { ConfirmDialog } from './ui/confirm-dialog';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/time';
@@ -42,78 +34,6 @@ interface SessionCardProps {
   branchName?: string;
   /** Mobile mode - larger touch targets */
   isMobile?: boolean;
-}
-
-const statusConfig: Record<
-  SessionStatus,
-  {
-    icon: typeof Zap;
-    color: string;
-    bgColor: string;
-    borderColor: string;
-    glow: string;
-    label: string;
-  }
-> = {
-  init: {
-    icon: Loader2,
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-500/10',
-    borderColor: 'border-purple-500/30',
-    glow: 'shadow-purple-500/20',
-    label: 'Starting',
-  },
-  working: {
-    icon: Loader2,
-    color: 'text-blue-400',
-    bgColor: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/30',
-    glow: 'shadow-blue-500/20',
-    label: 'Working',
-  },
-  needs_attention: {
-    icon: MessageSquare,
-    color: 'text-orange-400',
-    bgColor: 'bg-orange-500/10',
-    borderColor: 'border-orange-500/30',
-    glow: 'shadow-orange-500/20',
-    label: 'Attention',
-  },
-  idle: {
-    icon: Circle,
-    color: 'text-gray-400',
-    bgColor: 'bg-gray-500/10',
-    borderColor: 'border-gray-500/30',
-    glow: 'shadow-gray-500/20',
-    label: 'Idle',
-  },
-};
-
-// Icons for specific attention reasons
-const attentionIcons: Record<AttentionReason, typeof Zap> = {
-  permission: Shield,
-  input: MessageSquare,
-  plan_approval: FileText,
-  task_complete: CheckCircle,
-};
-
-const attentionLabels: Record<AttentionReason, string> = {
-  permission: 'Permission',
-  input: 'Waiting',
-  plan_approval: 'Plan Ready',
-  task_complete: 'Done',
-};
-
-// Format time since status change
-function formatStatusTime(timestamp: number | undefined): string {
-  if (!timestamp) return '';
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 5) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
 }
 
 export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
@@ -147,29 +67,9 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
       return () => clearInterval(interval);
     }, []);
 
-    const status = session.status as SessionStatus;
-    const attentionReason = session.attentionReason as AttentionReason | undefined;
-    const config = statusConfig[status] || statusConfig.idle;
-
-    // Use attention-specific icon if available
-    const Icon =
-      status === 'needs_attention' && attentionReason
-        ? attentionIcons[attentionReason]
-        : config.icon;
-
-    // Use attention-specific label if available
-    const label =
-      status === 'needs_attention' && attentionReason
-        ? attentionLabels[attentionReason]
-        : config.label;
-
     // Extract readable session name (part after --)
     const displayName = session.name.split('--')[1] || session.name;
     const shortcut = index < 9 ? index + 1 : null;
-
-    // Check if needs attention
-    const needsAttention = status === 'needs_attention';
-    const statusTime = formatStatusTime(session.lastStatusChange);
 
     const handleKillClick = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -219,33 +119,23 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
       onCreatePR?.();
     };
 
-    // Show archive button for "done" sessions (idle or task_complete)
-    const canArchive =
-      onArchive &&
-      (status === 'idle' || (status === 'needs_attention' && attentionReason === 'task_complete'));
-
     if (isCollapsed) {
       return (
         <>
           <button
             ref={ref}
             onClick={onClick}
-            title={`${displayName} - ${config.label}`}
+            title={displayName}
             className={cn(
               'group relative w-full rounded-lg p-2 transition-all',
               'flex items-center justify-center',
               isActive
-                ? cn('border bg-white/10', config.borderColor)
-                : 'border border-transparent hover:bg-white/5',
-              needsAttention && !isActive && 'animate-pulse'
+                ? 'border border-orange-500/30 bg-white/10'
+                : 'border border-transparent hover:bg-white/5'
             )}
           >
-            <div
-              className={cn('flex h-8 w-8 items-center justify-center rounded-lg', config.bgColor)}
-            >
-              <Icon
-                className={cn('h-4 w-4', config.color, status === 'working' && 'animate-spin')}
-              />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5">
+              <Circle className="h-4 w-4 text-white/40" />
             </div>
 
             {/* Kill button - collapsed mode */}
@@ -274,11 +164,6 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
                 )}
               />
             )}
-
-            {/* Attention pulse ring */}
-            {needsAttention && (
-              <span className="pointer-events-none absolute inset-0 animate-ping rounded-lg bg-orange-500/20" />
-            )}
           </button>
 
           <ConfirmDialog
@@ -306,14 +191,8 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
             // Mobile: larger padding and minimum height for touch
             isMobile && 'min-h-[72px] p-4',
             isActive
-              ? cn(
-                  'bg-gradient-to-r from-white/10 to-white/5',
-                  config.borderColor,
-                  'shadow-lg',
-                  config.glow
-                )
-              : 'border-transparent hover:border-white/10 hover:bg-white/5',
-            needsAttention && !isActive && 'border-orange-500/30 bg-orange-500/5'
+              ? 'border-orange-500/30 bg-gradient-to-r from-white/10 to-white/5 shadow-lg shadow-orange-500/20'
+              : 'border-transparent hover:border-white/10 hover:bg-white/5'
           )}
         >
           {/* Action buttons - expanded mode (always visible on mobile) */}
@@ -366,7 +245,7 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
               </>
             )}
             {/* Archive button */}
-            {canArchive && (
+            {onArchive && (
               <button
                 onClick={handleArchiveClick}
                 className={cn(
@@ -411,25 +290,19 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
           )}
 
           <div className="flex items-start gap-3">
-            {/* Status Icon with transition animation */}
+            {/* Session Icon */}
             <AnimatePresence mode="wait">
               <motion.div
-                key={`${status}-${attentionReason}`}
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.8, opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className={cn(
                   'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg',
-                  config.bgColor,
-                  'border',
-                  config.borderColor,
-                  needsAttention && 'ring-2 ring-orange-500/40 ring-offset-1 ring-offset-zinc-900'
+                  'border border-white/10 bg-white/5'
                 )}
               >
-                <Icon
-                  className={cn('h-5 w-5', config.color, status === 'working' && 'animate-spin')}
-                />
+                <Circle className="h-5 w-5 text-white/40" />
               </motion.div>
             </AnimatePresence>
 
@@ -441,31 +314,6 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
                   <kbd className="hidden rounded border border-white/10 bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/40 group-hover:inline-flex">
                     ⌥{shortcut}
                   </kbd>
-                )}
-              </div>
-
-              <div className="mt-1 flex items-center gap-2">
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={`${status}-${attentionReason}`}
-                    initial={{ y: -5, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 5, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className={cn(
-                      'rounded px-1.5 py-0.5 text-xs font-medium',
-                      config.bgColor,
-                      config.color
-                    )}
-                  >
-                    {label}
-                  </motion.span>
-                </AnimatePresence>
-                {statusTime && (
-                  <span className="flex items-center gap-1 text-xs text-white/40">
-                    <Activity className="h-3 w-3" />
-                    {statusTime}
-                  </span>
                 )}
               </div>
 
@@ -486,19 +334,10 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
                     <span className="max-w-[100px] truncate text-xs">{branchName}</span>
                   </span>
                 )}
-                {session.statusSource === 'hook' && (
-                  <span
-                    className="flex items-center gap-0.5 text-emerald-400/60"
-                    title="Real-time via WebSocket"
-                  >
-                    <Zap className="h-3 w-3" />
-                  </span>
-                )}
               </div>
 
               {/* StatusLine metrics */}
               {(session.costUsd !== undefined ||
-                session.contextUsage !== undefined ||
                 session.linesAdded !== undefined ||
                 session.linesRemoved !== undefined) && (
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
@@ -510,23 +349,6 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
                     >
                       <DollarSign className="h-3 w-3" />
                       {session.costUsd < 0.01 ? '<$0.01' : `$${session.costUsd.toFixed(2)}`}
-                    </span>
-                  )}
-                  {/* Context usage */}
-                  {session.contextUsage !== undefined && (
-                    <span
-                      className={cn(
-                        'flex items-center gap-1',
-                        session.contextUsage > 80
-                          ? 'text-red-400/70'
-                          : session.contextUsage > 60
-                            ? 'text-yellow-400/70'
-                            : 'text-blue-400/70'
-                      )}
-                      title="Context window usage"
-                    >
-                      <Cpu className="h-3 w-3" />
-                      {session.contextUsage}%
                     </span>
                   )}
                   {/* Lines changed */}
@@ -550,8 +372,6 @@ export const SessionCard = forwardRef<HTMLButtonElement, SessionCardProps>(
               )}
             </div>
           </div>
-
-          {/* Attention pulse overlay */}
         </div>
 
         <ConfirmDialog

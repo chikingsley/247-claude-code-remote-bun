@@ -21,8 +21,8 @@ describe('Database Schema', () => {
       expect(Number.isInteger(SCHEMA_VERSION)).toBe(true);
     });
 
-    it('current version is 15', () => {
-      expect(SCHEMA_VERSION).toBe(15);
+    it('current version is 16', () => {
+      expect(SCHEMA_VERSION).toBe(16);
     });
   });
 
@@ -73,7 +73,7 @@ describe('Database Schema', () => {
     it('creates indexes for performance', () => {
       expect(CREATE_TABLES_SQL).toContain('CREATE INDEX IF NOT EXISTS idx_sessions_name');
       expect(CREATE_TABLES_SQL).toContain('CREATE INDEX IF NOT EXISTS idx_sessions_project');
-      expect(CREATE_TABLES_SQL).toContain('CREATE INDEX IF NOT EXISTS idx_sessions_status');
+      expect(CREATE_TABLES_SQL).toContain('CREATE INDEX IF NOT EXISTS idx_sessions_last_activity');
     });
 
     it('executes without error on fresh database', () => {
@@ -112,11 +112,8 @@ describe('Database Schema', () => {
       expect(columnNames).toContain('id');
       expect(columnNames).toContain('name');
       expect(columnNames).toContain('project');
-      expect(columnNames).toContain('status');
-      expect(columnNames).toContain('attention_reason');
       expect(columnNames).toContain('last_event');
       expect(columnNames).toContain('last_activity');
-      expect(columnNames).toContain('last_status_change');
       expect(columnNames).toContain('archived_at');
       expect(columnNames).toContain('created_at');
       expect(columnNames).toContain('updated_at');
@@ -132,73 +129,26 @@ describe('Database Schema', () => {
           id: 1,
           name: 'test--session-1',
           project: 'test',
-          status: 'working',
-          attention_reason: null,
           last_event: 'PreToolUse',
           last_activity: Date.now(),
-          last_status_change: Date.now(),
           archived_at: null,
           created_at: Date.now(),
           updated_at: Date.now(),
         };
 
         expect(session.id).toBe(1);
-        expect(session.status).toBe('working');
-      });
-
-      it('validates session with all attention reasons', () => {
-        const reasons = ['permission', 'input', 'plan_approval', 'task_complete'] as const;
-
-        reasons.forEach((reason) => {
-          const session: DbSession = {
-            id: 1,
-            name: 'test',
-            project: 'test',
-            status: 'needs_attention',
-            attention_reason: reason,
-            last_event: null,
-            last_activity: Date.now(),
-            last_status_change: Date.now(),
-            archived_at: null,
-            created_at: Date.now(),
-            updated_at: Date.now(),
-          };
-
-          expect(session.attention_reason).toBe(reason);
-        });
-      });
-
-      it('validates all session statuses', () => {
-        const statuses = ['init', 'working', 'needs_attention', 'idle'] as const;
-
-        statuses.forEach((status) => {
-          const session: DbSession = {
-            id: 1,
-            name: 'test',
-            project: 'test',
-            status: status,
-            attention_reason: null,
-            last_event: null,
-            last_activity: Date.now(),
-            last_status_change: Date.now(),
-            archived_at: null,
-            created_at: Date.now(),
-            updated_at: Date.now(),
-          };
-
-          expect(session.status).toBe(status);
-        });
+        expect(session.name).toBe('test--session-1');
       });
     });
 
     describe('DbSchemaVersion', () => {
       it('validates correct version structure', () => {
         const version: DbSchemaVersion = {
-          version: 15,
+          version: 16,
           applied_at: Date.now(),
         };
 
-        expect(version.version).toBe(15);
+        expect(version.version).toBe(16);
         expect(typeof version.applied_at).toBe('number');
       });
     });
@@ -207,26 +157,20 @@ describe('Database Schema', () => {
       it('validates minimal input', () => {
         const input: UpsertSessionInput = {
           project: 'test',
-          status: 'init',
           lastActivity: Date.now(),
-          lastStatusChange: Date.now(),
         };
 
         expect(input.project).toBe('test');
-        expect(input.status).toBe('init');
       });
 
       it('validates full input', () => {
         const input: UpsertSessionInput = {
           project: 'test',
-          status: 'needs_attention',
-          attentionReason: 'permission',
           lastEvent: 'PreToolUse',
           lastActivity: Date.now(),
-          lastStatusChange: Date.now(),
         };
 
-        expect(input.attentionReason).toBe('permission');
+        expect(input.lastEvent).toBe('PreToolUse');
       });
     });
   });
@@ -240,18 +184,18 @@ describe('Database Schema', () => {
 
       db.prepare(
         `
-        INSERT INTO sessions (name, project, status, last_activity, last_status_change, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sessions (name, project, last_activity, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
       `
-      ).run('unique-name', 'test', 'init', now, now, now, now);
+      ).run('unique-name', 'test', now, now, now);
 
       expect(() => {
         db.prepare(
           `
-          INSERT INTO sessions (name, project, status, last_activity, last_status_change, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO sessions (name, project, last_activity, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?)
         `
-        ).run('unique-name', 'test', 'init', now, now, now, now);
+        ).run('unique-name', 'test', now, now, now);
       }).toThrow();
 
       db.close();

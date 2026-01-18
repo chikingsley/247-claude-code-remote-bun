@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import type { SessionStatus } from './ui/status-badge';
-import { type SessionInfo } from '@/lib/notifications';
+import { type SessionInfo } from '@/lib/types';
 
 const Terminal = dynamic(() => import('./Terminal').then((mod) => mod.Terminal), {
   ssr: false,
@@ -75,14 +74,11 @@ export function SessionView({
       planningProjectId={planningProjectId}
       onConnectionChange={setIsConnected}
       onSessionCreated={handleSessionCreated}
-      claudeStatus={sessionInfo?.status}
-      status={sessionInfo?.status as SessionStatus}
       onMenuClick={onMenuClick}
       isMobile={isMobile}
       // StatusLine metrics
       model={sessionInfo?.model}
       costUsd={sessionInfo?.costUsd}
-      contextUsage={sessionInfo?.contextUsage}
     />
   );
 }

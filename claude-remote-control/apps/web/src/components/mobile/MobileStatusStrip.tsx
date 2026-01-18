@@ -5,12 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Plus, Search, HelpCircle, Settings, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, buildApiUrl } from '@/lib/utils';
-import { StatusRing } from '@/components/ui/StatusRing';
 import { SessionMiniCard } from './SessionMiniCard';
 import { type SessionWithMachine } from '@/contexts/SessionPollingContext';
-import type { SessionStatus } from '247-shared';
-
-export type MobileFilterType = 'all' | 'active' | 'waiting' | 'done';
 
 export interface MobileStatusStripProps {
   sessions: SessionWithMachine[];
@@ -29,20 +25,6 @@ export interface MobileStatusStripProps {
   onSessionKilled?: (machineId: string, sessionName: string) => void;
 }
 
-function getStatusColor(status: SessionStatus): string {
-  switch (status) {
-    case 'working':
-      return 'bg-cyan-400';
-    case 'init':
-      return 'bg-purple-400';
-    case 'needs_attention':
-      return 'bg-amber-400';
-    case 'idle':
-    default:
-      return 'bg-gray-500';
-  }
-}
-
 export function MobileStatusStrip({
   sessions,
   currentSession,
@@ -54,7 +36,6 @@ export function MobileStatusStrip({
   onSessionKilled,
 }: MobileStatusStripProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [filter, setFilter] = useState<MobileFilterType>('all');
   const [search, setSearch] = useState('');
 
   // Kill session handler
@@ -135,20 +116,15 @@ export function MobileStatusStrip({
     };
   }, [isExpanded]);
 
-  // Status dots for quick glance (max 5)
-  const statusDots = useMemo(() => {
+  // Session dots for quick glance (max 5)
+  const sessionDots = useMemo(() => {
     return sessions.slice(0, 5).map((s) => ({
       id: s.name,
-      status: s.status,
       isActive: s.name === currentSession?.sessionName,
     }));
   }, [sessions, currentSession]);
 
-  const currentSessionData = useMemo(() => {
-    return sessions.find((s) => s.name === currentSession?.sessionName);
-  }, [sessions, currentSession]);
-
-  // Filter sessions
+  // Filter sessions by search
   const filteredSessions = useMemo(() => {
     let result = [...sessions];
 
@@ -163,39 +139,9 @@ export function MobileStatusStrip({
       );
     }
 
-    // Apply status filter
-    if (filter !== 'all') {
-      result = result.filter((s) => {
-        if (filter === 'active') return s.status === 'working' || s.status === 'init';
-        if (filter === 'waiting')
-          return s.status === 'needs_attention' && s.attentionReason !== 'task_complete';
-        if (filter === 'done')
-          return (
-            s.status === 'idle' ||
-            (s.status === 'needs_attention' && s.attentionReason === 'task_complete')
-          );
-        return true;
-      });
-    }
-
     // Sort by createdAt (newest first)
     return result.sort((a, b) => b.createdAt - a.createdAt);
-  }, [sessions, search, filter]);
-
-  // Session counts by status
-  const statusCounts = useMemo(() => {
-    return sessions.reduce(
-      (acc, s) => {
-        if (s.status === 'working' || s.status === 'init') acc.active++;
-        else if (s.status === 'needs_attention') {
-          if (s.attentionReason === 'task_complete') acc.done++;
-          else acc.waiting++;
-        } else acc.done++;
-        return acc;
-      },
-      { active: 0, waiting: 0, done: 0 }
-    );
-  }, [sessions]);
+  }, [sessions, search]);
 
   const handleSessionSelect = useCallback(
     (machineId: string, name: string, project: string) => {
@@ -240,8 +186,13 @@ export function MobileStatusStrip({
             aria-expanded={isExpanded}
             aria-haspopup="true"
           >
-            {/* Status Ring */}
-            <StatusRing status={currentSessionData?.status || 'idle'} size={20} />
+            {/* Session indicator */}
+            <div
+              className={cn(
+                'h-5 w-5 flex-shrink-0 rounded-full',
+                currentSession ? 'bg-orange-500/30' : 'bg-white/10'
+              )}
+            />
 
             {/* Session Name */}
             <span className="flex-1 truncate text-left font-mono text-sm text-white/90">
@@ -254,15 +205,15 @@ export function MobileStatusStrip({
             </motion.div>
           </button>
 
-          {/* Mini Status Dots */}
+          {/* Mini Session Dots */}
           <div className="flex items-center gap-1 px-2" data-testid="status-dots">
-            {statusDots.map((dot, i) => (
+            {sessionDots.map((dot, i) => (
               <motion.div
                 key={dot.id}
                 className={cn(
-                  'h-2 w-2 rounded-full transition-all',
-                  dot.isActive && 'ring-1 ring-white/30 ring-offset-1 ring-offset-[#0d0d14]',
-                  getStatusColor(dot.status)
+                  'h-2 w-2 rounded-full bg-white/30 transition-all',
+                  dot.isActive &&
+                    'bg-orange-400 ring-1 ring-white/30 ring-offset-1 ring-offset-[#0d0d14]'
                 )}
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -359,58 +310,23 @@ export function MobileStatusStrip({
               )}
               data-testid="dropdown-panel"
             >
-              {/* Search & Filters */}
+              {/* Search */}
               <div className="border-b border-white/5 p-3">
-                <div className="flex gap-2">
-                  {/* Search */}
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
-                    <input
-                      type="text"
-                      placeholder="Search..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className={cn(
-                        'h-9 w-full rounded-lg pl-8 pr-3',
-                        'border border-white/10 bg-white/5',
-                        'text-sm text-white placeholder:text-white/30',
-                        'focus:border-orange-500/50 focus:outline-none'
-                      )}
-                      data-testid="search-input"
-                    />
-                  </div>
-
-                  {/* Segmented Filter */}
-                  <div
-                    className="flex rounded-lg bg-white/5 p-0.5"
-                    role="group"
-                    aria-label="Filter sessions"
-                  >
-                    {(
-                      [
-                        { key: 'all', symbol: '∞', count: sessions.length },
-                        { key: 'active', symbol: '●', count: statusCounts.active },
-                        { key: 'waiting', symbol: '⚡', count: statusCounts.waiting },
-                        { key: 'done', symbol: '✓', count: statusCounts.done },
-                      ] as const
-                    ).map((f) => (
-                      <button
-                        key={f.key}
-                        onClick={() => setFilter(f.key)}
-                        className={cn(
-                          'rounded-md px-2 py-1.5 text-xs font-medium transition-all',
-                          filter === f.key
-                            ? 'bg-white/10 text-white'
-                            : 'text-white/40 hover:text-white/60'
-                        )}
-                        data-testid={`filter-${f.key}`}
-                        aria-pressed={filter === f.key}
-                        title={`${f.key} (${f.count})`}
-                      >
-                        {f.symbol}
-                      </button>
-                    ))}
-                  </div>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+                  <input
+                    type="text"
+                    placeholder="Search sessions..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className={cn(
+                      'h-9 w-full rounded-lg pl-8 pr-3',
+                      'border border-white/10 bg-white/5',
+                      'text-sm text-white placeholder:text-white/30',
+                      'focus:border-orange-500/50 focus:outline-none'
+                    )}
+                    data-testid="search-input"
+                  />
                 </div>
               </div>
 

@@ -4,7 +4,6 @@ import {
   Monitor,
   Plus,
   Activity,
-  AlertCircle,
   Wifi,
   Maximize2,
   Minimize2,
@@ -19,7 +18,6 @@ import type { SelectedSession } from './types';
 interface HeaderProps {
   agentUrl: string;
   sessionCount: number;
-  needsAttention: number;
   selectedSession: SelectedSession | null;
   isFullscreen: boolean;
   onConnectionSettingsClick: () => void;
@@ -38,7 +36,6 @@ interface HeaderProps {
 export function Header({
   agentUrl,
   sessionCount,
-  needsAttention,
   selectedSession,
   isFullscreen,
   onConnectionSettingsClick,
@@ -71,10 +68,6 @@ export function Header({
                 aria-label="Open navigation menu"
               >
                 <Menu className="h-5 w-5" />
-                {/* Badge for attention needed */}
-                {needsAttention > 0 && (
-                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-orange-500" />
-                )}
               </button>
             )}
 
@@ -112,12 +105,6 @@ export function Header({
                 <Activity className="h-3 w-3 text-white/40" />
                 <span className="text-xs font-medium text-white/70">{sessionCount}</span>
               </div>
-              {needsAttention > 0 && (
-                <div className="flex items-center gap-1 rounded-full bg-orange-500/20 px-2 py-1">
-                  <AlertCircle className="h-3 w-3 text-orange-400" />
-                  <span className="text-xs font-medium text-orange-400">{needsAttention}</span>
-                </div>
-              )}
             </div>
           )}
 
@@ -137,17 +124,6 @@ export function Header({
                 <span className="font-medium text-white/80">{sessionCount}</span>
                 <span className="text-white/30">active sessions</span>
               </div>
-              {needsAttention > 0 && (
-                <>
-                  <div className="h-3 w-px bg-white/10" />
-                  <div className="flex items-center gap-2 text-xs">
-                    <AlertCircle className="h-3.5 w-3.5 text-orange-400" />
-                    <span className="font-medium text-orange-400">
-                      {needsAttention} action{needsAttention !== 1 ? 's' : ''} needed
-                    </span>
-                  </div>
-                </>
-              )}
             </div>
           )}
 

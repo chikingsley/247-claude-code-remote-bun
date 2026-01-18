@@ -1,6 +1,6 @@
 /**
- * WebSocket handlers for terminal connections and status subscriptions.
- * Simplified version without worktree or execution manager features.
+ * WebSocket handlers for terminal connections and sessions subscriptions.
+ * Simplified version without status tracking, worktree or execution manager features.
  */
 
 import { WebSocket } from 'ws';
@@ -8,6 +8,21 @@ import { execSync } from 'child_process';
 import { createTerminal } from './terminal.js';
 import { config } from './config.js';
 import * as sessionsDb from './db/sessions.js';
+import type { WSMessageToAgent, WSSessionInfo, WSSessionsMessageFromAgent } from '247-shared';
+import { getAgentVersion, needsUpdate } from './version.js';
+import { triggerUpdate, isUpdateInProgress } from './updater.js';
+
+// Connection tracking
+const activeConnections = new Map<string, Set<WebSocket>>();
+const sessionsSubscribers = new Set<WebSocket>();
+
+// Generate unique session name
+let sessionCounter = 0;
+function generateSessionName(project: string): string {
+  const timestamp = Date.now().toString(36);
+  const counter = (sessionCounter++).toString(36);
+  return `${project}--${timestamp}${counter}`;
+}
 
 /**
  * Check if a tmux session exists
@@ -20,22 +35,41 @@ function tmuxSessionExists(sessionName: string): boolean {
     return false;
   }
 }
-import {
-  tmuxSessionStatus,
-  activeConnections,
-  statusSubscribers,
-  generateSessionName,
-  broadcastStatusUpdate,
-} from './status.js';
-import type {
-  WSMessageToAgent,
-  SessionStatus,
-  AttentionReason,
-  WSSessionInfo,
-  WSStatusMessageFromAgent,
-} from '247-shared';
-import { getAgentVersion, needsUpdate } from './version.js';
-import { triggerUpdate, isUpdateInProgress } from './updater.js';
+
+/**
+ * Broadcast session removed event to all subscribers
+ */
+export function broadcastSessionRemoved(sessionName: string): void {
+  const message: WSSessionsMessageFromAgent = {
+    type: 'session-removed',
+    sessionName,
+  };
+  const payload = JSON.stringify(message);
+
+  for (const ws of sessionsSubscribers) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(payload);
+    }
+  }
+}
+
+/**
+ * Broadcast session archived event to all subscribers
+ */
+export function broadcastSessionArchived(sessionName: string, session: WSSessionInfo): void {
+  const message: WSSessionsMessageFromAgent = {
+    type: 'session-archived',
+    sessionName,
+    session,
+  };
+  const payload = JSON.stringify(message);
+
+  for (const ws of sessionsSubscribers) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(payload);
+    }
+  }
+}
 
 /**
  * Handle terminal WebSocket connections
@@ -61,18 +95,15 @@ export function handleTerminalConnection(ws: WebSocket, url: URL): void {
   console.log(`Project path: ${projectPath}`);
 
   // Buffer for messages received before async setup completes
-  // This prevents race condition where client sends messages before handler is registered
   const messageBuffer: Buffer[] = [];
   let setupComplete = false;
   let terminalRef: ReturnType<typeof createTerminal> | null = null;
 
   // Register message handler IMMEDIATELY (before any async code)
-  // This ensures no messages are lost during async initialization
   ws.on('message', (data) => {
     const msgStr = data.toString();
     console.log(`[Terminal] Received message for '${sessionName}': ${msgStr.substring(0, 100)}...`);
     if (!setupComplete || !terminalRef) {
-      // Buffer message for later processing
       console.log(`[Terminal] Buffering message (setup not complete)`);
       messageBuffer.push(data as Buffer);
       return;
@@ -110,7 +141,7 @@ export function handleTerminalConnection(ws: WebSocket, url: URL): void {
     let terminal;
     try {
       terminal = createTerminal(projectPath, sessionName, {});
-      terminalRef = terminal; // Store reference for early message handler
+      terminalRef = terminal;
     } catch (err) {
       console.error('Failed to create terminal:', err);
       ws.close(1011, 'Failed to create terminal');
@@ -139,49 +170,23 @@ export function handleTerminalConnection(ws: WebSocket, url: URL): void {
           console.error(`Failed to capture history for '${sessionName}':`, err);
         });
     } else {
-      // New session - register and broadcast
+      // New session - register in DB
       const now = Date.now();
-      let createdAt = now;
-
       try {
-        const dbSession = sessionsDb.upsertSession(sessionName, {
+        sessionsDb.upsertSession(sessionName, {
           project: project!,
-          status: 'init',
-          attentionReason: undefined,
           lastEvent: 'SessionCreated',
           lastActivity: now,
-          lastStatusChange: now,
         });
-        if (dbSession?.created_at) createdAt = dbSession.created_at;
       } catch (err) {
         console.error(`Failed to persist session '${sessionName}':`, err);
       }
-
-      tmuxSessionStatus.set(sessionName, {
-        status: 'init',
-        lastEvent: 'SessionCreated',
-        lastActivity: now,
-        lastStatusChange: now,
-        project: project!,
-      });
-
-      broadcastStatusUpdate({
-        name: sessionName,
-        project: project!,
-        status: 'init',
-        statusSource: 'hook',
-        lastEvent: 'SessionCreated',
-        lastStatusChange: now,
-        createdAt,
-        lastActivity: undefined,
-      });
     }
 
     // Forward terminal output
     terminal.onData((data: string) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(data);
-        // Log first 100 chars of significant output for debugging
         if (data.length > 10 && !data.startsWith('\x1b')) {
           console.log(
             `[Terminal] Sending ${data.length} bytes to client: ${data.substring(0, 100).replace(/\n/g, '\\n')}...`
@@ -210,7 +215,7 @@ export function handleTerminalConnection(ws: WebSocket, url: URL): void {
           console.error('Failed to parse buffered message:', err);
         }
       }
-      messageBuffer.length = 0; // Clear buffer
+      messageBuffer.length = 0;
     }
 
     ws.on('close', () => {
@@ -235,32 +240,37 @@ export function handleTerminalConnection(ws: WebSocket, url: URL): void {
 }
 
 /**
+ * Broadcast update-pending message to all sessions subscribers
+ */
+export function broadcastUpdatePending(targetVersion: string, message: string): void {
+  const msg: WSSessionsMessageFromAgent = {
+    type: 'update-pending',
+    targetVersion,
+    message,
+  };
+  const payload = JSON.stringify(msg);
+
+  for (const ws of sessionsSubscribers) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(payload);
+    }
+  }
+}
+
+/**
  * Handle individual terminal messages
  */
 function handleTerminalMessage(
   msg: WSMessageToAgent,
   terminal: ReturnType<typeof createTerminal>,
   ws: WebSocket,
-  sessionName: string,
-  project: string,
+  _sessionName: string,
+  _project: string,
   _projectPath: string
 ): void {
   switch (msg.type) {
     case 'input':
       terminal.write(msg.data);
-      if (msg.data.includes('\r') || msg.data.includes('\n')) {
-        const existing = tmuxSessionStatus.get(sessionName);
-        if (existing?.status === 'needs_attention' && existing?.attentionReason === 'input') {
-          const now = Date.now();
-          tmuxSessionStatus.set(sessionName, {
-            status: 'working',
-            lastEvent: 'UserInput',
-            lastActivity: now,
-            lastStatusChange: now,
-            project,
-          });
-        }
-      }
       break;
     case 'resize':
       terminal.resize(msg.cols, msg.rows);
@@ -287,11 +297,11 @@ function handleTerminalMessage(
 }
 
 /**
- * Handle status WebSocket connections (real-time session updates)
+ * Handle sessions WebSocket connections (real-time session list updates)
  */
-export function handleStatusConnection(ws: WebSocket, url?: URL): void {
-  console.log('[Status WS] New subscriber connected');
-  statusSubscribers.add(ws);
+export function handleSessionsConnection(ws: WebSocket, url?: URL): void {
+  console.log('[Sessions WS] New subscriber connected');
+  sessionsSubscribers.add(ws);
 
   // Extract web version from query params and check for updates
   const webVersion = url?.searchParams.get('v');
@@ -299,7 +309,7 @@ export function handleStatusConnection(ws: WebSocket, url?: URL): void {
 
   // Send agent version info to client
   if (ws.readyState === WebSocket.OPEN) {
-    const versionMessage: WSStatusMessageFromAgent = {
+    const versionMessage: WSSessionsMessageFromAgent = {
       type: 'version-info',
       agentVersion,
     };
@@ -307,7 +317,7 @@ export function handleStatusConnection(ws: WebSocket, url?: URL): void {
   }
 
   // Check if update needed (only upgrade, never downgrade)
-  // Skip auto-update in cloud/Docker environments - they get updated via new image deployments
+  // Skip auto-update in cloud/Docker environments
   const isCloudAgent = process.env.CLOUD_AGENT === 'true';
   if (
     webVersion &&
@@ -340,54 +350,38 @@ export function handleStatusConnection(ws: WebSocket, url?: URL): void {
         const [name, created] = line.split('|');
         const [project] = name.split('--');
 
-        let status: SessionStatus = 'init';
-        let attentionReason: AttentionReason | undefined;
-        let statusSource: 'hook' | 'tmux' = 'tmux';
-        let lastEvent: string | undefined;
-        let lastStatusChange: number | undefined;
-
-        const hookData = tmuxSessionStatus.get(name);
-        if (hookData) {
-          status = hookData.status;
-          attentionReason = hookData.attentionReason;
-          statusSource = 'hook';
-          lastEvent = hookData.lastEvent;
-          lastStatusChange = hookData.lastStatusChange;
-        }
+        // Get DB data if available
+        const dbSession = sessionsDb.getSession(name);
 
         sessions.push({
           name,
           project,
           createdAt: parseInt(created) * 1000,
-          status,
-          attentionReason,
-          statusSource,
-          lastActivity: hookData?.lastActivity,
-          lastEvent,
-          lastStatusChange,
+          lastActivity: dbSession?.last_activity,
+          lastEvent: dbSession?.last_event ?? undefined,
         });
       }
 
-      const message: WSStatusMessageFromAgent = { type: 'sessions-list', sessions };
+      const message: WSSessionsMessageFromAgent = { type: 'sessions-list', sessions };
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(message));
       }
     } catch (err) {
-      console.error('[Status WS] Failed to get initial sessions:', err);
+      console.error('[Sessions WS] Failed to get initial sessions:', err);
       if (ws.readyState === WebSocket.OPEN) {
-        const message: WSStatusMessageFromAgent = { type: 'sessions-list', sessions: [] };
+        const message: WSSessionsMessageFromAgent = { type: 'sessions-list', sessions: [] };
         ws.send(JSON.stringify(message));
       }
     }
   })();
 
   ws.on('close', () => {
-    statusSubscribers.delete(ws);
-    console.log(`[Status WS] Subscriber disconnected (remaining: ${statusSubscribers.size})`);
+    sessionsSubscribers.delete(ws);
+    console.log(`[Sessions WS] Subscriber disconnected (remaining: ${sessionsSubscribers.size})`);
   });
 
   ws.on('error', (err) => {
-    console.error('[Status WS] Error:', err);
-    statusSubscribers.delete(ws);
+    console.error('[Sessions WS] Error:', err);
+    sessionsSubscribers.delete(ws);
   });
 }

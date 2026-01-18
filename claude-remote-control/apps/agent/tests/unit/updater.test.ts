@@ -1,17 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { WebSocket } from 'ws';
 
 // Mock dependencies before importing
-vi.mock('fs', () => ({
-  writeFileSync: vi.fn(),
-}));
+vi.mock('fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('fs')>();
+  return {
+    ...actual,
+    writeFileSync: vi.fn(),
+  };
+});
 
-vi.mock('child_process', () => ({
-  spawn: vi.fn(() => ({
-    unref: vi.fn(),
-    pid: 12345,
-  })),
-}));
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('child_process')>();
+  return {
+    ...actual,
+    spawn: vi.fn(() => ({
+      unref: vi.fn(),
+      pid: 12345,
+    })),
+  };
+});
 
 vi.mock('../../src/logger.js', () => ({
   logger: {
@@ -23,8 +30,8 @@ vi.mock('../../src/logger.js', () => ({
   },
 }));
 
-vi.mock('../../src/status.js', () => ({
-  statusSubscribers: new Set(),
+vi.mock('../../src/websocket-handlers.js', () => ({
+  broadcastUpdatePending: vi.fn(),
 }));
 
 describe('Updater Module', () => {
@@ -63,20 +70,6 @@ describe('Updater Module', () => {
       );
 
       // Advance timer to trigger process.exit
-      vi.advanceTimersByTime(1100);
-    });
-
-    it('includes hooks update in script', async () => {
-      vi.useFakeTimers();
-      const { writeFileSync } = await import('fs');
-      const mockedWriteFileSync = vi.mocked(writeFileSync);
-
-      const { triggerUpdate } = await import('../../src/updater.js');
-      triggerUpdate('2.0.0');
-
-      const scriptContent = mockedWriteFileSync.mock.calls[0][1] as string;
-      expect(scriptContent).toContain('247 hooks update');
-
       vi.advanceTimersByTime(1100);
     });
 
@@ -181,56 +174,6 @@ describe('Updater Module', () => {
       );
 
       vi.advanceTimersByTime(1100);
-    });
-  });
-
-  describe('broadcast to subscribers', () => {
-    it('sends update-pending message to all subscribers', async () => {
-      vi.useFakeTimers();
-
-      // Get the mocked statusSubscribers
-      const { statusSubscribers } = await import('../../src/status.js');
-
-      // Create mock WebSocket
-      const mockWs = {
-        readyState: WebSocket.OPEN,
-        send: vi.fn(),
-      } as unknown as WebSocket;
-
-      statusSubscribers.add(mockWs);
-
-      const { triggerUpdate } = await import('../../src/updater.js');
-      triggerUpdate('2.5.0');
-
-      expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"type":"update-pending"'));
-      expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining('"targetVersion":"2.5.0"'));
-
-      vi.advanceTimersByTime(1100);
-
-      // Cleanup
-      statusSubscribers.delete(mockWs);
-    });
-
-    it('skips closed WebSocket connections', async () => {
-      vi.useFakeTimers();
-
-      const { statusSubscribers } = await import('../../src/status.js');
-
-      const closedWs = {
-        readyState: WebSocket.CLOSED,
-        send: vi.fn(),
-      } as unknown as WebSocket;
-
-      statusSubscribers.add(closedWs);
-
-      const { triggerUpdate } = await import('../../src/updater.js');
-      triggerUpdate('1.0.0');
-
-      expect(closedWs.send).not.toHaveBeenCalled();
-
-      vi.advanceTimersByTime(1100);
-
-      statusSubscribers.delete(closedWs);
     });
   });
 

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Plus, Search, Zap, Keyboard, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { SessionCard } from './SessionCard';
-import { type SessionInfo } from '@/lib/notifications';
+import { type SessionInfo } from '@/lib/types';
 import { cn, buildApiUrl } from '@/lib/utils';
 
 interface SessionSidebarProps {
@@ -20,8 +20,6 @@ interface SessionSidebarProps {
   agentUrl: string;
 }
 
-type FilterType = 'all' | 'active' | 'waiting' | 'done';
-
 export function SessionSidebar({
   sessions,
   projects: _projects,
@@ -35,7 +33,6 @@ export function SessionSidebar({
 }: SessionSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<FilterType>('all');
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Kill session handler
@@ -99,39 +96,9 @@ export function SessionSidebar({
       );
     }
 
-    // Apply status filter
-    if (filter !== 'all') {
-      result = result.filter((s) => {
-        if (filter === 'active') return s.status === 'working' || s.status === 'init';
-        if (filter === 'waiting')
-          return s.status === 'needs_attention' && s.attentionReason !== 'task_complete';
-        if (filter === 'done')
-          return (
-            s.status === 'idle' ||
-            (s.status === 'needs_attention' && s.attentionReason === 'task_complete')
-          );
-        return true;
-      });
-    }
-
     // Sort by createdAt only (newest first) - stable chronological order
     return result.sort((a, b) => b.createdAt - a.createdAt);
-  }, [sessions, searchQuery, filter]);
-
-  // Session counts by status
-  const statusCounts = useMemo(() => {
-    return sessions.reduce(
-      (acc, s) => {
-        if (s.status === 'working' || s.status === 'init') acc.active++;
-        else if (s.status === 'needs_attention') {
-          if (s.attentionReason === 'task_complete') acc.done++;
-          else acc.waiting++;
-        } else acc.done++;
-        return acc;
-      },
-      { active: 0, waiting: 0, done: 0 }
-    );
-  }, [sessions]);
+  }, [sessions, searchQuery]);
 
   // Keyboard navigation
   const handleKeyboard = useCallback(
@@ -192,13 +159,6 @@ export function SessionSidebar({
     return () => window.removeEventListener('keydown', handleKeyboard);
   }, [handleKeyboard]);
 
-  const filters: { key: FilterType; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: sessions.length },
-    { key: 'active', label: 'Active', count: statusCounts.active },
-    { key: 'waiting', label: 'Needs input', count: statusCounts.waiting },
-    { key: 'done', label: 'Done', count: statusCounts.done },
-  ];
-
   return (
     <>
       <motion.aside
@@ -236,16 +196,15 @@ export function SessionSidebar({
           </button>
         </div>
 
-        {/* Search & Filters */}
+        {/* Search */}
         <AnimatePresence>
           {!isCollapsed && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="space-y-3 border-b border-white/5 p-3"
+              className="border-b border-white/5 p-3"
             >
-              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
                 <input
@@ -255,25 +214,6 @@ export function SessionSidebar({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm text-white transition-all placeholder:text-white/30 focus:border-orange-500/50 focus:outline-none focus:ring-1 focus:ring-orange-500/20"
                 />
-              </div>
-
-              {/* Filter pills */}
-              <div className="flex flex-wrap gap-1.5">
-                {filters.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setFilter(f.key)}
-                    className={cn(
-                      'rounded-full px-2.5 py-1 text-xs font-medium transition-all',
-                      filter === f.key
-                        ? 'border border-orange-500/30 bg-orange-500/20 text-orange-300'
-                        : 'border border-transparent bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
-                    )}
-                  >
-                    {f.label}
-                    {f.count > 0 && <span className="ml-1.5 opacity-60">{f.count}</span>}
-                  </button>
-                ))}
               </div>
             </motion.div>
           )}
@@ -334,8 +274,8 @@ export function SessionSidebar({
               </div>
               <p className="text-sm text-white/40">No sessions found</p>
               <p className="mt-1 text-xs text-white/20">
-                {searchQuery || filter !== 'all'
-                  ? 'Try adjusting your filters'
+                {searchQuery
+                  ? 'Try a different search term'
                   : 'Create a new session to get started'}
               </p>
             </div>

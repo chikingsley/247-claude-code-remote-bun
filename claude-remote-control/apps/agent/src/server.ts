@@ -7,23 +7,32 @@ import express from 'express';
 import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { createServer as createHttpServer } from 'http';
+import { execSync } from 'child_process';
 import { initDatabase, closeDatabase } from './db/index.js';
 import * as sessionsDb from './db/sessions.js';
 
 // Routes
-import {
-  createProjectRoutes,
-  createSessionRoutes,
-  createAttentionRoutes,
-  createPairRoutes,
-} from './routes/index.js';
+import { createProjectRoutes, createSessionRoutes, createPairRoutes } from './routes/index.js';
 
-// Hook setup
-import { ensureHooksConfigured } from './setup-hooks.js';
+// WebSocket
+import { handleTerminalConnection, handleSessionsConnection } from './websocket-handlers.js';
 
-// Status and WebSocket
-import { tmuxSessionStatus, cleanupStatusMaps, getActiveTmuxSessions } from './status.js';
-import { handleTerminalConnection, handleStatusConnection } from './websocket-handlers.js';
+// Utility to get active tmux sessions
+function getActiveTmuxSessions(): Set<string> {
+  try {
+    const output = execSync('tmux list-sessions -F "#{session_name}" 2>/dev/null', {
+      encoding: 'utf-8',
+    });
+    return new Set(
+      output
+        .trim()
+        .split('\n')
+        .filter((s: string) => s)
+    );
+  } catch {
+    return new Set();
+  }
+}
 
 export async function createServer() {
   const app = express();
@@ -40,15 +49,9 @@ export async function createServer() {
   const activeTmuxSessions = getActiveTmuxSessions();
   sessionsDb.reconcileWithTmux(activeTmuxSessions);
 
-  // Populate in-memory Map from database
+  // Load existing sessions
   const dbSessions = sessionsDb.getAllSessions();
-  for (const session of dbSessions) {
-    tmuxSessionStatus.set(session.name, sessionsDb.toHookStatus(session));
-  }
   console.log(`[DB] Loaded ${dbSessions.length} sessions from database`);
-
-  // Configure attention hook for Claude Code integration
-  ensureHooksConfigured();
 
   // Health check endpoint for container orchestration
   app.get('/health', (_req, res) => {
@@ -58,7 +61,6 @@ export async function createServer() {
   // Mount API routes
   app.use('/api', createProjectRoutes());
   app.use('/api/sessions', createSessionRoutes());
-  app.use('/api/attention', createAttentionRoutes());
 
   // Mount pairing routes (both at /pair and /api/pair for flexibility)
   app.use('/pair', createPairRoutes());
@@ -75,18 +77,15 @@ export async function createServer() {
       return;
     }
 
-    if (url.pathname === '/status') {
+    if (url.pathname === '/sessions') {
       wss.handleUpgrade(req, socket, head, (ws) => {
-        handleStatusConnection(ws, url);
+        handleSessionsConnection(ws, url);
       });
       return;
     }
 
     socket.destroy();
   });
-
-  // Periodic cleanup
-  setInterval(cleanupStatusMaps, 60 * 60 * 1000);
 
   // Graceful shutdown
   const shutdown = () => {

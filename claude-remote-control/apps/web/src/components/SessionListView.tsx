@@ -7,8 +7,6 @@ import { GlobalSessionCard } from './GlobalSessionCard';
 import { type SessionWithMachine } from '@/contexts/SessionPollingContext';
 import { cn } from '@/lib/utils';
 
-export type StatusFilter = 'all' | 'active' | 'waiting' | 'done';
-
 interface SessionListViewProps {
   sessions: SessionWithMachine[];
   onSelectSession: (machineId: string, sessionName: string) => void;
@@ -16,7 +14,6 @@ interface SessionListViewProps {
 
 export function SessionListView({ sessions, onSelectSession }: SessionListViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [projectFilter, setProjectFilter] = useState<string>('');
   const [machineFilter, setMachineFilter] = useState<string>('');
 
@@ -49,21 +46,6 @@ export function SessionListView({ sessions, onSelectSession }: SessionListViewPr
       );
     }
 
-    // Apply status filter
-    if (statusFilter !== 'all') {
-      result = result.filter((s) => {
-        if (statusFilter === 'active') return s.status === 'working' || s.status === 'init';
-        if (statusFilter === 'waiting')
-          return s.status === 'needs_attention' && s.attentionReason !== 'task_complete';
-        if (statusFilter === 'done')
-          return (
-            s.status === 'idle' ||
-            (s.status === 'needs_attention' && s.attentionReason === 'task_complete')
-          );
-        return true;
-      });
-    }
-
     // Apply project filter
     if (projectFilter) {
       result = result.filter((s) => s.project === projectFilter);
@@ -76,29 +58,7 @@ export function SessionListView({ sessions, onSelectSession }: SessionListViewPr
 
     // Sort by createdAt only (newest first) - stable chronological order
     return result.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [sessions, searchQuery, statusFilter, projectFilter, machineFilter]);
-
-  // Session counts by status
-  const statusCounts = useMemo(() => {
-    return sessions.reduce(
-      (acc, s) => {
-        if (s.status === 'working' || s.status === 'init') acc.active++;
-        else if (s.status === 'needs_attention') {
-          if (s.attentionReason === 'task_complete') acc.done++;
-          else acc.waiting++;
-        } else acc.done++;
-        return acc;
-      },
-      { active: 0, waiting: 0, done: 0 }
-    );
-  }, [sessions]);
-
-  const statusFilters: { key: StatusFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: sessions.length },
-    { key: 'active', label: 'Active', count: statusCounts.active },
-    { key: 'waiting', label: 'Needs input', count: statusCounts.waiting },
-    { key: 'done', label: 'Done', count: statusCounts.done },
-  ];
+  }, [sessions, searchQuery, projectFilter, machineFilter]);
 
   return (
     <div className="space-y-4">
@@ -167,23 +127,9 @@ export function SessionListView({ sessions, onSelectSession }: SessionListViewPr
         )}
       </div>
 
-      {/* Status Filter Pills */}
-      <div className="flex flex-wrap gap-2">
-        {statusFilters.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setStatusFilter(f.key)}
-            className={cn(
-              'rounded-full px-3 py-1.5 text-sm font-medium transition-all',
-              statusFilter === f.key
-                ? 'border border-orange-500/30 bg-orange-500/20 text-orange-300'
-                : 'border border-transparent bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
-            )}
-          >
-            {f.label}
-            {f.count > 0 && <span className="ml-1.5 opacity-60">{f.count}</span>}
-          </button>
-        ))}
+      {/* Session count */}
+      <div className="text-sm text-white/40">
+        {sessions.length} session{sessions.length !== 1 ? 's' : ''}
       </div>
 
       {/* Sessions List */}
@@ -213,7 +159,7 @@ export function SessionListView({ sessions, onSelectSession }: SessionListViewPr
             </div>
             <h3 className="mb-2 text-lg font-medium text-white/80">No sessions found</h3>
             <p className="text-sm text-white/40">
-              {searchQuery || statusFilter !== 'all' || projectFilter || machineFilter
+              {searchQuery || projectFilter || machineFilter
                 ? 'Try adjusting your filters'
                 : 'Start a new session to get started'}
             </p>

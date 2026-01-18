@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /**
  * Get the home directory, allowing override via AGENT_247_HOME for E2E testing.
  * This enables running tests in isolated temporary directories without affecting
- * the real user's configuration, hooks, or system services.
+ * the real user's configuration or system services.
  */
 export function getTestableHomedir(): string {
   return process.env.AGENT_247_HOME || homedir();
@@ -20,9 +20,6 @@ export interface AgentPaths {
 
   /** Where the agent server code is located */
   agentRoot: string;
-
-  /** Where old hooks were installed (for cleanup) */
-  hooksDestination: string;
 
   /** Configuration directory (~/.247/) */
   configDir: string;
@@ -87,7 +84,6 @@ export function getAgentPaths(): AgentPaths {
   cachedPaths = {
     cliRoot,
     agentRoot,
-    hooksDestination: join(home, '.claude-plugins', '247-hooks'),
     configDir,
     configPath: join(configDir, 'config.json'),
     dataDir: join(configDir, 'data'),

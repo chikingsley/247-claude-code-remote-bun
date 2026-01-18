@@ -3,7 +3,6 @@ import chalk from 'chalk';
 import { loadConfig, configExists } from '../lib/config.js';
 import { getAgentPaths } from '../lib/paths.js';
 import { isAgentRunning, getAgentHealth } from '../lib/process.js';
-import { getHooksStatus } from '../hooks/installer.js';
 
 export const statusCommand = new Command('status')
   .description('Show agent status')
@@ -52,19 +51,6 @@ export const statusCommand = new Command('status')
     console.log(`  Port: ${config.agent.port}`);
     console.log(`  Projects: ${config.projects.basePath}`);
     console.log(`  Config: ${paths.configPath}`);
-
-    console.log();
-
-    // Status tracking
-    console.log(chalk.dim('Status Tracking:'));
-    console.log(`  ${chalk.green('✓')} Using statusLine API (auto-configured by agent)`);
-
-    // Check for legacy hooks
-    const hooks = getHooksStatus();
-    if (hooks.installed) {
-      console.log(`  ${chalk.yellow('!')} Legacy hooks still installed at ${hooks.path}`);
-      console.log(chalk.dim('  Run "247 hooks uninstall" to clean up'));
-    }
 
     console.log();
   });

@@ -35,7 +35,6 @@ describe('Agent Paths', () => {
       expect(paths).toBeDefined();
       expect(typeof paths.cliRoot).toBe('string');
       expect(typeof paths.agentRoot).toBe('string');
-      expect(typeof paths.hooksDestination).toBe('string'); // For legacy cleanup
       expect(typeof paths.configDir).toBe('string');
       expect(typeof paths.configPath).toBe('string');
       expect(typeof paths.dataDir).toBe('string');
@@ -84,17 +83,6 @@ describe('Agent Paths', () => {
       const paths = getAgentPaths();
 
       expect(paths.pidFile).toBe(`${paths.configDir}/agent.pid`);
-    });
-
-    it('hooksDestination is in .claude-plugins', async () => {
-      const { existsSync } = await import('fs');
-      vi.mocked(existsSync).mockReturnValue(false);
-
-      const { getAgentPaths } = await import('../../src/lib/paths.js');
-      const paths = getAgentPaths();
-
-      expect(paths.hooksDestination).toContain('.claude-plugins');
-      expect(paths.hooksDestination).toContain('247-hooks');
     });
 
     it('nodePath is the current process executable', async () => {

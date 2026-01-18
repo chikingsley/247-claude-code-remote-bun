@@ -39,7 +39,6 @@ export function HomeContent() {
     isFullscreen,
     setIsFullscreen,
     allSessions,
-    needsAttention,
     currentMachine,
     machines,
     getArchivedSessions,
@@ -182,7 +181,6 @@ export function HomeContent() {
         <MultiAgentHeader
           agents={connectedAgents}
           totalSessionCount={allSessions.length}
-          needsAttention={needsAttention}
           onAddAgent={() => setUnifiedManagerOpen(true)}
           onDisconnectAgent={handleConnectionRemoved}
           onNewSession={() => setNewSessionOpen(true)}

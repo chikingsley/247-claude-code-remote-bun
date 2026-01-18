@@ -7,10 +7,8 @@
 import { spawn } from 'child_process';
 import { writeFileSync } from 'fs';
 import { platform } from 'os';
-import { WebSocket } from 'ws';
 import { logger } from './logger.js';
-import { statusSubscribers } from './status.js';
-import type { WSStatusMessageFromAgent } from '247-shared';
+import { broadcastUpdatePending } from './websocket-handlers.js';
 
 const UPDATE_SCRIPT = '/tmp/247-update.sh';
 const PACKAGE_NAME = '247-cli';
@@ -25,35 +23,11 @@ export function isUpdateInProgress(): boolean {
 }
 
 /**
- * Broadcast update-pending message to all connected clients.
- */
-function broadcastUpdatePending(targetVersion: string): void {
-  const message: WSStatusMessageFromAgent = {
-    type: 'update-pending',
-    targetVersion,
-    message: `Agent updating to version ${targetVersion}...`,
-  };
-  const messageStr = JSON.stringify(message);
-
-  for (const ws of statusSubscribers) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(messageStr);
-    }
-  }
-
-  logger.main.info(
-    { targetVersion, subscribers: statusSubscribers.size },
-    'Broadcast update-pending to all clients'
-  );
-}
-
-/**
  * Trigger an auto-update to the specified version.
  * Creates a detached shell script that:
  * 1. Waits for the agent to exit
  * 2. Runs npm install -g
- * 3. Updates hooks
- * 4. Restarts the agent via service manager
+ * 3. Restarts the agent via service manager
  */
 export function triggerUpdate(targetVersion: string): void {
   if (updateInProgress) {
@@ -65,7 +39,7 @@ export function triggerUpdate(targetVersion: string): void {
   logger.main.info({ targetVersion }, 'Auto-update triggered');
 
   // Broadcast to all connected clients
-  broadcastUpdatePending(targetVersion);
+  broadcastUpdatePending(targetVersion, `Agent updating to version ${targetVersion}...`);
 
   // Determine restart command based on platform
   const os = platform();
@@ -107,9 +81,6 @@ if [ -f "$CLI_BIN" ]; then
   chmod +x "$CLI_BIN"
   echo "[247] Fixed executable permissions"
 fi
-
-echo "[247] Updating hooks..."
-247 hooks update || true
 
 echo "[247] Restarting agent..."
 ${restartCommand}

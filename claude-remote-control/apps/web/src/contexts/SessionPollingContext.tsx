@@ -9,24 +9,9 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import {
-  type SessionInfo,
-  requestNotificationPermission,
-  showSessionNotification,
-} from '@/lib/notifications';
+import { SessionInfo, SessionWithMachine } from '@/lib/types';
 import { buildWebSocketUrl, buildApiUrl } from '@/lib/utils';
-import type { WSStatusMessageFromAgent, AttentionReason } from '247-shared';
-
-// SSE event types from /api/events
-interface SSEAttentionEvent {
-  type: 'attention';
-  sessionName: string;
-  project: string;
-  reason: AttentionReason;
-  timestamp: number;
-  machineId?: string;
-  machineName?: string;
-}
+import type { WSSessionsMessageFromAgent } from '247-shared';
 
 export interface Machine {
   id: string;
@@ -46,12 +31,6 @@ interface MachineSessionData {
   lastFetch: number;
   error: string | null;
   wsConnected: boolean;
-}
-
-export interface SessionWithMachine extends SessionInfo {
-  machineId: string;
-  machineName: string;
-  agentUrl: string;
 }
 
 interface SessionPollingContextValue {
@@ -92,7 +71,6 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   );
   const [loadingMachines, setLoadingMachines] = useState<Set<string>>(new Set());
 
-  const prevSessionsRef = useRef<Map<string, SessionInfo[]>>(new Map());
   const wsConnectionsRef = useRef<Map<string, WebSocket>>(new Map());
   const wsConnectedRef = useRef<Set<string>>(new Set()); // Track connected machines via ref for polling
   const wsReconnectDelaysRef = useRef<Map<string, number>>(new Map());
@@ -108,77 +86,6 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
       wsReconnectTimeoutsRef.current.clear();
     };
   }, []);
-
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
-
-  // Subscribe to SSE attention events from Next.js
-  useEffect(() => {
-    let eventSource: EventSource | null = null;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
-
-    const connect = () => {
-      try {
-        eventSource = new EventSource('/api/events');
-
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-
-            if (data.type === 'attention') {
-              const attentionEvent = data as SSEAttentionEvent;
-              console.log('[SSE] Attention event:', attentionEvent);
-
-              // Find the machine for this event
-              const machine = machines.find(
-                (m) => m.id === attentionEvent.machineId || m.name === attentionEvent.machineName
-              );
-
-              if (machine) {
-                // Create a minimal SessionInfo for notification
-                const sessionInfo: SessionInfo = {
-                  name: attentionEvent.sessionName,
-                  project: attentionEvent.project,
-                  createdAt: attentionEvent.timestamp,
-                  status: 'needs_attention',
-                  attentionReason: attentionEvent.reason,
-                };
-
-                showSessionNotification(machine.id, machine.name, sessionInfo);
-              } else {
-                console.log('[SSE] Machine not found for attention event:', attentionEvent);
-              }
-            }
-          } catch (err) {
-            console.error('[SSE] Failed to parse event:', err);
-          }
-        };
-
-        eventSource.onerror = () => {
-          console.log('[SSE] Connection error, reconnecting...');
-          eventSource?.close();
-
-          // Reconnect after 5 seconds
-          reconnectTimeout = setTimeout(connect, 5000);
-        };
-
-        eventSource.onopen = () => {
-          console.log('[SSE] Connected to attention events');
-        };
-      } catch (err) {
-        console.error('[SSE] Failed to connect:', err);
-        reconnectTimeout = setTimeout(connect, 5000);
-      }
-    };
-
-    connect();
-
-    return () => {
-      eventSource?.close();
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-    };
-  }, [machines]);
 
   // NOTE: Machines are now managed by the parent component (from localStorage)
   // We no longer fetch from /api/machines - the dashboard is stateless!
@@ -231,69 +138,6 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
       }
     },
     []
-  );
-
-  const checkForNotifications = useCallback(
-    (machineId: string, machineName: string, newSessions: SessionInfo[]) => {
-      const prevSessions = prevSessionsRef.current.get(machineId) || [];
-
-      for (const session of newSessions) {
-        const prevSession = prevSessions.find((s) => s.name === session.name);
-        // Only notify when status is 'needs_attention'
-        const isActionable = session.status === 'needs_attention';
-
-        const isNewEvent =
-          !prevSession ||
-          (session.lastStatusChange !== undefined &&
-            session.lastStatusChange !== prevSession.lastStatusChange);
-
-        if (isNewEvent && isActionable) {
-          console.log(
-            '[Notifications] TRIGGERING notification for:',
-            session.name,
-            session.status,
-            session.attentionReason
-          );
-          showSessionNotification(machineId, machineName, session);
-        }
-      }
-
-      prevSessionsRef.current.set(machineId, [...newSessions]);
-    },
-    []
-  );
-
-  // Update a single session from WebSocket
-  const updateSingleSession = useCallback(
-    (machineId: string, machineName: string, session: SessionInfo) => {
-      setSessionsByMachine((prev) => {
-        const next = new Map(prev);
-        const existingData = next.get(machineId);
-
-        if (existingData) {
-          const sessionIndex = existingData.sessions.findIndex((s) => s.name === session.name);
-          const updatedSessions = [...existingData.sessions];
-
-          if (sessionIndex >= 0) {
-            updatedSessions[sessionIndex] = session;
-          } else {
-            updatedSessions.push(session);
-          }
-
-          next.set(machineId, {
-            ...existingData,
-            sessions: updatedSessions,
-            lastFetch: Date.now(),
-          });
-
-          // Check for notifications
-          checkForNotifications(machineId, machineName, [session]);
-        }
-
-        return next;
-      });
-    },
-    [checkForNotifications]
   );
 
   // Remove a session from WebSocket
@@ -393,7 +237,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
       const agentUrl = machine.config?.agentUrl || 'localhost:4678';
       // Include app version in WebSocket URL for auto-update detection
       const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || '0.0.0';
-      const wsUrl = buildWebSocketUrl(agentUrl, `/status?v=${encodeURIComponent(appVersion)}`);
+      const wsUrl = buildWebSocketUrl(agentUrl, `/sessions?v=${encodeURIComponent(appVersion)}`);
 
       // Close existing connection if any
       const existingWs = wsConnectionsRef.current.get(machine.id);
@@ -435,7 +279,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
         ws.onmessage = (event) => {
           try {
-            const msg: WSStatusMessageFromAgent = JSON.parse(event.data);
+            const msg: WSSessionsMessageFromAgent = JSON.parse(event.data);
 
             switch (msg.type) {
               case 'sessions-list':
@@ -453,13 +297,6 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                   });
                   return next;
                 });
-                // Update prev sessions ref for notification tracking
-                prevSessionsRef.current.set(machine.id, [...msg.sessions]);
-                break;
-
-              case 'status-update':
-                console.log(`[WS] Status update: ${msg.session.name} → ${msg.session.status}`);
-                updateSingleSession(machine.id, machine.name, msg.session);
                 break;
 
               case 'session-removed':
@@ -526,7 +363,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
         console.error(`[WS] Failed to create WebSocket for ${machine.name}:`, err);
       }
     },
-    [machines, updateSingleSession, removeSession, archiveSession]
+    [machines, removeSession, archiveSession]
   );
 
   // Manage WebSocket connections based on online machines
@@ -587,10 +424,6 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
     if (onlineMachines.length === 0) return;
 
-    // We now allow polling even if WS is connected as a fallback/safety net
-    // The frequency is low (30s) so it won't cause load issues
-    // const machinesToPoll = onlineMachines.filter((m) => !wsConnectedRef.current.has(m.id));
-
     console.log('[Polling] HTTP polling', onlineMachines.length, 'machines');
 
     const results = await Promise.all(
@@ -601,15 +434,10 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
       const next = new Map(prev);
       for (const result of results) {
         next.set(result.machineId, result);
-
-        const machine = machines.find((m) => m.id === result.machineId);
-        if (machine && result.sessions.length > 0) {
-          checkForNotifications(result.machineId, machine.name, result.sessions);
-        }
       }
       return next;
     });
-  }, [machines, fetchSessionsForMachine, checkForNotifications]);
+  }, [machines, fetchSessionsForMachine]);
 
   const refreshMachine = useCallback(
     async (machineId: string) => {
@@ -626,15 +454,13 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
-      checkForNotifications(machineId, machine.name, result.sessions);
-
       setLoadingMachines((prev) => {
         const next = new Set(prev);
         next.delete(machineId);
         return next;
       });
     },
-    [machines, fetchSessionsForMachine, checkForNotifications]
+    [machines, fetchSessionsForMachine]
   );
 
   // Fallback polling interval
@@ -647,7 +473,6 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   }, [pollAllMachines, machines.length]);
 
   // Get all sessions across all machines, flattened with machine context
-  // Note: No sorting here - let consuming components handle sorting consistently
   const getAllSessions = useCallback((): SessionWithMachine[] => {
     const allSessions: SessionWithMachine[] = [];
     for (const [, data] of sessionsByMachine) {
@@ -713,3 +538,6 @@ export function useSessionPolling() {
   }
   return context;
 }
+
+// Re-export types for convenience
+export type { SessionInfo, SessionWithMachine };

@@ -10,7 +10,6 @@ import { KeybarToggleButton } from './KeybarToggleButton';
 import { useTerminalConnection, useTerminalSearch } from './hooks';
 import { useKeybarVisibility } from '@/hooks/useKeybarVisibility';
 import { MinimalSessionHeader } from '@/components/MinimalSessionHeader';
-import type { SessionStatus } from '@/components/ui/status-badge';
 
 interface TerminalProps {
   agentUrl: string;
@@ -20,9 +19,6 @@ interface TerminalProps {
   planningProjectId?: string;
   onConnectionChange?: (connected: boolean) => void;
   onSessionCreated?: (sessionName: string) => void;
-  claudeStatus?: 'init' | 'working' | 'needs_attention' | 'idle';
-  /** Session status for status indicator */
-  status?: SessionStatus;
   /** Callback when menu button is clicked (opens sidebar) */
   onMenuClick: () => void;
   /** Mobile mode for responsive styling and smaller font */
@@ -30,7 +26,6 @@ interface TerminalProps {
   // StatusLine metrics
   model?: string;
   costUsd?: number;
-  contextUsage?: number;
 }
 
 export function Terminal({
@@ -41,13 +36,10 @@ export function Terminal({
   planningProjectId,
   onConnectionChange,
   onSessionCreated,
-  claudeStatus,
-  status,
   onMenuClick,
   isMobile = false,
   model,
   costUsd,
-  contextUsage,
 }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
@@ -118,12 +110,10 @@ export function Terminal({
     <div className="relative flex w-full flex-1 flex-col overflow-hidden">
       <MinimalSessionHeader
         sessionName={effectiveSessionName}
-        status={status}
         connectionState={connectionState}
         connected={connected}
         copied={copied}
         searchVisible={searchVisible}
-        claudeStatus={claudeStatus}
         isMobile={isMobile}
         onMenuClick={onMenuClick}
         onStartClaude={startClaude}
@@ -131,7 +121,6 @@ export function Terminal({
         onToggleSearch={toggleSearch}
         model={model}
         costUsd={costUsd}
-        contextUsage={contextUsage}
       />
 
       <SearchBar

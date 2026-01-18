@@ -40,11 +40,6 @@ vi.mock('../../../src/lib/process.js', () => ({
   getAgentHealth: vi.fn(),
 }));
 
-// Mock hooks installer
-vi.mock('../../../src/hooks/installer.js', () => ({
-  getHooksStatus: vi.fn(),
-}));
-
 // Mock service manager
 vi.mock('../../../src/service/index.js', () => ({
   createServiceManager: vi.fn(),
@@ -107,7 +102,6 @@ describe('Doctor Command', () => {
       await import('../../../src/lib/prerequisites.js');
     const { configExists, loadConfig } = await import('../../../src/lib/config.js');
     const { isAgentRunning, getAgentHealth } = await import('../../../src/lib/process.js');
-    const { getHooksStatus } = await import('../../../src/hooks/installer.js');
     const { createServiceManager } = await import('../../../src/service/index.js');
     const { getAgentPaths } = await import('../../../src/lib/paths.js');
     const { existsSync } = await import('fs');
@@ -142,12 +136,6 @@ describe('Doctor Command', () => {
       editor: { enabled: false },
     } as any);
 
-    vi.mocked(getHooksStatus).mockReturnValue({
-      installed: false, // No legacy hooks = pass status
-      path: '',
-      isSymlink: false,
-    });
-
     vi.mocked(isAgentRunning).mockReturnValue({ running: true, pid: 12345 });
     vi.mocked(getAgentHealth).mockResolvedValue({ healthy: true, sessions: 2 });
 
@@ -180,8 +168,6 @@ describe('Doctor Command', () => {
       vi.mocked(configExists).mockReturnValue(overrides.configExists);
     if (overrides.loadConfig !== undefined)
       vi.mocked(loadConfig).mockReturnValue(overrides.loadConfig);
-    if (overrides.getHooksStatus)
-      vi.mocked(getHooksStatus).mockReturnValue(overrides.getHooksStatus);
     if (overrides.isAgentRunning)
       vi.mocked(isAgentRunning).mockReturnValue(overrides.isAgentRunning);
     if (overrides.getAgentHealth)
@@ -294,38 +280,6 @@ describe('Doctor Command', () => {
     expect(consoleLogs.some((log) => log.includes('invalid'))).toBe(true);
   });
 
-  it('shows statusLine as status tracking method when no legacy hooks', async () => {
-    await setupAllMocks({
-      getHooksStatus: {
-        installed: false,
-        path: '',
-        isSymlink: false,
-      },
-    });
-
-    const { doctorCommand } = await import('../../../src/commands/doctor.js');
-    await doctorCommand.parseAsync(['node', 'doctor']);
-
-    expect(consoleLogs.some((log) => log.includes('Status tracking'))).toBe(true);
-    expect(consoleLogs.some((log) => log.includes('statusLine'))).toBe(true);
-  });
-
-  it('shows legacy hooks warning when old hooks still installed', async () => {
-    await setupAllMocks({
-      getHooksStatus: {
-        installed: true,
-        path: '/test/hooks',
-        isSymlink: false,
-      },
-    });
-
-    const { doctorCommand } = await import('../../../src/commands/doctor.js');
-    await doctorCommand.parseAsync(['node', 'doctor']);
-
-    expect(consoleLogs.some((log) => log.includes('Legacy hooks'))).toBe(true);
-    expect(consoleLogs.some((log) => log.includes('247 hooks uninstall'))).toBe(true);
-  });
-
   it('shows agent not running warning', async () => {
     await setupAllMocks({
       isAgentRunning: { running: false },
@@ -431,11 +385,6 @@ describe('Doctor Command', () => {
 
   it('shows warnings message when only warnings exist', async () => {
     await setupAllMocks({
-      getHooksStatus: {
-        installed: true, // Legacy hooks warning
-        path: '/test/hooks',
-        isSymlink: false,
-      },
       isAgentRunning: { running: false },
     });
 

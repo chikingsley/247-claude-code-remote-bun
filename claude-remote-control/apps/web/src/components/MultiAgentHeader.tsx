@@ -9,7 +9,6 @@ import {
   Plus,
   X,
   Activity,
-  AlertCircle,
   ChevronDown,
   Zap,
   Wifi,
@@ -38,7 +37,6 @@ export interface ConnectedAgent {
 interface MultiAgentHeaderProps {
   agents: ConnectedAgent[];
   totalSessionCount: number;
-  needsAttention: number;
   onAddAgent: () => void;
   onDisconnectAgent: (id: string) => void;
   onSelectAgent?: (id: string) => void;
@@ -554,7 +552,6 @@ function AgentsPanel({
 export function MultiAgentHeader({
   agents,
   totalSessionCount,
-  needsAttention,
   onAddAgent,
   onDisconnectAgent,
   onNewSession,
@@ -703,18 +700,6 @@ export function MultiAgentHeader({
                 <span className="font-medium text-white/80">{totalSessionCount}</span>
                 <span className="text-white/30">sessions</span>
               </div>
-              {needsAttention > 0 && (
-                <>
-                  <div className="h-3 w-px bg-white/10" />
-                  <div className="flex items-center gap-2 text-xs">
-                    <AlertCircle className="h-3.5 w-3.5 text-orange-400" />
-                    <span className="font-medium text-orange-400">{needsAttention}</span>
-                    <span className="text-orange-400/60">
-                      action{needsAttention !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </>
-              )}
             </div>
           )}
 
@@ -725,12 +710,6 @@ export function MultiAgentHeader({
                 <Activity className="h-3 w-3 text-white/40" />
                 <span className="text-xs font-medium text-white/70">{totalSessionCount}</span>
               </div>
-              {needsAttention > 0 && (
-                <div className="flex items-center gap-1 rounded-full bg-orange-500/20 px-2 py-1">
-                  <AlertCircle className="h-3 w-3 text-orange-400" />
-                  <span className="text-xs font-medium text-orange-400">{needsAttention}</span>
-                </div>
-              )}
             </div>
           )}
 

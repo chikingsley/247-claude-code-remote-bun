@@ -4,9 +4,9 @@
  */
 
 import { Router } from 'express';
-import type { SessionStatus, AttentionReason, WSSessionInfo } from '247-shared';
-import { tmuxSessionStatus, broadcastSessionRemoved, broadcastSessionArchived } from '../status.js';
+import type { WSSessionInfo } from '247-shared';
 import * as sessionsDb from '../db/sessions.js';
+import { broadcastSessionRemoved, broadcastSessionArchived } from '../websocket-handlers.js';
 
 export function createSessionRoutes(): Router {
   const router = Router();
@@ -97,20 +97,10 @@ export function createSessionRoutes(): Router {
         await execAsync(`tmux send-keys -t "${sessionName}" "${escapedText}"`);
       }
 
-      // If session was waiting for input, update status
-      const hookData = tmuxSessionStatus.get(sessionName);
-      if (hookData?.status === 'needs_attention') {
-        hookData.status = 'working';
-        hookData.attentionReason = undefined;
-        hookData.lastEvent = 'Input sent';
-        hookData.lastActivity = Date.now();
-
-        sessionsDb.upsertSession(sessionName, {
-          status: 'working',
-          attentionReason: null,
-          lastEvent: 'Input sent',
-        });
-      }
+      // Update last activity
+      sessionsDb.upsertSession(sessionName, {
+        lastEvent: 'Input sent',
+      });
 
       res.json({
         success: true,
@@ -139,42 +129,15 @@ export function createSessionRoutes(): Router {
         const [name, created] = line.split('|');
         const [project] = name.split('--');
 
-        let status: SessionStatus = 'init';
-        let attentionReason: AttentionReason | undefined;
-        let statusSource: 'hook' | 'tmux' = 'tmux';
-        let lastEvent: string | undefined;
-        let lastStatusChange: number | undefined;
-
-        // Try in-memory status first (active sessions with heartbeat)
-        const hookData = tmuxSessionStatus.get(name);
-        // Fallback to DB for persisted data (survives refresh)
+        // Get DB data if available
         const dbSession = sessionsDb.getSession(name);
-
-        if (hookData) {
-          status = hookData.status;
-          attentionReason = hookData.attentionReason;
-          statusSource = 'hook';
-          lastEvent = hookData.lastEvent;
-          lastStatusChange = hookData.lastStatusChange;
-        } else if (dbSession) {
-          // Use DB data if no active hookData
-          status = dbSession.status;
-          attentionReason = dbSession.attention_reason ?? undefined;
-          statusSource = 'hook';
-          lastEvent = dbSession.last_event ?? undefined;
-          lastStatusChange = dbSession.last_status_change;
-        }
 
         sessions.push({
           name,
           project,
           createdAt: parseInt(created) * 1000,
-          status,
-          attentionReason,
-          statusSource,
-          lastActivity: hookData?.lastActivity ?? dbSession?.last_activity,
-          lastEvent,
-          lastStatusChange,
+          lastActivity: dbSession?.last_activity,
+          lastEvent: dbSession?.last_event ?? undefined,
         });
       }
 
@@ -192,18 +155,14 @@ export function createSessionRoutes(): Router {
       name: session.name,
       project: session.project,
       createdAt: session.created_at,
-      status: session.status,
-      attentionReason: session.attention_reason ?? undefined,
-      statusSource: 'hook' as const,
       lastEvent: session.last_event ?? undefined,
-      lastStatusChange: session.last_status_change,
       archivedAt: session.archived_at ?? undefined,
     }));
 
     res.json(sessions);
   });
 
-  // Get single session status by name (from DB, works for completed sessions too)
+  // Get single session info by name
   router.get('/:sessionName/status', (req, res) => {
     const { sessionName } = req.params;
 
@@ -211,28 +170,19 @@ export function createSessionRoutes(): Router {
       return res.status(400).json({ error: 'Invalid session name' });
     }
 
-    // First check in-memory status (active sessions)
-    const hookData = tmuxSessionStatus.get(sessionName);
-
-    // Then check database
     const dbSession = sessionsDb.getSession(sessionName);
 
-    if (!hookData && !dbSession) {
+    if (!dbSession) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    // Merge data from both sources, preferring hookData for active sessions
     const sessionInfo: WSSessionInfo = {
       name: sessionName,
-      project: dbSession?.project ?? hookData?.project ?? '',
-      createdAt: dbSession?.created_at ?? Date.now(),
-      status: hookData?.status ?? dbSession?.status ?? 'idle',
-      attentionReason: hookData?.attentionReason ?? dbSession?.attention_reason ?? undefined,
-      statusSource: hookData ? 'hook' : 'hook',
-      lastEvent: hookData?.lastEvent ?? dbSession?.last_event ?? undefined,
-      lastStatusChange: hookData?.lastStatusChange ?? dbSession?.last_status_change,
-      lastActivity: hookData?.lastActivity ?? dbSession?.last_activity,
-      archivedAt: dbSession?.archived_at ?? undefined,
+      project: dbSession.project,
+      createdAt: dbSession.created_at,
+      lastEvent: dbSession.last_event ?? undefined,
+      lastActivity: dbSession.last_activity,
+      archivedAt: dbSession.archived_at ?? undefined,
     };
 
     res.json(sessionInfo);
@@ -284,7 +234,6 @@ export function createSessionRoutes(): Router {
       console.log(`Killed tmux session: ${sessionName}`);
 
       sessionsDb.deleteSession(sessionName);
-      tmuxSessionStatus.delete(sessionName);
       broadcastSessionRemoved(sessionName);
 
       res.json({ success: true, message: `Session ${sessionName} killed` });
@@ -316,17 +265,11 @@ export function createSessionRoutes(): Router {
       console.log(`[Archive] Tmux session ${sessionName} was already gone`);
     }
 
-    tmuxSessionStatus.delete(sessionName);
-
     const archivedInfo: WSSessionInfo = {
       name: sessionName,
       project: archivedSession.project,
       createdAt: archivedSession.created_at,
-      status: archivedSession.status,
-      attentionReason: archivedSession.attention_reason ?? undefined,
-      statusSource: 'hook',
       lastEvent: archivedSession.last_event ?? undefined,
-      lastStatusChange: archivedSession.last_status_change,
       archivedAt: archivedSession.archived_at ?? undefined,
     };
 
