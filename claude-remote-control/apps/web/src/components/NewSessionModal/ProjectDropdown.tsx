@@ -2,8 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Loader2, Search } from 'lucide-react';
+import { ChevronDown, Loader2, Search, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Special value for "Terminal at root" option
+export const TERMINAL_AT_ROOT = '__ROOT__';
 
 interface ProjectDropdownProps {
   folders: string[];
@@ -11,6 +14,7 @@ interface ProjectDropdownProps {
   onSelectProject: (project: string) => void;
   loading: boolean;
   accentColor?: 'orange' | 'purple';
+  showRootOption?: boolean;
 }
 
 export function ProjectDropdown({
@@ -19,6 +23,7 @@ export function ProjectDropdown({
   onSelectProject,
   loading,
   accentColor = 'orange',
+  showRootOption = true,
 }: ProjectDropdownProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,8 +61,16 @@ export function ProjectDropdown({
           'transition-all'
         )}
       >
-        <span className={selectedProject ? 'text-white' : 'text-white/40'}>
-          {selectedProject || 'Choose a project...'}
+        <span
+          className={cn(
+            'flex items-center gap-2',
+            selectedProject ? 'text-white' : 'text-white/40'
+          )}
+        >
+          {selectedProject === TERMINAL_AT_ROOT && <Home className="h-4 w-4 text-white/60" />}
+          {selectedProject === TERMINAL_AT_ROOT
+            ? 'Terminal at root'
+            : selectedProject || 'Choose a project...'}
         </span>
         <ChevronDown
           className={cn('h-4 w-4 text-white/40 transition-transform', open && 'rotate-180')}
@@ -105,27 +118,55 @@ export function ProjectDropdown({
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading folders...
                 </div>
-              ) : filteredFolders.length > 0 ? (
-                filteredFolders.map((folder) => (
-                  <button
-                    key={folder}
-                    onClick={() => {
-                      onSelectProject(folder);
-                      setOpen(false);
-                    }}
-                    className={cn(
-                      'w-full px-4 py-2.5 text-left',
-                      'transition-colors hover:bg-white/5',
-                      selectedProject === folder ? selectedClass : 'text-white/80'
-                    )}
-                  >
-                    {folder}
-                  </button>
-                ))
               ) : (
-                <div className="px-4 py-3 text-sm text-white/30">
-                  {folders.length > 0 ? 'No matching projects' : 'No folders found'}
-                </div>
+                <>
+                  {/* Terminal at root option */}
+                  {showRootOption && !searchQuery && (
+                    <>
+                      <button
+                        onClick={() => {
+                          onSelectProject(TERMINAL_AT_ROOT);
+                          setOpen(false);
+                        }}
+                        className={cn(
+                          'flex w-full items-center gap-2 px-4 py-2.5 text-left',
+                          'transition-colors hover:bg-white/5',
+                          selectedProject === TERMINAL_AT_ROOT ? selectedClass : 'text-white/60'
+                        )}
+                      >
+                        <Home className="h-4 w-4" />
+                        Terminal at root
+                      </button>
+                      {filteredFolders.length > 0 && (
+                        <div className="mx-4 my-1 border-t border-white/10" />
+                      )}
+                    </>
+                  )}
+
+                  {/* Project folders */}
+                  {filteredFolders.length > 0 ? (
+                    filteredFolders.map((folder) => (
+                      <button
+                        key={folder}
+                        onClick={() => {
+                          onSelectProject(folder);
+                          setOpen(false);
+                        }}
+                        className={cn(
+                          'w-full px-4 py-2.5 text-left',
+                          'transition-colors hover:bg-white/5',
+                          selectedProject === folder ? selectedClass : 'text-white/80'
+                        )}
+                      >
+                        {folder}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-sm text-white/30">
+                      {folders.length > 0 ? 'No matching projects' : 'No folders found'}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </motion.div>

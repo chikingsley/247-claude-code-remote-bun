@@ -5,9 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-import { useFolders } from './hooks';
+import { useFolders, useClone } from './hooks';
 import { MachineSelector } from './MachineSelector';
 import { SelectFolderTab } from './SelectFolderTab';
+import { TabSelector, TabType } from './TabSelector';
+import { CloneRepoTab } from './CloneRepoTab';
+import { TERMINAL_AT_ROOT } from './ProjectDropdown';
 
 interface Machine {
   id: string;
@@ -33,17 +36,30 @@ export function NewSessionModal({
   onStartSession,
 }: NewSessionModalProps) {
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('existing');
 
   // Custom hooks
-  const { folders, selectedProject, setSelectedProject, loadingFolders } =
+  const { folders, selectedProject, setSelectedProject, loadingFolders, addFolder } =
     useFolders(selectedMachine);
+  const { cloneRepo, cloning, cloneError, clearError } = useClone(selectedMachine);
 
   // Reset state when modal closes
   useEffect(() => {
     if (!open) {
       setSelectedMachine(null);
+      setActiveTab('existing');
+      clearError();
     }
-  }, [open]);
+  }, [open, clearError]);
+
+  const handleStartSession = useCallback(() => {
+    if (selectedMachine && selectedProject) {
+      // Pass empty string for root, otherwise pass the project name
+      const project = selectedProject === TERMINAL_AT_ROOT ? '' : selectedProject;
+      onStartSession(selectedMachine.id, project);
+      onOpenChange(false);
+    }
+  }, [selectedMachine, selectedProject, onStartSession, onOpenChange]);
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback(
@@ -51,12 +67,12 @@ export function NewSessionModal({
       if (e.key === 'Escape') {
         onOpenChange(false);
       }
-      if (e.key === 'Enter' && selectedMachine && selectedProject) {
-        onStartSession(selectedMachine.id, selectedProject);
-        onOpenChange(false);
+      // Only handle Enter on existing tab (clone tab has its own Enter handler)
+      if (e.key === 'Enter' && activeTab === 'existing' && selectedMachine && selectedProject) {
+        handleStartSession();
       }
     },
-    [onOpenChange, onStartSession, selectedMachine, selectedProject]
+    [onOpenChange, activeTab, selectedMachine, selectedProject, handleStartSession]
   );
 
   useEffect(() => {
@@ -66,11 +82,15 @@ export function NewSessionModal({
     }
   }, [open, handleKeyDown]);
 
-  const handleStartSession = () => {
-    if (selectedMachine && selectedProject) {
-      onStartSession(selectedMachine.id, selectedProject);
+  const handleClone = async (url: string) => {
+    const result = await cloneRepo(url);
+    if (result.success && result.project && selectedMachine) {
+      // Add the new folder to the list and start session
+      addFolder(result.project);
+      onStartSession(selectedMachine.id, result.project);
       onOpenChange(false);
     }
+    return result;
   };
 
   return (
@@ -137,41 +157,50 @@ export function NewSessionModal({
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
+                  className="space-y-4"
                 >
-                  <SelectFolderTab
-                    folders={folders}
-                    selectedProject={selectedProject}
-                    onSelectProject={setSelectedProject}
-                    loadingFolders={loadingFolders}
-                  />
+                  <TabSelector activeTab={activeTab} onTabChange={setActiveTab} />
+
+                  {activeTab === 'existing' ? (
+                    <SelectFolderTab
+                      folders={folders}
+                      selectedProject={selectedProject}
+                      onSelectProject={setSelectedProject}
+                      loadingFolders={loadingFolders}
+                    />
+                  ) : (
+                    <CloneRepoTab onClone={handleClone} loading={cloning} error={cloneError} />
+                  )}
                 </motion.div>
               )}
             </div>
 
-            {/* Footer */}
-            <div className="flex flex-none items-center justify-between border-t border-white/5 px-6 py-4">
-              <p className="text-xs text-white/30">
-                Press{' '}
-                <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-white/50">
-                  Enter
-                </kbd>{' '}
-                to start
-              </p>
-              <button
-                onClick={handleStartSession}
-                disabled={!selectedMachine || !selectedProject}
-                className={cn(
-                  'touch-manipulation active:scale-[0.98]',
-                  'flex items-center gap-2 rounded-xl px-5 py-2.5 font-medium transition-all',
-                  selectedMachine && selectedProject
-                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25 hover:from-orange-400 hover:to-amber-400'
-                    : 'cursor-not-allowed bg-white/5 text-white/30'
-                )}
-              >
-                <Sparkles className="h-4 w-4" />
-                Start Session
-              </button>
-            </div>
+            {/* Footer - only show on existing tab */}
+            {activeTab === 'existing' && (
+              <div className="flex flex-none items-center justify-between border-t border-white/5 px-6 py-4">
+                <p className="text-xs text-white/30">
+                  Press{' '}
+                  <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-white/50">
+                    Enter
+                  </kbd>{' '}
+                  to start
+                </p>
+                <button
+                  onClick={handleStartSession}
+                  disabled={!selectedMachine || !selectedProject}
+                  className={cn(
+                    'touch-manipulation active:scale-[0.98]',
+                    'flex items-center gap-2 rounded-xl px-5 py-2.5 font-medium transition-all',
+                    selectedMachine && selectedProject
+                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25 hover:from-orange-400 hover:to-amber-400'
+                      : 'cursor-not-allowed bg-white/5 text-white/30'
+                  )}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Start Session
+                </button>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}
