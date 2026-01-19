@@ -14,7 +14,14 @@ import { sendPushNotification } from '@/lib/push';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { machineId, sessionName } = body;
+    const { machineId, sessionName, reason } = body;
+
+    const reasonMessages: Record<string, string> = {
+      permission: 'Permission requise',
+      input: 'Réponse attendue',
+      plan_approval: 'Approbation du plan',
+      task_complete: 'Tâche terminée',
+    };
 
     if (!machineId) {
       return NextResponse.json({ error: 'machineId required' }, { status: 400 });
@@ -66,7 +73,7 @@ export async function POST(req: Request) {
 
     const payload = {
       title: `Claude - ${projectName}`,
-      body: 'Attention requise',
+      body: reasonMessages[reason] || 'Attention requise',
       icon: '/icon-192x192.png',
       badge: '/badge-72x72.png',
       tag: `claude-${sessionName}`,

@@ -87,6 +87,24 @@ export function useNotificationDeeplink() {
     };
   }, [handleDeeplink]);
 
+  // Clear app badge when window gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if ('clearAppBadge' in navigator) {
+        (navigator as Navigator & { clearAppBadge: () => Promise<void> }).clearAppBadge();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    // Also clear on mount if already focused
+    if (document.hasFocus()) {
+      handleFocus();
+    }
+
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
   // Also handle URL params if we have machine/session in the URL
   // This handles the case where the deeplink worked via openWindow
   useEffect(() => {
