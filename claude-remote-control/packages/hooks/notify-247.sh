@@ -13,7 +13,7 @@ SESSION_ID=$(echo "$EVENT_JSON" | jq -r '.session_id // empty')
 # Simple: hook called = needs_attention
 curl -s -X POST "$AGENT_URL" \
   -H "Content-Type: application/json" \
-  -d "$(jq -n --arg sid "$SESSION_ID" '{sessionId:$sid,status:"needs_attention",source:"hook",timestamp:now*1000|floor}')" \
+  -d "$(jq -n --arg sid "$SESSION_ID" '{sessionId:$sid,status:"needs_attention",source:"hook",timestamp:(now*1000|floor)}')" \
   --connect-timeout 2 --max-time 5 > /dev/null 2>&1 || true
 
 echo "[247-hook] $SESSION_ID needs attention" >&2
