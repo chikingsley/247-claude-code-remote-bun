@@ -1,0 +1,13 @@
+{
+  "name": "247-hooks",
+  "version": "2.24.1",
+  "private": true,
+  "description": "Claude Code hooks for 247 agent notifications",
+  "files": [
+    "notify-247.sh"
+  ],
+  "scripts": {
+    "test": "echo 'Hook scripts have no automated tests'",
+    "install-hooks": "echo 'Use 247 hooks install command'"
+  }
+}

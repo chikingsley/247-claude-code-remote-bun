@@ -72,6 +72,28 @@ export function broadcastSessionArchived(sessionName: string, session: WSSession
 }
 
 /**
+ * Broadcast session status update to all subscribers
+ * Called when a hook notifies the agent of a status change
+ */
+export function broadcastStatusUpdate(session: WSSessionInfo): void {
+  const message: WSSessionsMessageFromAgent = {
+    type: 'status-update',
+    session,
+  };
+  const payload = JSON.stringify(message);
+
+  console.log(
+    `[Sessions WS] Broadcasting status update: session=${session.name} status=${session.status} reason=${session.attentionReason}`
+  );
+
+  for (const ws of sessionsSubscribers) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(payload);
+    }
+  }
+}
+
+/**
  * Handle terminal WebSocket connections
  */
 export function handleTerminalConnection(ws: WebSocket, url: URL): void {
@@ -359,6 +381,10 @@ export function handleSessionsConnection(ws: WebSocket, url?: URL): void {
           createdAt: parseInt(created) * 1000,
           lastActivity: dbSession?.last_activity,
           lastEvent: dbSession?.last_event ?? undefined,
+          status: dbSession?.status ?? undefined,
+          statusSource: dbSession?.status_source ?? undefined,
+          attentionReason: dbSession?.attention_reason ?? undefined,
+          lastStatusChange: dbSession?.last_status_change ?? undefined,
         });
       }
 

@@ -138,6 +138,10 @@ export function createSessionRoutes(): Router {
           createdAt: parseInt(created) * 1000,
           lastActivity: dbSession?.last_activity,
           lastEvent: dbSession?.last_event ?? undefined,
+          status: dbSession?.status ?? undefined,
+          statusSource: dbSession?.status_source ?? undefined,
+          attentionReason: dbSession?.attention_reason ?? undefined,
+          lastStatusChange: dbSession?.last_status_change ?? undefined,
         });
       }
 
@@ -183,6 +187,10 @@ export function createSessionRoutes(): Router {
       lastEvent: dbSession.last_event ?? undefined,
       lastActivity: dbSession.last_activity,
       archivedAt: dbSession.archived_at ?? undefined,
+      status: dbSession.status ?? undefined,
+      statusSource: dbSession.status_source ?? undefined,
+      attentionReason: dbSession.attention_reason ?? undefined,
+      lastStatusChange: dbSession.last_status_change ?? undefined,
     };
 
     res.json(sessionInfo);

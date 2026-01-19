@@ -91,6 +91,9 @@ function runMigrations(database: Database.Database): void {
       if (currentVersion < 16) {
         migrateToV16(database);
       }
+      if (currentVersion < 17) {
+        migrateToV17(database);
+      }
     }
 
     // Record the new version
@@ -215,6 +218,31 @@ function migrateToV16(database: Database.Database): void {
   }
 
   console.log('[DB] v16 migration: Status tracking removed');
+}
+
+/**
+ * Migration to v17: Add status tracking via hooks
+ * Adds status, status_source, attention_reason, and last_status_change columns
+ */
+function migrateToV17(database: Database.Database): void {
+  console.log('[DB] v17 migration: Adding status tracking via hooks');
+
+  // Check if status column already exists
+  const columns = database.pragma('table_info(sessions)') as Array<{ name: string }>;
+  const columnNames = new Set(columns.map((c) => c.name));
+
+  if (!columnNames.has('status')) {
+    console.log('[DB] v17 migration: Adding status tracking columns');
+    // Execute each ALTER TABLE statement separately (SQLite limitation)
+    database.exec('ALTER TABLE sessions ADD COLUMN status TEXT');
+    database.exec('ALTER TABLE sessions ADD COLUMN status_source TEXT');
+    database.exec('ALTER TABLE sessions ADD COLUMN attention_reason TEXT');
+    database.exec('ALTER TABLE sessions ADD COLUMN last_status_change INTEGER');
+    database.exec('CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status)');
+    console.log('[DB] v17 migration: Status tracking columns added');
+  }
+
+  console.log('[DB] v17 migration: Complete');
 }
 
 /**

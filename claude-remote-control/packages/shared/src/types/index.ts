@@ -1,3 +1,21 @@
+// ============================================================================
+// Session Status Types (Hook-based attention notifications)
+// ============================================================================
+
+export type SessionStatus = 'init' | 'working' | 'needs_attention' | 'idle';
+export type AttentionReason = 'permission' | 'input' | 'plan_approval' | 'task_complete';
+export type StatusSource = 'hook' | 'tmux';
+
+export interface AttentionNotification {
+  sessionId: string;
+  status: SessionStatus;
+  attentionReason?: AttentionReason;
+  source: StatusSource;
+  timestamp: number;
+  eventType: string;
+}
+
+// ============================================================================
 // Machine types
 export interface Machine {
   id: string;
@@ -55,6 +73,11 @@ export interface WSSessionInfo {
   createdAt: number;
   lastActivity?: number;
   archivedAt?: number; // Timestamp when session was archived (undefined = active)
+  // Status tracking (from hooks)
+  status?: SessionStatus;
+  statusSource?: StatusSource;
+  attentionReason?: AttentionReason;
+  lastStatusChange?: number;
 }
 
 // WebSocket message types - Agent to Client (Sessions channel)
@@ -62,6 +85,7 @@ export type WSSessionsMessageFromAgent =
   | { type: 'sessions-list'; sessions: WSSessionInfo[] }
   | { type: 'session-removed'; sessionName: string }
   | { type: 'session-archived'; sessionName: string; session: WSSessionInfo }
+  | { type: 'status-update'; session: WSSessionInfo }
   | { type: 'version-info'; agentVersion: string }
   | { type: 'update-pending'; targetVersion: string; message: string };
 

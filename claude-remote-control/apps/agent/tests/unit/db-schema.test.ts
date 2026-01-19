@@ -21,8 +21,8 @@ describe('Database Schema', () => {
       expect(Number.isInteger(SCHEMA_VERSION)).toBe(true);
     });
 
-    it('current version is 16', () => {
-      expect(SCHEMA_VERSION).toBe(16);
+    it('current version is 17', () => {
+      expect(SCHEMA_VERSION).toBe(17);
     });
   });
 
@@ -74,6 +74,7 @@ describe('Database Schema', () => {
       expect(CREATE_TABLES_SQL).toContain('CREATE INDEX IF NOT EXISTS idx_sessions_name');
       expect(CREATE_TABLES_SQL).toContain('CREATE INDEX IF NOT EXISTS idx_sessions_project');
       expect(CREATE_TABLES_SQL).toContain('CREATE INDEX IF NOT EXISTS idx_sessions_last_activity');
+      expect(CREATE_TABLES_SQL).toContain('CREATE INDEX IF NOT EXISTS idx_sessions_status');
     });
 
     it('executes without error on fresh database', () => {
@@ -117,6 +118,11 @@ describe('Database Schema', () => {
       expect(columnNames).toContain('archived_at');
       expect(columnNames).toContain('created_at');
       expect(columnNames).toContain('updated_at');
+      // Status tracking columns (v17)
+      expect(columnNames).toContain('status');
+      expect(columnNames).toContain('status_source');
+      expect(columnNames).toContain('attention_reason');
+      expect(columnNames).toContain('last_status_change');
 
       db.close();
     });
@@ -134,10 +140,16 @@ describe('Database Schema', () => {
           archived_at: null,
           created_at: Date.now(),
           updated_at: Date.now(),
+          // Status tracking fields (v17)
+          status: 'needs_attention',
+          status_source: 'hook',
+          attention_reason: 'permission',
+          last_status_change: Date.now(),
         };
 
         expect(session.id).toBe(1);
         expect(session.name).toBe('test--session-1');
+        expect(session.status).toBe('needs_attention');
       });
     });
 
@@ -171,6 +183,20 @@ describe('Database Schema', () => {
         };
 
         expect(input.lastEvent).toBe('PreToolUse');
+      });
+
+      it('validates status tracking input', () => {
+        const input: UpsertSessionInput = {
+          project: 'test',
+          lastActivity: Date.now(),
+          status: 'needs_attention',
+          statusSource: 'hook',
+          attentionReason: 'permission',
+        };
+
+        expect(input.status).toBe('needs_attention');
+        expect(input.statusSource).toBe('hook');
+        expect(input.attentionReason).toBe('permission');
       });
     });
   });

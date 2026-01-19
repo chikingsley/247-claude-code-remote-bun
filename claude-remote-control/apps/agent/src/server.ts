@@ -12,7 +12,12 @@ import { initDatabase, closeDatabase } from './db/index.js';
 import * as sessionsDb from './db/sessions.js';
 
 // Routes
-import { createProjectRoutes, createSessionRoutes, createPairRoutes } from './routes/index.js';
+import {
+  createProjectRoutes,
+  createSessionRoutes,
+  createPairRoutes,
+  createHooksRoutes,
+} from './routes/index.js';
 
 // WebSocket
 import { handleTerminalConnection, handleSessionsConnection } from './websocket-handlers.js';
@@ -65,6 +70,9 @@ export async function createServer() {
   // Mount pairing routes (both at /pair and /api/pair for flexibility)
   app.use('/pair', createPairRoutes());
   app.use('/api/pair', createPairRoutes());
+
+  // Mount hooks routes for Claude Code hook notifications
+  app.use('/api/hooks', createHooksRoutes());
 
   // Handle WebSocket upgrades
   server.on('upgrade', async (req, socket, head) => {

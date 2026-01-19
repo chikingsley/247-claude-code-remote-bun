@@ -1,6 +1,10 @@
 // ============================================================================
-// Database Row Types (Simplified - No Status Tracking)
+// Database Row Types
 // ============================================================================
+
+export type DbSessionStatus = 'init' | 'working' | 'needs_attention' | 'idle';
+export type DbAttentionReason = 'permission' | 'input' | 'plan_approval' | 'task_complete';
+export type DbStatusSource = 'hook' | 'tmux';
 
 export interface DbSession {
   id: number;
@@ -11,6 +15,11 @@ export interface DbSession {
   archived_at: number | null;
   created_at: number;
   updated_at: number;
+  // Status tracking (v17)
+  status: DbSessionStatus | null;
+  status_source: DbStatusSource | null;
+  attention_reason: DbAttentionReason | null;
+  last_status_change: number | null;
 }
 
 export interface DbSchemaVersion {
@@ -26,16 +35,20 @@ export interface UpsertSessionInput {
   project?: string;
   lastEvent?: string | null;
   lastActivity?: number;
+  // Status tracking (v17)
+  status?: DbSessionStatus | null;
+  statusSource?: DbStatusSource | null;
+  attentionReason?: DbAttentionReason | null;
 }
 
 // ============================================================================
-// SQL Schema Definitions (v16 - Status Removed)
+// SQL Schema Definitions (v17 - Status Tracking via Hooks)
 // ============================================================================
 
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 export const CREATE_TABLES_SQL = `
--- Sessions: current state of terminal sessions (simplified - no status tracking)
+-- Sessions: current state of terminal sessions with status tracking
 CREATE TABLE IF NOT EXISTS sessions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
@@ -44,12 +57,18 @@ CREATE TABLE IF NOT EXISTS sessions (
   last_activity INTEGER NOT NULL,
   archived_at INTEGER,
   created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL,
+  -- Status tracking (v17)
+  status TEXT,
+  status_source TEXT,
+  attention_reason TEXT,
+  last_status_change INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_name ON sessions(name);
 CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project);
 CREATE INDEX IF NOT EXISTS idx_sessions_last_activity ON sessions(last_activity);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
 
 -- Schema version tracking
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -85,6 +104,20 @@ ALTER TABLE sessions_new RENAME TO sessions;
 CREATE INDEX IF NOT EXISTS idx_sessions_name ON sessions(name);
 CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project);
 CREATE INDEX IF NOT EXISTS idx_sessions_last_activity ON sessions(last_activity);
+`;
+
+// ============================================================================
+// Migration for v17 (Add status tracking via hooks)
+// ============================================================================
+
+export const MIGRATION_17 = `
+-- Migration v17: Add status tracking columns for hook-based notifications
+ALTER TABLE sessions ADD COLUMN status TEXT;
+ALTER TABLE sessions ADD COLUMN status_source TEXT;
+ALTER TABLE sessions ADD COLUMN attention_reason TEXT;
+ALTER TABLE sessions ADD COLUMN last_status_change INTEGER;
+
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
 `;
 
 // ============================================================================

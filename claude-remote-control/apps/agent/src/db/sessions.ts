@@ -51,19 +51,29 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
 
   const existing = getSession(name);
 
+  // Determine if status is changing
+  const statusChanging = input.status !== undefined && input.status !== existing?.status;
+  const lastStatusChange = statusChanging ? now : (existing?.last_status_change ?? null);
+
   const stmt = db.prepare(`
     INSERT INTO sessions (
       name, project, last_event,
-      last_activity, created_at, updated_at
+      last_activity, created_at, updated_at,
+      status, status_source, attention_reason, last_status_change
     )
     VALUES (
       @name, @project, @lastEvent,
-      @lastActivity, @createdAt, @updatedAt
+      @lastActivity, @createdAt, @updatedAt,
+      @status, @statusSource, @attentionReason, @lastStatusChange
     )
     ON CONFLICT(name) DO UPDATE SET
       last_event = COALESCE(@lastEvent, last_event),
       last_activity = COALESCE(@lastActivity, last_activity),
-      updated_at = @updatedAt
+      updated_at = @updatedAt,
+      status = COALESCE(@status, status),
+      status_source = COALESCE(@statusSource, status_source),
+      attention_reason = CASE WHEN @status IS NOT NULL THEN @attentionReason ELSE attention_reason END,
+      last_status_change = COALESCE(@lastStatusChange, last_status_change)
   `);
 
   stmt.run({
@@ -73,6 +83,10 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
     lastActivity: input.lastActivity ?? now,
     createdAt: existing?.created_at ?? now,
     updatedAt: now,
+    status: input.status ?? null,
+    statusSource: input.statusSource ?? null,
+    attentionReason: input.attentionReason ?? null,
+    lastStatusChange,
   });
 
   return getSession(name)!;
