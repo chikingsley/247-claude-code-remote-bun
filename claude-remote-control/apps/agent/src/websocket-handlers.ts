@@ -100,18 +100,22 @@ export function handleTerminalConnection(ws: WebSocket, url: URL): void {
   const project = url.searchParams.get('project');
   const urlSessionName = url.searchParams.get('session');
   const createFlag = url.searchParams.get('create') === 'true';
-  const sessionName = urlSessionName || generateSessionName(project || 'unknown');
+  const sessionName = urlSessionName || generateSessionName(project || 'root');
 
-  // Validate project
+  // Validate project (empty string is allowed for "terminal at root")
   const whitelist = config.projects.whitelist as string[];
   const hasWhitelist = whitelist && whitelist.length > 0;
-  const isAllowed = hasWhitelist ? whitelist.includes(project!) : true;
-  if (!project || !isAllowed) {
+  // Allow empty string for root, but reject null/undefined
+  const isRootTerminal = project === '';
+  const isAllowed = isRootTerminal || (hasWhitelist ? whitelist.includes(project!) : true);
+  if (project === null || project === undefined || !isAllowed) {
     ws.close(1008, 'Project not allowed');
     return;
   }
 
-  const projectPath = `${config.projects.basePath}/${project}`.replace('~', process.env.HOME!);
+  // For root terminal, use basePath directly; otherwise append project name
+  const basePath = config.projects.basePath.replace('~', process.env.HOME!);
+  const projectPath = isRootTerminal ? basePath : `${basePath}/${project}`;
 
   console.log(`New terminal connection for project: ${project}`);
   console.log(`Project path: ${projectPath}`);
