@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { deeplinkLogger } from '@/lib/logger';
 
 /**
  * Hook to handle notification deep links on iOS PWA
@@ -36,7 +37,7 @@ export function useNotificationDeeplink() {
   // Handle navigation to deeplink URL
   const handleDeeplink = useCallback(
     (url: string) => {
-      console.log('[Deeplink] Navigating to:', url);
+      deeplinkLogger.info(`Navigating to: ${url}`);
 
       // Parse the URL to extract query params
       try {
@@ -47,14 +48,14 @@ export function useNotificationDeeplink() {
         const targetPath = urlObj.pathname + urlObj.search;
 
         if (currentPath === targetPath) {
-          console.log('[Deeplink] Already on target URL, skipping');
+          deeplinkLogger.info('Already on target URL, skipping');
           return;
         }
 
         // Navigate to the URL
         router.push(targetPath);
       } catch (e) {
-        console.error('[Deeplink] Invalid URL:', url, e);
+        deeplinkLogger.error(`Invalid URL: ${url}`, e);
         // Fallback: try navigating to the raw URL
         router.push(url);
       }
@@ -73,7 +74,7 @@ export function useNotificationDeeplink() {
       const { type, url } = event.data || {};
 
       if (type === 'NOTIFICATION_CLICK' || type === 'NOTIFICATION_DEEPLINK') {
-        console.log(`[Deeplink] Received ${type} message:`, url);
+        deeplinkLogger.info(`Received ${type} message: ${url}`);
         if (url) {
           handleDeeplink(url);
         }
@@ -87,11 +88,11 @@ export function useNotificationDeeplink() {
       try {
         const registration = await navigator.serviceWorker.ready;
         if (registration.active) {
-          console.log('[Deeplink] Checking for pending deeplink...');
+          deeplinkLogger.info('Checking for pending deeplink...');
           registration.active.postMessage({ type: 'CHECK_NOTIFICATION_DEEPLINK' });
         }
       } catch (e) {
-        console.error('[Deeplink] Failed to check pending deeplink:', e);
+        deeplinkLogger.error('Failed to check pending deeplink', e);
       }
     };
 
@@ -129,7 +130,7 @@ export function useNotificationDeeplink() {
     const session = searchParams.get('session');
 
     if (machine && session) {
-      console.log('[Deeplink] URL contains session params:', { machine, session });
+      deeplinkLogger.info('URL contains session params', { machine, session });
       // The main app component should handle this - just log it
     }
   }, [searchParams]);

@@ -1,5 +1,4 @@
-/* JetBrains Mono Font - must be first */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* JetBrains Mono is loaded via next/font/google in layout.tsx for optimal performance */
 
 @tailwind base;
 @tailwind components;

@@ -12,6 +12,7 @@ import {
 import { SessionInfo, SessionWithMachine } from '@/lib/types';
 import { buildWebSocketUrl, buildApiUrl } from '@/lib/utils';
 import { requestNotificationPermission, showInAppToast } from '@/lib/notifications';
+import { wsLogger, pollingLogger, archivedLogger } from '@/lib/logger';
 import type { WSSessionsMessageFromAgent } from '247-shared';
 
 export interface Machine {
@@ -54,12 +55,30 @@ const FALLBACK_POLLING_INTERVAL = 30000; // Fallback HTTP poll every 30s (when W
 const FETCH_TIMEOUT = 5000;
 const WS_RECONNECT_BASE_DELAY = 1000;
 const WS_RECONNECT_MAX_DELAY = 30000;
+const MAX_SESSIONS_PER_MACHINE = 50; // Limit sessions per machine (FIFO rotation)
+const MAX_ARCHIVED_PER_MACHINE = 100; // Limit archived sessions per machine
+const MAX_CONCURRENT_RECONNECTIONS = 3; // Limit concurrent WebSocket reconnections
 
 interface ArchivedSessionData {
   machineId: string;
   machineName: string;
   agentUrl: string;
   sessions: SessionInfo[];
+}
+
+/**
+ * Limits sessions array to maxCount using FIFO rotation.
+ * Keeps the most recent sessions based on lastStatusChange or creation order.
+ */
+function limitSessions(sessions: SessionInfo[], maxCount: number): SessionInfo[] {
+  if (sessions.length <= maxCount) return sessions;
+  // Sort by lastStatusChange descending (most recent first), keep newest
+  const sorted = [...sessions].sort((a, b) => {
+    const aTime = a.lastStatusChange ? new Date(a.lastStatusChange).getTime() : 0;
+    const bTime = b.lastStatusChange ? new Date(b.lastStatusChange).getTime() : 0;
+    return bTime - aTime;
+  });
+  return sorted.slice(0, maxCount);
 }
 
 export function SessionPollingProvider({ children }: { children: ReactNode }) {
@@ -76,6 +95,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   const wsConnectedRef = useRef<Set<string>>(new Set()); // Track connected machines via ref for polling
   const wsReconnectDelaysRef = useRef<Map<string, number>>(new Map());
   const wsReconnectTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const activeReconnectionsRef = useRef<Set<string>>(new Set()); // Track machines currently reconnecting
 
   // Request notification permission on mount
   useEffect(() => {
@@ -119,7 +139,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
           machineId: machine.id,
           machineName: machine.name,
           agentUrl,
-          sessions,
+          sessions: limitSessions(sessions, MAX_SESSIONS_PER_MACHINE),
           lastFetch: Date.now(),
           error: null,
           wsConnected: isWsConnected,
@@ -192,9 +212,10 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
           // Add to existing archived list (avoid duplicates)
           const alreadyExists = existingData.sessions.some((s) => s.name === session.name);
           if (!alreadyExists) {
+            const newSessions = [session, ...existingData.sessions];
             next.set(machineId, {
               ...existingData,
-              sessions: [session, ...existingData.sessions],
+              sessions: limitSessions(newSessions, MAX_ARCHIVED_PER_MACHINE),
             });
           }
         } else {
@@ -228,12 +249,12 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
           machineId: machine.id,
           machineName: machine.name,
           agentUrl,
-          sessions,
+          sessions: limitSessions(sessions, MAX_ARCHIVED_PER_MACHINE),
         });
         return next;
       });
     } catch (err) {
-      console.error('[Archived] Failed to fetch archived sessions:', err);
+      archivedLogger.error('Failed to fetch archived sessions', err);
     }
   }, []);
 
@@ -252,14 +273,14 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
         wsConnectionsRef.current.delete(machine.id);
       }
 
-      console.log(`[WS] Connecting to ${wsUrl} for machine ${machine.name}`);
+      wsLogger.info(`Connecting to ${wsUrl} for machine ${machine.name}`);
 
       try {
         const ws = new WebSocket(wsUrl);
         wsConnectionsRef.current.set(machine.id, ws);
 
         ws.onopen = () => {
-          console.log(`[WS] Connected to ${machine.name}`);
+          wsLogger.info(`Connected to ${machine.name}`);
           wsReconnectDelaysRef.current.set(machine.id, WS_RECONNECT_BASE_DELAY);
           wsConnectedRef.current.add(machine.id); // Track via ref for polling
 
@@ -289,14 +310,14 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
             switch (msg.type) {
               case 'sessions-list':
-                console.log(`[WS] Received sessions-list: ${msg.sessions.length} sessions`);
+                wsLogger.info(`Received sessions-list: ${msg.sessions.length} sessions`);
                 setSessionsByMachine((prev) => {
                   const next = new Map(prev);
                   next.set(machine.id, {
                     machineId: machine.id,
                     machineName: machine.name,
                     agentUrl,
-                    sessions: msg.sessions,
+                    sessions: limitSessions(msg.sessions, MAX_SESSIONS_PER_MACHINE),
                     lastFetch: Date.now(),
                     error: null,
                     wsConnected: true,
@@ -306,26 +327,26 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                 break;
 
               case 'session-removed':
-                console.log(`[WS] Session removed: ${msg.sessionName}`);
+                wsLogger.info(`Session removed: ${msg.sessionName}`);
                 removeSession(machine.id, msg.sessionName);
                 break;
 
               case 'session-archived':
-                console.log(`[WS] Session archived: ${msg.sessionName}`);
+                wsLogger.info(`Session archived: ${msg.sessionName}`);
                 archiveSession(machine.id, machine.name, agentUrl, msg.session);
                 break;
 
               case 'version-info':
-                console.log(`[WS] Agent version: ${msg.agentVersion}`);
+                wsLogger.info(`Agent version: ${msg.agentVersion}`);
                 break;
 
               case 'update-pending':
-                console.log(`[WS] Agent updating to ${msg.targetVersion}: ${msg.message}`);
+                wsLogger.info(`Agent updating to ${msg.targetVersion}: ${msg.message}`);
                 // Agent will restart, WebSocket will reconnect automatically
                 break;
 
               case 'status-update':
-                console.log(`[WS] Status update: ${msg.session.name} -> ${msg.session.status}`);
+                wsLogger.info(`Status update: ${msg.session.name} -> ${msg.session.status}`);
                 setSessionsByMachine((prev) => {
                   const next = new Map(prev);
                   const existingData = next.get(machine.id);
@@ -358,12 +379,12 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                 break;
             }
           } catch (err) {
-            console.error('[WS] Failed to parse message:', err);
+            wsLogger.error('Failed to parse message', err);
           }
         };
 
         ws.onclose = (event) => {
-          console.log(`[WS] Disconnected from ${machine.name}:`, event.code, event.reason);
+          wsLogger.info(`Disconnected from ${machine.name}`, { code: event.code, reason: event.reason });
           wsConnectionsRef.current.delete(machine.id);
           wsConnectedRef.current.delete(machine.id); // Remove from ref
 
@@ -377,29 +398,40 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
           });
 
           // Schedule reconnection with exponential backoff
+          // Limit concurrent reconnections to prevent resource exhaustion
           const currentDelay =
             wsReconnectDelaysRef.current.get(machine.id) || WS_RECONNECT_BASE_DELAY;
           const nextDelay = Math.min(currentDelay * 2, WS_RECONNECT_MAX_DELAY);
           wsReconnectDelaysRef.current.set(machine.id, nextDelay);
 
-          console.log(`[WS] Reconnecting to ${machine.name} in ${currentDelay}ms`);
+          // Add extra delay if too many concurrent reconnections
+          const concurrentCount = activeReconnectionsRef.current.size;
+          const effectiveDelay =
+            concurrentCount >= MAX_CONCURRENT_RECONNECTIONS
+              ? currentDelay + concurrentCount * 1000 // Stagger reconnections
+              : currentDelay;
+
+          wsLogger.info(`Reconnecting to ${machine.name} in ${effectiveDelay}ms`, { concurrentCount });
+
+          activeReconnectionsRef.current.add(machine.id);
 
           const timeout = setTimeout(() => {
+            activeReconnectionsRef.current.delete(machine.id);
             // Only reconnect if machine is still online
             const currentMachine = machines.find((m) => m.id === machine.id);
             if (currentMachine?.status === 'online') {
               connectWebSocket(currentMachine);
             }
-          }, currentDelay);
+          }, effectiveDelay);
 
           wsReconnectTimeoutsRef.current.set(machine.id, timeout);
         };
 
-        ws.onerror = (event) => {
-          console.error(`[WS] Error for ${machine.name}:`, event);
+        ws.onerror = () => {
+          wsLogger.error(`Error for ${machine.name}`);
         };
       } catch (err) {
-        console.error(`[WS] Failed to create WebSocket for ${machine.name}:`, err);
+        wsLogger.error(`Failed to create WebSocket for ${machine.name}`, err);
       }
     },
     [machines, removeSession, archiveSession]
@@ -423,11 +455,12 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
         ws.close();
         wsConnectionsRef.current.delete(machineId);
 
-        // Clear reconnect timeout
+        // Clear reconnect timeout and remove from active reconnections
         const timeout = wsReconnectTimeoutsRef.current.get(machineId);
         if (timeout) {
           clearTimeout(timeout);
           wsReconnectTimeoutsRef.current.delete(machineId);
+          activeReconnectionsRef.current.delete(machineId);
         }
       }
     }
@@ -443,6 +476,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
         clearTimeout(timeout);
       }
       wsReconnectTimeoutsRef.current.clear();
+      activeReconnectionsRef.current.clear();
     };
   }, [machines, connectWebSocket]);
 
@@ -463,7 +497,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
     if (onlineMachines.length === 0) return;
 
-    console.log('[Polling] HTTP polling', onlineMachines.length, 'machines');
+    pollingLogger.info(`HTTP polling ${onlineMachines.length} machines`);
 
     const results = await Promise.all(
       onlineMachines.map((machine) => fetchSessionsForMachine(machine))

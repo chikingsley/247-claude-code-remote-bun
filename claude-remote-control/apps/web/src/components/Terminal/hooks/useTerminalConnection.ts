@@ -15,6 +15,7 @@ import {
   WS_ACTIVITY_PAUSE,
 } from '../constants';
 import { buildWebSocketUrl } from '@/lib/utils';
+import { terminalLogger } from '@/lib/logger';
 
 interface UseTerminalConnectionProps {
   terminalRef: React.RefObject<HTMLDivElement | null>;
@@ -258,7 +259,7 @@ export function useTerminalConnection({
             return;
           }
 
-          console.log('[Terminal] Setting up touch scroll on .xterm-screen');
+          terminalLogger.info('Setting up touch scroll on .xterm-screen');
 
           // CRITICAL: Apply touch-action directly to the target element
           // CSS touch-action is NOT inherited, so it must be on the actual touch target

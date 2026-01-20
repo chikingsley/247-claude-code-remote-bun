@@ -39,6 +39,33 @@ export const metadata: Metadata = {
   title: '247 - The Vibe Company',
   description: '247 - Web terminal access to Claude Code from anywhere',
   applicationName: '247',
+  metadataBase: new URL('https://247.quivr.com'),
+  openGraph: {
+    title: '247 - The Vibe Company',
+    description: 'Web terminal access to Claude Code from anywhere. Control your AI coding sessions remotely.',
+    url: 'https://247.quivr.com',
+    siteName: '247',
+    locale: 'en_US',
+    type: 'website',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: '247 - Web terminal access to Claude Code',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '247 - The Vibe Company',
+    description: 'Web terminal access to Claude Code from anywhere. Control your AI coding sessions remotely.',
+    images: ['/og-image.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

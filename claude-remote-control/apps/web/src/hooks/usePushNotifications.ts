@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { pushLogger } from '@/lib/logger';
 
 interface PushNotificationState {
   isSupported: boolean;
@@ -74,7 +75,7 @@ export function usePushNotifications() {
           error: null,
         });
       } catch (error) {
-        console.error('[Push] Error checking subscription:', error);
+        pushLogger.error('Error checking subscription', error);
         setState({
           isSupported: true,
           isSubscribed: false,
@@ -101,9 +102,9 @@ export function usePushNotifications() {
 
     try {
       // Request notification permission
-      console.log('[Push] Requesting permission...');
+      pushLogger.info('Requesting permission...');
       const permission = await Notification.requestPermission();
-      console.log('[Push] Permission result:', permission);
+      pushLogger.info(`Permission result: ${permission}`);
       if (permission !== 'granted') {
         setState((s) => ({
           ...s,
@@ -115,16 +116,16 @@ export function usePushNotifications() {
       }
 
       // Get VAPID public key
-      console.log('[Push] Fetching VAPID key...');
+      pushLogger.info('Fetching VAPID key...');
       const vapidResponse = await fetch('/api/push/vapid-key');
       if (!vapidResponse.ok) {
         throw new Error('Failed to get VAPID key');
       }
       const { publicKey } = await vapidResponse.json();
-      console.log('[Push] Got VAPID key');
+      pushLogger.info('Got VAPID key');
 
       // Wait for service worker with timeout (15s for iOS)
-      console.log('[Push] Waiting for service worker...', Date.now());
+      pushLogger.info('Waiting for service worker...');
       const swReadyPromise = navigator.serviceWorker.ready;
       const swTimeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
@@ -133,10 +134,10 @@ export function usePushNotifications() {
         )
       );
       const registration = await Promise.race([swReadyPromise, swTimeoutPromise]);
-      console.log('[Push] Service worker ready', Date.now());
+      pushLogger.info('Service worker ready');
 
       // Subscribe to push manager with timeout (20s - iOS can be slow)
-      console.log('[Push] Subscribing to push manager...', Date.now());
+      pushLogger.info('Subscribing to push manager...');
       const subscribePromise = registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
@@ -148,7 +149,7 @@ export function usePushNotifications() {
         )
       );
       const subscription = await Promise.race([subscribePromise, subscribeTimeoutPromise]);
-      console.log('[Push] Subscribed to push manager', Date.now());
+      pushLogger.info('Subscribed to push manager');
 
       // Send subscription to server
       const response = await fetch('/api/push/subscribe', {
@@ -172,10 +173,10 @@ export function usePushNotifications() {
         error: null,
       });
 
-      console.warn('[Push] Successfully subscribed');
+      pushLogger.info('Successfully subscribed');
       return true;
     } catch (error) {
-      console.error('[Push] Subscription error:', error);
+      pushLogger.error('Subscription error', error);
       setState((s) => ({
         ...s,
         isLoading: false,
@@ -214,10 +215,10 @@ export function usePushNotifications() {
         error: null,
       }));
 
-      console.warn('[Push] Successfully unsubscribed');
+      pushLogger.info('Successfully unsubscribed');
       return true;
     } catch (error) {
-      console.error('[Push] Unsubscribe error:', error);
+      pushLogger.error('Unsubscribe error', error);
       setState((s) => ({
         ...s,
         isLoading: false,
