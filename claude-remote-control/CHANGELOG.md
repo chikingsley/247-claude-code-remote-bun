@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.37.0] - 2026-01-20
+
+### Features
+
+- **web**: redesign UI with 3-panel layout and new design system (2ea4e1b)
+
 ## [2.36.2] - 2026-01-20
 
 ### Bug Fixes
