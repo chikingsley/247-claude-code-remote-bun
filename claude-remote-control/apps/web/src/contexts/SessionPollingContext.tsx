@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { SessionInfo, SessionWithMachine } from '@/lib/types';
 import { buildWebSocketUrl, buildApiUrl } from '@/lib/utils';
-import { requestNotificationPermission, showInAppToast } from '@/lib/notifications';
+import { requestNotificationPermission } from '@/lib/notifications';
 import { wsLogger, pollingLogger, archivedLogger } from '@/lib/logger';
 import type { WSSessionsMessageFromAgent } from '247-shared';
 
@@ -368,14 +368,8 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                   }
                   return next;
                 });
-                // Trigger in-app toast for needs_attention (except task_complete)
-                // Since WebSocket messages are only received when app is open, use toast instead of browser notification
-                if (
-                  msg.session.status === 'needs_attention' &&
-                  msg.session.attentionReason !== 'task_complete'
-                ) {
-                  showInAppToast(msg.session.project, msg.session.attentionReason);
-                }
+                // Note: In-app toast for needs_attention is now handled by push notifications
+                // via useInAppNotifications hook to avoid duplicate notifications
                 break;
             }
           } catch (err) {
@@ -384,7 +378,10 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
         };
 
         ws.onclose = (event) => {
-          wsLogger.info(`Disconnected from ${machine.name}`, { code: event.code, reason: event.reason });
+          wsLogger.info(`Disconnected from ${machine.name}`, {
+            code: event.code,
+            reason: event.reason,
+          });
           wsConnectionsRef.current.delete(machine.id);
           wsConnectedRef.current.delete(machine.id); // Remove from ref
 
@@ -411,7 +408,9 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
               ? currentDelay + concurrentCount * 1000 // Stagger reconnections
               : currentDelay;
 
-          wsLogger.info(`Reconnecting to ${machine.name} in ${effectiveDelay}ms`, { concurrentCount });
+          wsLogger.info(`Reconnecting to ${machine.name} in ${effectiveDelay}ms`, {
+            concurrentCount,
+          });
 
           activeReconnectionsRef.current.add(machine.id);
 
