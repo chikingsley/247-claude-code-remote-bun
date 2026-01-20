@@ -1,25 +1,11 @@
 import type { Metadata, Viewport } from 'next';
-import { JetBrains_Mono, Inter, Space_Grotesk } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import { Toaster } from '@/components/ui/sonner';
 import { Providers } from '@/components/Providers';
 import { AuthProvider } from '@/components/AuthProvider';
 import './globals.css';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-});
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-display',
-  weight: ['400', '500', '600', '700'],
-});
+import '@/styles/design-system.css';
 
 export const viewport: Viewport = {
   themeColor: [
@@ -42,7 +28,8 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://247.quivr.com'),
   openGraph: {
     title: '247 - The Vibe Company',
-    description: 'Web terminal access to Claude Code from anywhere. Control your AI coding sessions remotely.',
+    description:
+      'Web terminal access to Claude Code from anywhere. Control your AI coding sessions remotely.',
     url: 'https://247.quivr.com',
     siteName: '247',
     locale: 'en_US',
@@ -59,7 +46,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '247 - The Vibe Company',
-    description: 'Web terminal access to Claude Code from anywhere. Control your AI coding sessions remotely.',
+    description:
+      'Web terminal access to Claude Code from anywhere. Control your AI coding sessions remotely.',
     images: ['/og-image.png'],
   },
   robots: {
@@ -84,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
       <body className="bg-background text-foreground min-h-screen font-sans antialiased">

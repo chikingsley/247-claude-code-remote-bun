@@ -9,24 +9,34 @@ module.exports = {
   theme: {
   	extend: {
   		fontFamily: {
-  			sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
-  			mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
-  			display: ['var(--font-display)', 'var(--font-sans)', 'system-ui', 'sans-serif'],
+  			sans: ['var(--font-geist-sans)', 'Geist', 'system-ui', 'sans-serif'],
+  			mono: ['var(--font-geist-mono)', 'Geist Mono', 'monospace'],
+  			display: ['var(--font-geist-sans)', 'Geist', 'system-ui', 'sans-serif'],
   		},
   		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			lg: 'var(--radius-lg)',
+  			md: 'var(--radius)',
+  			sm: 'var(--radius-sm)',
+  			xl: 'var(--radius-xl)',
   		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
+  			'foreground-muted': 'hsl(var(--foreground-muted))',
+  			'foreground-subtle': 'hsl(var(--foreground-subtle))',
+  			surface: {
+  				0: 'hsl(var(--surface-0))',
+  				1: 'hsl(var(--surface-1))',
+  				2: 'hsl(var(--surface-2))',
+  				3: 'hsl(var(--surface-3))',
+  			},
   			status: {
-  				running: 'hsl(var(--status-running))',
-  				waiting: 'hsl(var(--status-waiting))',
+  				working: 'hsl(var(--status-working))',
+  				attention: 'hsl(var(--status-attention))',
   				permission: 'hsl(var(--status-permission))',
-  				done: 'hsl(var(--status-done))',
-  				idle: 'hsl(var(--status-idle))'
+  				success: 'hsl(var(--status-success))',
+  				idle: 'hsl(var(--status-idle))',
+  				error: 'hsl(var(--status-error))',
   			},
   			card: {
   				DEFAULT: 'hsl(var(--card))',
@@ -38,7 +48,9 @@ module.exports = {
   			},
   			primary: {
   				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
+  				foreground: 'hsl(var(--primary-foreground))',
+  				hover: 'hsl(var(--primary-hover))',
+  				muted: 'hsl(var(--primary-muted))',
   			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
@@ -50,13 +62,19 @@ module.exports = {
   			},
   			accent: {
   				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
+  				foreground: 'hsl(var(--accent-foreground))',
+  				blue: 'hsl(var(--accent-blue))',
+  				purple: 'hsl(var(--accent-purple))',
+  				emerald: 'hsl(var(--accent-emerald))',
+  				amber: 'hsl(var(--accent-amber))',
+  				rose: 'hsl(var(--accent-rose))',
   			},
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
   			border: 'hsl(var(--border))',
+  			'border-subtle': 'hsl(var(--border-subtle))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
   			chart: {
@@ -66,7 +84,19 @@ module.exports = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
-  		}
+  		},
+  		boxShadow: {
+  			'glow-orange': 'var(--shadow-glow-orange)',
+  			'glow-blue': 'var(--shadow-glow-blue)',
+  			'glow-purple': 'var(--shadow-glow-purple)',
+  			'glow-emerald': 'var(--shadow-glow-emerald)',
+  		},
+  		animation: {
+  			'status-pulse': 'status-pulse 2s ease-out infinite',
+  			'fade-in-up': 'fade-in-up var(--duration-normal) var(--ease-out) forwards',
+  			'slide-in-left': 'slide-in-left var(--duration-normal) var(--ease-out) forwards',
+  			'scale-in': 'scale-in var(--duration-fast) var(--ease-spring) forwards',
+  		},
   	}
   },
   plugins: [require("tailwindcss-animate")],

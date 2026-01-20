@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Zap, Loader2, ArrowDown } from 'lucide-react';
-import { HomeSidebar } from '@/components/HomeSidebar';
+import { buildApiUrl } from '@/lib/utils';
 import { SessionView } from '@/components/SessionView';
 import { NewSessionModal } from '@/components/NewSessionModal';
 import { AgentConnectionSettings } from '@/components/AgentConnectionSettings';
@@ -11,7 +11,6 @@ import { MobileStatusStrip } from '@/components/mobile';
 import { InstallBanner } from '@/components/InstallBanner';
 import { SlideOverPanel } from '@/components/ui/SlideOverPanel';
 import { ConnectionGuide } from '@/components/ConnectionGuide';
-import { MultiAgentHeader, type ConnectedAgent } from '@/components/MultiAgentHeader';
 import { LoadingView } from './LoadingView';
 import { NoConnectionView } from './NoConnectionView';
 import { useHomeState } from './useHomeState';
@@ -20,7 +19,30 @@ import { useViewportHeight } from '@/hooks/useViewportHeight';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useNotificationDeeplink } from '@/hooks/useNotificationDeeplink';
 import { useInAppNotifications } from '@/hooks/useInAppNotifications';
-import { useSessionPolling } from '@/contexts/SessionPollingContext';
+import { useSessionPolling, type SessionWithMachine } from '@/contexts/SessionPollingContext';
+// New layout components
+import { AppShell } from '@/components/layout';
+import type { SidebarMachine, SidebarProject } from '@/components/layout/Sidebar';
+import type { SessionListItem } from '@/components/layout/SessionListPanel';
+import type { SessionStatus } from '@/components/ui/status-indicator';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Helper Functions
+// ═══════════════════════════════════════════════════════════════════════════
+
+function mapMachineType(method: string): SidebarMachine['type'] {
+  if (method === 'localhost' || method === 'local') return 'localhost';
+  if (method === 'tailscale') return 'tailscale';
+  if (method === 'fly') return 'fly';
+  return 'custom';
+}
+
+function mapSessionStatus(session: SessionWithMachine): SessionStatus {
+  if (session.status === 'working') return 'working';
+  if (session.status === 'needs_attention') return 'needs_attention';
+  if (session.status === 'init') return 'init';
+  return 'idle';
+}
 
 export function HomeContent() {
   const isMobile = useIsMobile();
@@ -49,7 +71,7 @@ export function HomeContent() {
     allSessions,
     currentMachine,
     machines,
-    getArchivedSessions,
+    getArchivedSessions: _getArchivedSessions,
     getAgentUrl,
     getSelectedSessionInfo,
     handleSelectSession,
@@ -67,24 +89,132 @@ export function HomeContent() {
   // Get session count per agent for the header
   const { sessionsByMachine, isWsConnected, refreshMachine } = useSessionPolling();
 
-  // Convert agentConnections to ConnectedAgent format for the header
-  const connectedAgents: ConnectedAgent[] = agentConnections.map((conn) => {
-    const machineData = sessionsByMachine.get(conn.id);
-    const wsConnected = isWsConnected(conn.id);
-    return {
-      id: conn.id,
-      name: conn.name,
-      url: conn.url,
-      method: conn.method,
-      status: machineData?.error ? 'offline' : wsConnected ? 'online' : 'connecting',
-      sessionCount: machineData?.sessions?.length ?? 0,
-      color: conn.color,
-    };
-  });
-
   // Slide-over panel states
   const [guideOpen, setGuideOpen] = useState(false);
   const [unifiedManagerOpen, setUnifiedManagerOpen] = useState(false);
+
+  // Filter states for sidebar
+  const [machineFilter, setMachineFilter] = useState<string | null>(null);
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Data transformations for new layout
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Transform agentConnections → SidebarMachine[]
+  const sidebarMachines: SidebarMachine[] = useMemo(
+    () =>
+      agentConnections.map((conn) => {
+        const machineData = sessionsByMachine.get(conn.id);
+        const wsConnected = isWsConnected(conn.id);
+        return {
+          id: conn.id,
+          name: conn.name,
+          type: mapMachineType(conn.method),
+          status: machineData?.error ? 'offline' : wsConnected ? 'online' : 'connecting',
+          sessionCount: machineData?.sessions?.length ?? 0,
+          color: conn.color,
+        };
+      }),
+    [agentConnections, sessionsByMachine, isWsConnected]
+  );
+
+  // Transform allSessions → SessionListItem[]
+  const sessionListItems: SessionListItem[] = useMemo(
+    () =>
+      allSessions.map((session) => ({
+        id: `${session.machineId}-${session.name}`,
+        name: session.name,
+        project: session.project,
+        status: mapSessionStatus(session),
+        updatedAt: new Date(session.lastActivity || session.createdAt),
+        createdAt: new Date(session.createdAt),
+        model: session.model,
+        cost: session.costUsd,
+        machineId: session.machineId,
+      })),
+    [allSessions]
+  );
+
+  // Extract unique projects from sessions
+  const sidebarProjects: SidebarProject[] = useMemo(() => {
+    const projectMap = new Map<string, number>();
+    allSessions.forEach((s) => {
+      projectMap.set(s.project, (projectMap.get(s.project) || 0) + 1);
+    });
+    return Array.from(projectMap.entries()).map(([name, count]) => ({
+      name,
+      path: name,
+      activeSessionCount: count,
+    }));
+  }, [allSessions]);
+
+  // Compute selectedSessionId for the new layout
+  const selectedSessionId = selectedSession
+    ? `${selectedSession.machineId}-${selectedSession.sessionName}`
+    : null;
+
+  // Filter sessions by machine and project
+  const filteredSessionListItems = useMemo(() => {
+    let filtered = sessionListItems;
+    if (machineFilter) {
+      filtered = filtered.filter((s) => s.machineId === machineFilter);
+    }
+    if (projectFilter) {
+      filtered = filtered.filter((s) => s.project === projectFilter);
+    }
+    return filtered;
+  }, [sessionListItems, machineFilter, projectFilter]);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Callback handlers for new layout
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Handler for machine selection (toggle filter)
+  const handleSelectMachine = useCallback((machineId: string) => {
+    setMachineFilter((prev) => (prev === machineId ? null : machineId));
+  }, []);
+
+  // Handler for project selection (toggle filter)
+  const handleSelectProject = useCallback((projectName: string) => {
+    setProjectFilter((prev) => (prev === projectName ? null : projectName));
+  }, []);
+
+  // Handler pour sélection depuis SessionListPanel
+  const handleSelectSessionFromList = useCallback(
+    (item: SessionListItem) => {
+      // Auto-acknowledge if needs_attention (replicate HomeSidebar behavior)
+      if (item.status === 'needs_attention' && item.machineId) {
+        const machine = agentConnections.find((c) => c.id === item.machineId);
+        if (machine) {
+          fetch(
+            buildApiUrl(machine.url, `/api/sessions/${encodeURIComponent(item.name)}/acknowledge`),
+            {
+              method: 'POST',
+            }
+          ).catch(console.error);
+        }
+      }
+      handleSelectSession(item.machineId!, item.name, item.project);
+    },
+    [handleSelectSession, agentConnections]
+  );
+
+  // Handler pour kill depuis SessionListPanel
+  const handleKillSessionFromList = useCallback(
+    (item: SessionListItem) => {
+      handleSessionKilled(item.machineId!, item.name);
+    },
+    [handleSessionKilled]
+  );
+
+  // Handler pour archive depuis SessionListPanel
+  const handleArchiveSessionFromList = useCallback(
+    (item: SessionListItem) => {
+      handleSessionArchived(item.machineId!, item.name);
+    },
+    [handleSessionArchived]
+  );
 
   // Create agent status and session count maps for UnifiedAgentManager
   const agentStatuses = new Map<string, 'online' | 'offline' | 'connecting'>();
@@ -130,121 +260,12 @@ export function HomeContent() {
     clearSessionFromUrl();
   };
 
-  // Connected state - Split View Layout
-  return (
-    <main
-      className="h-screen-safe flex flex-col overflow-hidden bg-[#0a0a10]"
-      onTouchStart={handlers.onTouchStart}
-      onTouchMove={handlers.onTouchMove}
-      onTouchEnd={handlers.onTouchEnd}
-    >
-      {/* Pull-to-refresh indicator */}
-      {isMobile && (isPulling || isRefreshing) && (
-        <div
-          className="pointer-events-none fixed left-0 right-0 z-50 flex justify-center"
-          style={{
-            top: 0,
-            transform: `translateY(${Math.min(pullDistance - 30, 50)}px)`,
-            opacity: Math.min(pullDistance / 40, 1),
-            transition: isRefreshing ? 'none' : 'opacity 0.1s ease-out',
-          }}
-        >
-          <div
-            className={`flex h-10 w-10 items-center justify-center rounded-full ${
-              isThresholdReached || isRefreshing
-                ? 'bg-orange-500/20 text-orange-400'
-                : 'bg-white/10 text-white/60'
-            }`}
-            style={{
-              transition: 'background-color 0.15s, color 0.15s',
-            }}
-          >
-            {isRefreshing ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <ArrowDown
-                className="h-5 w-5 transition-transform duration-150"
-                style={{
-                  transform: isThresholdReached ? 'rotate(180deg)' : 'rotate(0deg)',
-                }}
-              />
-            )}
-          </div>
-        </div>
-      )}
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Shared Modals (rendered outside main layout)
+  // ═══════════════════════════════════════════════════════════════════════════
 
-      {/* Mobile Status Strip - always visible on mobile when connected */}
-      {isMobile && (
-        <MobileStatusStrip
-          sessions={allSessions}
-          currentSession={selectedSession}
-          onSelectSession={handleSelectSession}
-          onNewSession={() => setNewSessionOpen(true)}
-          onOpenGuide={() => setGuideOpen(true)}
-          onConnectionSettingsClick={() => setUnifiedManagerOpen(true)}
-          onSessionKilled={handleSessionKilled}
-        />
-      )}
-
-      {/* Header - always visible on desktop */}
-      {!isMobile && (
-        <MultiAgentHeader
-          agents={connectedAgents}
-          totalSessionCount={allSessions.length}
-          onAddAgent={() => setUnifiedManagerOpen(true)}
-          onDisconnectAgent={handleConnectionRemoved}
-          onNewSession={() => setNewSessionOpen(true)}
-          onOpenGuide={() => setGuideOpen(true)}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
-          isMobile={false}
-        />
-      )}
-
-      {/* Main Split View */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Sidebar - hidden on mobile and in fullscreen */}
-        {!isFullscreen && !isMobile && (
-          <HomeSidebar
-            sessions={allSessions}
-            archivedSessions={getArchivedSessions()}
-            selectedSession={selectedSession}
-            onSelectSession={handleSelectSession}
-            onDeselectSession={handleMenuClick}
-            onSessionKilled={handleSessionKilled}
-            onSessionArchived={handleSessionArchived}
-          />
-        )}
-
-        {/* Main Content Area */}
-        <div className="relative flex flex-1 flex-col overflow-hidden">
-          {selectedSession ? (
-            <SessionView
-              key={`${selectedSession.machineId}-${selectedSession.project}-${selectedSession.sessionName.endsWith('--new') ? 'new' : selectedSession.sessionName}`}
-              sessionName={selectedSession.sessionName}
-              project={selectedSession.project}
-              agentUrl={getAgentUrl()}
-              sessionInfo={getSelectedSessionInfo()}
-              environmentId={selectedSession.environmentId}
-              planningProjectId={selectedSession.planningProjectId}
-              onMenuClick={handleMenuClick}
-              onSessionCreated={handleSessionCreated}
-              isMobile={isMobile}
-            />
-          ) : (
-            // Empty state when no session selected
-            <div className="flex flex-1 items-center justify-center">
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/10 bg-orange-500/5">
-                  <Zap className="h-8 w-8 text-orange-500/30" />
-                </div>
-                <p className="text-sm text-white/40">Select a session or create a new one</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
+  const modals = (
+    <>
       {/* Connection Settings Modal (legacy fallback) */}
       <AgentConnectionSettings
         open={connectionModalOpen}
@@ -278,9 +299,157 @@ export function HomeContent() {
       <SlideOverPanel open={guideOpen} onClose={() => setGuideOpen(false)} title="Connection Guide">
         <ConnectionGuide />
       </SlideOverPanel>
+    </>
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Desktop Layout - New 3-Panel AppShell
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if (!isMobile) {
+    return (
+      <>
+        <AppShell
+          // Sidebar props
+          machines={sidebarMachines}
+          projects={sidebarProjects}
+          selectedMachineId={machineFilter}
+          onSelectMachine={handleSelectMachine}
+          onAddMachine={() => setUnifiedManagerOpen(true)}
+          onOpenSettings={() => setConnectionModalOpen(true)}
+          selectedProjectName={projectFilter}
+          onSelectProject={handleSelectProject}
+          // Session list props
+          sessions={filteredSessionListItems}
+          selectedSessionId={selectedSessionId}
+          onSelectSession={handleSelectSessionFromList}
+          onNewSession={() => setNewSessionOpen(true)}
+          onKillSession={handleKillSessionFromList}
+          onArchiveSession={handleArchiveSessionFromList}
+          // Header props
+          currentMachineName={currentMachine?.name}
+          currentProjectName={selectedSession?.project}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+        >
+          {/* Main content */}
+          {selectedSession ? (
+            <SessionView
+              key={`${selectedSession.machineId}-${selectedSession.project}-${selectedSession.sessionName.endsWith('--new') ? 'new' : selectedSession.sessionName}`}
+              sessionName={selectedSession.sessionName}
+              project={selectedSession.project}
+              agentUrl={getAgentUrl()}
+              sessionInfo={getSelectedSessionInfo()}
+              environmentId={selectedSession.environmentId}
+              planningProjectId={selectedSession.planningProjectId}
+              onMenuClick={handleMenuClick}
+              onSessionCreated={handleSessionCreated}
+              isMobile={false}
+            />
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <div className="text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/10 bg-orange-500/5">
+                  <Zap className="h-8 w-8 text-orange-500/30" />
+                </div>
+                <p className="text-sm text-white/40">Select a session or create a new one</p>
+              </div>
+            </div>
+          )}
+        </AppShell>
+        {modals}
+      </>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Mobile Layout - Existing layout with MobileStatusStrip
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  return (
+    <main
+      className="h-screen-safe flex flex-col overflow-hidden bg-[#0a0a10]"
+      onTouchStart={handlers.onTouchStart}
+      onTouchMove={handlers.onTouchMove}
+      onTouchEnd={handlers.onTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(isPulling || isRefreshing) && (
+        <div
+          className="pointer-events-none fixed left-0 right-0 z-50 flex justify-center"
+          style={{
+            top: 0,
+            transform: `translateY(${Math.min(pullDistance - 30, 50)}px)`,
+            opacity: Math.min(pullDistance / 40, 1),
+            transition: isRefreshing ? 'none' : 'opacity 0.1s ease-out',
+          }}
+        >
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-full ${
+              isThresholdReached || isRefreshing
+                ? 'bg-orange-500/20 text-orange-400'
+                : 'bg-white/10 text-white/60'
+            }`}
+            style={{
+              transition: 'background-color 0.15s, color 0.15s',
+            }}
+          >
+            {isRefreshing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <ArrowDown
+                className="h-5 w-5 transition-transform duration-150"
+                style={{
+                  transform: isThresholdReached ? 'rotate(180deg)' : 'rotate(0deg)',
+                }}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Status Strip */}
+      <MobileStatusStrip
+        sessions={allSessions}
+        currentSession={selectedSession}
+        onSelectSession={handleSelectSession}
+        onNewSession={() => setNewSessionOpen(true)}
+        onOpenGuide={() => setGuideOpen(true)}
+        onConnectionSettingsClick={() => setUnifiedManagerOpen(true)}
+        onSessionKilled={handleSessionKilled}
+      />
+
+      {/* Main Content Area */}
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        {selectedSession ? (
+          <SessionView
+            key={`${selectedSession.machineId}-${selectedSession.project}-${selectedSession.sessionName.endsWith('--new') ? 'new' : selectedSession.sessionName}`}
+            sessionName={selectedSession.sessionName}
+            project={selectedSession.project}
+            agentUrl={getAgentUrl()}
+            sessionInfo={getSelectedSessionInfo()}
+            environmentId={selectedSession.environmentId}
+            planningProjectId={selectedSession.planningProjectId}
+            onMenuClick={handleMenuClick}
+            onSessionCreated={handleSessionCreated}
+            isMobile={true}
+          />
+        ) : (
+          <div className="flex flex-1 items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/10 bg-orange-500/5">
+                <Zap className="h-8 w-8 text-orange-500/30" />
+              </div>
+              <p className="text-sm text-white/40">Select a session or create a new one</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {modals}
 
       {/* PWA Install Banner - only on mobile */}
-      {isMobile && <InstallBanner />}
+      <InstallBanner />
     </main>
   );
 }
