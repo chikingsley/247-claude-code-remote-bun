@@ -340,7 +340,12 @@
       "Bash(vercel logs:*)",
       "Bash(ping:*)",
       "Bash(ssh ubuntu@vibecoding \"ps aux | grep -E ''\\(node|agent\\)'' | grep -v grep | head -10\")",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "WebFetch(domain:knip.dev)",
+      "Bash(CLAUDE_PROJECT_DIR=/Users/stan/Dev/BrainStorming bash:*)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming diff --stat)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming log --oneline -3)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming commit --no-verify -m \"$\\(cat <<''EOF''\nfeat: add dead code detection with knip\n\nAdd pre-commit and Claude stop hooks to detect unused files, exports,\nand dependencies using knip.\n\n- Install knip as dev dependency\n- Add knip.config.ts with workspace configuration\n- Add `pnpm deadcode` and `pnpm deadcode:fix` scripts\n- Update .husky/pre-commit to run dead code check\n- Add .claude/hooks/check-deadcode.sh stop hook\n- Update .claude/settings.json to include the stop hook\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   },
   "remote": {
