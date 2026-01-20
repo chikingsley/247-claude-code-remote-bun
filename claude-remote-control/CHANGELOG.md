@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.36.0] - 2026-01-20
+
+### Features
+
+- add in-app notifications support (a244884)
+
+### Chores
+
+- resolve pending changes (2159913)
+- update local settings (28da1d9)
+
 ## [2.35.0] - 2026-01-20
 
 ### Features
