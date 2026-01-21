@@ -36,6 +36,19 @@ vi.mock('../../../src/lib/hooks.js', () => ({
   needsUpdate: vi.fn(),
   getHookVersion: vi.fn(),
   getPackagedHookVersion: vi.fn(),
+  getCodexNotifyStatus: vi.fn().mockReturnValue({
+    configPath: '/home/user/.codex/config.toml',
+    configExists: false,
+    notifyConfigured: false,
+  }),
+  installCodexNotify: vi.fn().mockReturnValue({
+    success: true,
+    status: 'missing-config',
+  }),
+  uninstallCodexNotify: vi.fn().mockReturnValue({
+    success: true,
+    status: 'missing-config',
+  }),
 }));
 
 describe('Hooks Command', () => {

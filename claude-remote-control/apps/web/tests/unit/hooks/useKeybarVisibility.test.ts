@@ -10,11 +10,17 @@ describe('useKeybarVisibility hook', () => {
   beforeEach(() => {
     // Mock localStorage
     mockStorage = {};
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key: string) => {
+    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key: string) => {
       return mockStorage[key] || null;
     });
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key: string, value: string) => {
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation((key: string, value: string) => {
       mockStorage[key] = value;
+    });
+    vi.spyOn(window.localStorage, 'removeItem').mockImplementation((key: string) => {
+      delete mockStorage[key];
+    });
+    vi.spyOn(window.localStorage, 'clear').mockImplementation(() => {
+      mockStorage = {};
     });
   });
 

@@ -1,6 +1,49 @@
 // Test setup for web app
 import { vi } from 'vitest';
 
+function createStorageMock() {
+  let store: Record<string, string> = {};
+
+  return {
+    getItem: (key: string) => (key in store ? store[key] : null),
+    setItem: (key: string, value: string) => {
+      store[key] = String(value);
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+    key: (index: number) => Object.keys(store)[index] ?? null,
+    get length() {
+      return Object.keys(store).length;
+    },
+  } as Storage;
+}
+
+if (
+  !('localStorage' in window) ||
+  !window.localStorage ||
+  typeof window.localStorage.getItem !== 'function'
+) {
+  Object.defineProperty(window, 'localStorage', {
+    writable: true,
+    value: createStorageMock(),
+  });
+}
+
+if (
+  !('sessionStorage' in window) ||
+  !window.sessionStorage ||
+  typeof window.sessionStorage.getItem !== 'function'
+) {
+  Object.defineProperty(window, 'sessionStorage', {
+    writable: true,
+    value: createStorageMock(),
+  });
+}
+
 // Mock Next.js router
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
