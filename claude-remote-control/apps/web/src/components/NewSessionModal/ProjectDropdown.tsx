@@ -28,6 +28,7 @@ export function ProjectDropdown({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Auto-focus search input when dropdown opens, reset search when closed
   useEffect(() => {
@@ -37,6 +38,14 @@ export function ProjectDropdown({
     if (!open) {
       setSearchQuery('');
     }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const rafId = requestAnimationFrame(() => {
+      menuRef.current?.scrollIntoView({ block: 'nearest' });
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [open]);
 
   // Filter folders based on search query
@@ -80,6 +89,7 @@ export function ProjectDropdown({
       <AnimatePresence>
         {open && (
           <motion.div
+            ref={menuRef}
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
@@ -88,7 +98,7 @@ export function ProjectDropdown({
               'absolute left-0 right-0 top-full z-10 mt-2',
               'rounded-xl border border-white/10 bg-[#12121a]',
               'shadow-xl shadow-black/50',
-              'flex max-h-64 flex-col overflow-hidden'
+              'flex max-h-[50vh] flex-col overflow-hidden sm:max-h-64'
             )}
           >
             {/* Search input */}
