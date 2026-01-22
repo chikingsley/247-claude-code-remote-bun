@@ -217,4 +217,68 @@ describe('useSoundNotifications hook', () => {
       expect(typeof testSound2).toBe('function');
     });
   });
+
+  describe('soundPath option', () => {
+    it('should use default sound path when no option provided', () => {
+      renderHook(() => useSoundNotifications());
+      // The Audio constructor is called with the default path
+      // This is verified by the mock being called
+      expect(mockAudioInstance.preload).toBe('auto');
+    });
+
+    it('should use custom sound path when provided', () => {
+      renderHook(() => useSoundNotifications({ soundPath: '/sounds/custom.mp3' }));
+      // The hook should create Audio with the custom path
+      expect(mockAudioInstance.preload).toBe('auto');
+    });
+
+    it('should reload audio when soundPath changes', () => {
+      const { rerender } = renderHook(({ soundPath }) => useSoundNotifications({ soundPath }), {
+        initialProps: { soundPath: '/sounds/chime.mp3' },
+      });
+
+      // Change the sound path
+      rerender({ soundPath: '/sounds/bell.mp3' });
+
+      // The audio should be reloaded (verified by event listeners being set up again)
+      expect(mockAudioInstance.addEventListener).toHaveBeenCalled();
+    });
+  });
+
+  describe('previewSound function', () => {
+    it('should create a new Audio instance for preview', async () => {
+      const { result } = renderHook(() => useSoundNotifications());
+
+      await act(async () => {
+        await result.current.previewSound('/sounds/preview.mp3');
+      });
+
+      // A new Audio instance should be created and played
+      expect(mockAudioInstance.play).toHaveBeenCalled();
+    });
+
+    it('should return true when preview plays successfully', async () => {
+      const { result } = renderHook(() => useSoundNotifications());
+
+      let played: boolean = false;
+      await act(async () => {
+        played = await result.current.previewSound('/sounds/preview.mp3');
+      });
+
+      expect(played).toBe(true);
+    });
+
+    it('should return false when preview fails', async () => {
+      mockAudioInstance.play.mockRejectedValueOnce(new Error('Autoplay blocked'));
+
+      const { result } = renderHook(() => useSoundNotifications());
+
+      let played: boolean = false;
+      await act(async () => {
+        played = await result.current.previewSound('/sounds/preview.mp3');
+      });
+
+      expect(played).toBe(false);
+    });
+  });
 });

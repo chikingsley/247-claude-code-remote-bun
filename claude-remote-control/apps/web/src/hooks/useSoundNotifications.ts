@@ -2,40 +2,59 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 
-const NOTIFICATION_SOUND_PATH = '/sounds/notification.mp3';
+const DEFAULT_SOUND_PATH = '/sounds/chime.mp3';
+
+interface UseSoundNotificationsOptions {
+  soundPath?: string;
+}
 
 /**
  * Hook for playing notification sounds.
  * Handles browser autoplay policy by tracking user interaction.
  * Preloads audio on mount for instant playback.
  */
-export function useSoundNotifications() {
+export function useSoundNotifications(options?: UseSoundNotificationsOptions) {
+  const soundPath = options?.soundPath ?? DEFAULT_SOUND_PATH;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
-  // Preload audio on mount
+  // Preload audio on mount and when sound path changes
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const audio = new Audio(NOTIFICATION_SOUND_PATH);
+    setIsLoaded(false);
+
+    const audio = new Audio(soundPath);
     audio.preload = 'auto';
     audio.volume = 0.5;
 
-    audio.addEventListener('canplaythrough', () => {
+    const handleCanPlay = () => {
       setIsLoaded(true);
-    });
+    };
 
-    audio.addEventListener('error', () => {
-      console.warn('Failed to load notification sound');
-    });
+    const handleError = () => {
+      console.warn('Failed to load notification sound:', soundPath);
+    };
+
+    audio.addEventListener('canplaythrough', handleCanPlay);
+    audio.addEventListener('error', handleError);
 
     audioRef.current = audio;
 
-    // Track user interaction for autoplay policy
+    return () => {
+      audio.removeEventListener('canplaythrough', handleCanPlay);
+      audio.removeEventListener('error', handleError);
+      audioRef.current = null;
+    };
+  }, [soundPath]);
+
+  // Track user interaction for autoplay policy
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const handleInteraction = () => {
       setHasUserInteracted(true);
-      // Remove listeners after first interaction
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('keydown', handleInteraction);
       document.removeEventListener('touchstart', handleInteraction);
@@ -49,7 +68,6 @@ export function useSoundNotifications() {
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('keydown', handleInteraction);
       document.removeEventListener('touchstart', handleInteraction);
-      audioRef.current = null;
     };
   }, []);
 
@@ -82,9 +100,28 @@ export function useSoundNotifications() {
     return playSound();
   }, [playSound]);
 
+  /**
+   * Preview a specific sound without changing the main audio.
+   * Used in settings panel for trying different sounds.
+   */
+  const previewSound = useCallback(async (previewPath: string): Promise<boolean> => {
+    if (typeof window === 'undefined') return false;
+
+    try {
+      const previewAudio = new Audio(previewPath);
+      previewAudio.volume = 0.5;
+      await previewAudio.play();
+      return true;
+    } catch (error) {
+      console.debug('Preview sound playback blocked:', error);
+      return false;
+    }
+  }, []);
+
   return {
     playSound,
     testSound,
+    previewSound,
     isLoaded,
     hasUserInteracted,
   };

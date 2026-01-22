@@ -58,8 +58,8 @@ export function HomeContent() {
   useNotificationDeeplink();
 
   // Notification preferences and sound
-  const { soundEnabled } = useNotificationPreferences();
-  const { playSound } = useSoundNotifications();
+  const { soundEnabled, getSelectedSoundPath } = useNotificationPreferences();
+  const { playSound } = useSoundNotifications({ soundPath: getSelectedSoundPath() });
 
   // Handle in-app notifications when app is in foreground (from push notifications)
   useInAppNotifications({
