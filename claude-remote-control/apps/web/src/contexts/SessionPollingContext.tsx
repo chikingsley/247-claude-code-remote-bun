@@ -47,6 +47,11 @@ interface SessionPollingContextValue {
   isLoading: (machineId: string) => boolean;
   getError: (machineId: string) => string | null;
   isWsConnected: (machineId: string) => boolean;
+  /**
+   * Register a callback for when a session changes to needs_attention.
+   * Used for sound notifications.
+   */
+  setOnNeedsAttention: (callback: ((sessionName: string) => void) | undefined) => void;
 }
 
 const SessionPollingContext = createContext<SessionPollingContextValue | null>(null);
@@ -96,6 +101,14 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   const wsReconnectDelaysRef = useRef<Map<string, number>>(new Map());
   const wsReconnectTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const activeReconnectionsRef = useRef<Set<string>>(new Set()); // Track machines currently reconnecting
+  const onNeedsAttentionRef = useRef<((sessionName: string) => void) | undefined>(undefined);
+
+  const setOnNeedsAttention = useCallback(
+    (callback: ((sessionName: string) => void) | undefined) => {
+      onNeedsAttentionRef.current = callback;
+    },
+    []
+  );
 
   // Request notification permission on mount
   useEffect(() => {
@@ -355,6 +368,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                       (s) => s.name === msg.session.name
                     );
                     if (sessionIndex !== -1) {
+                      const previousStatus = existingData.sessions[sessionIndex].status;
                       const updatedSessions = [...existingData.sessions];
                       updatedSessions[sessionIndex] = {
                         ...updatedSessions[sessionIndex],
@@ -364,12 +378,18 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                         lastStatusChange: msg.session.lastStatusChange,
                       };
                       next.set(machine.id, { ...existingData, sessions: updatedSessions });
+
+                      // Trigger callback when status changes TO needs_attention
+                      if (
+                        msg.session.status === 'needs_attention' &&
+                        previousStatus !== 'needs_attention'
+                      ) {
+                        onNeedsAttentionRef.current?.(msg.session.name);
+                      }
                     }
                   }
                   return next;
                 });
-                // Note: In-app toast for needs_attention is now handled by push notifications
-                // via useInAppNotifications hook to avoid duplicate notifications
                 break;
             }
           } catch (err) {
@@ -598,6 +618,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
     isLoading: (machineId: string) => loadingMachines.has(machineId),
     getError: (machineId: string) => sessionsByMachine.get(machineId)?.error || null,
     isWsConnected: (machineId: string) => sessionsByMachine.get(machineId)?.wsConnected ?? false,
+    setOnNeedsAttention,
   };
 
   return <SessionPollingContext.Provider value={value}>{children}</SessionPollingContext.Provider>;

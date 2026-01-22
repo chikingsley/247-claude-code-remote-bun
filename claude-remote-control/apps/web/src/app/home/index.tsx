@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Zap, Loader2, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { buildApiUrl } from '@/lib/utils';
@@ -97,7 +97,20 @@ export function HomeContent() {
   } = useHomeState();
 
   // Get session count per agent for the header
-  const { sessionsByMachine, isWsConnected, refreshMachine } = useSessionPolling();
+  const { sessionsByMachine, isWsConnected, refreshMachine, setOnNeedsAttention } =
+    useSessionPolling();
+
+  // Register sound notification callback for needs_attention status changes
+  useEffect(() => {
+    if (soundEnabled) {
+      setOnNeedsAttention(() => {
+        playSound();
+      });
+    } else {
+      setOnNeedsAttention(undefined);
+    }
+    return () => setOnNeedsAttention(undefined);
+  }, [soundEnabled, playSound, setOnNeedsAttention]);
 
   // Slide-over panel states
   const [guideOpen, setGuideOpen] = useState(false);
