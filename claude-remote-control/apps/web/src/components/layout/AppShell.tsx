@@ -35,6 +35,7 @@ export interface AppShellProps {
   currentProjectName?: string;
   onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
+  onOpenNotificationSettings?: () => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -80,6 +81,7 @@ export function AppShell({
   currentProjectName,
   onToggleFullscreen,
   isFullscreen = false,
+  onOpenNotificationSettings,
 }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -99,6 +101,7 @@ export function AppShell({
           onNewSession={onNewSession}
           onToggleFullscreen={onToggleFullscreen}
           isFullscreen={isFullscreen}
+          onOpenNotificationSettings={onOpenNotificationSettings}
         />
         <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
       </div>
@@ -116,6 +119,7 @@ export function AppShell({
         onNewSession={onNewSession}
         onToggleFullscreen={onToggleFullscreen}
         isFullscreen={isFullscreen}
+        onOpenNotificationSettings={onOpenNotificationSettings}
       />
 
       {/* Main Content - 3 Panel Layout */}

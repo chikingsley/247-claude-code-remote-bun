@@ -1,0 +1,212 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+
+const STORAGE_KEY_SOUND = '247-notification-sound-enabled';
+const STORAGE_KEY_PUSH = '247-notification-push-enabled';
+
+describe('useNotificationPreferences hook', () => {
+  let mockStorage: Record<string, string> = {};
+
+  beforeEach(() => {
+    mockStorage = {};
+    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key: string) => {
+      return mockStorage[key] || null;
+    });
+    vi.spyOn(window.localStorage, 'setItem').mockImplementation((key: string, value: string) => {
+      mockStorage[key] = value;
+    });
+    vi.spyOn(window.localStorage, 'removeItem').mockImplementation((key: string) => {
+      delete mockStorage[key];
+    });
+    vi.spyOn(window.localStorage, 'clear').mockImplementation(() => {
+      mockStorage = {};
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('initial state', () => {
+    it('should default soundEnabled to false and pushEnabled to true', () => {
+      const { result } = renderHook(() => useNotificationPreferences());
+      expect(result.current.soundEnabled).toBe(false);
+      expect(result.current.pushEnabled).toBe(true);
+    });
+
+    it('should load stored sound preference on mount', () => {
+      mockStorage[STORAGE_KEY_SOUND] = 'true';
+      const { result, rerender } = renderHook(() => useNotificationPreferences());
+      rerender();
+      expect(result.current.soundEnabled).toBe(true);
+    });
+
+    it('should load stored push preference on mount', () => {
+      mockStorage[STORAGE_KEY_PUSH] = 'false';
+      const { result, rerender } = renderHook(() => useNotificationPreferences());
+      rerender();
+      expect(result.current.pushEnabled).toBe(false);
+    });
+  });
+
+  describe('toggleSound function', () => {
+    it('should toggle sound from false to true', () => {
+      const { result } = renderHook(() => useNotificationPreferences());
+      expect(result.current.soundEnabled).toBe(false);
+
+      act(() => {
+        result.current.toggleSound();
+      });
+
+      expect(result.current.soundEnabled).toBe(true);
+      expect(mockStorage[STORAGE_KEY_SOUND]).toBe('true');
+    });
+
+    it('should toggle sound from true to false', () => {
+      const { result } = renderHook(() => useNotificationPreferences());
+
+      act(() => {
+        result.current.toggleSound();
+      });
+      expect(result.current.soundEnabled).toBe(true);
+
+      act(() => {
+        result.current.toggleSound();
+      });
+      expect(result.current.soundEnabled).toBe(false);
+      expect(mockStorage[STORAGE_KEY_SOUND]).toBe('false');
+    });
+  });
+
+  describe('togglePush function', () => {
+    it('should toggle push from true to false', () => {
+      const { result } = renderHook(() => useNotificationPreferences());
+      expect(result.current.pushEnabled).toBe(true);
+
+      act(() => {
+        result.current.togglePush();
+      });
+
+      expect(result.current.pushEnabled).toBe(false);
+      expect(mockStorage[STORAGE_KEY_PUSH]).toBe('false');
+    });
+
+    it('should toggle push from false to true', () => {
+      const { result } = renderHook(() => useNotificationPreferences());
+
+      act(() => {
+        result.current.togglePush();
+      });
+      expect(result.current.pushEnabled).toBe(false);
+
+      act(() => {
+        result.current.togglePush();
+      });
+      expect(result.current.pushEnabled).toBe(true);
+      expect(mockStorage[STORAGE_KEY_PUSH]).toBe('true');
+    });
+  });
+
+  describe('setSoundPreference function', () => {
+    it('should set sound preference to true', () => {
+      const { result } = renderHook(() => useNotificationPreferences());
+
+      act(() => {
+        result.current.setSoundPreference(true);
+      });
+
+      expect(result.current.soundEnabled).toBe(true);
+      expect(mockStorage[STORAGE_KEY_SOUND]).toBe('true');
+    });
+
+    it('should set sound preference to false', () => {
+      const { result } = renderHook(() => useNotificationPreferences());
+
+      act(() => {
+        result.current.setSoundPreference(true);
+      });
+      act(() => {
+        result.current.setSoundPreference(false);
+      });
+
+      expect(result.current.soundEnabled).toBe(false);
+      expect(mockStorage[STORAGE_KEY_SOUND]).toBe('false');
+    });
+  });
+
+  describe('setPushPreference function', () => {
+    it('should set push preference to false', () => {
+      const { result } = renderHook(() => useNotificationPreferences());
+
+      act(() => {
+        result.current.setPushPreference(false);
+      });
+
+      expect(result.current.pushEnabled).toBe(false);
+      expect(mockStorage[STORAGE_KEY_PUSH]).toBe('false');
+    });
+
+    it('should set push preference to true', () => {
+      const { result } = renderHook(() => useNotificationPreferences());
+
+      act(() => {
+        result.current.setPushPreference(false);
+      });
+      act(() => {
+        result.current.setPushPreference(true);
+      });
+
+      expect(result.current.pushEnabled).toBe(true);
+      expect(mockStorage[STORAGE_KEY_PUSH]).toBe('true');
+    });
+  });
+
+  describe('localStorage persistence', () => {
+    it('should persist preferences across hook instances', () => {
+      const { result: hook1 } = renderHook(() => useNotificationPreferences());
+
+      act(() => {
+        hook1.current.setSoundPreference(true);
+        hook1.current.setPushPreference(false);
+      });
+
+      expect(mockStorage[STORAGE_KEY_SOUND]).toBe('true');
+      expect(mockStorage[STORAGE_KEY_PUSH]).toBe('false');
+
+      // Create a new hook instance - should read from storage
+      const { result: hook2, rerender } = renderHook(() => useNotificationPreferences());
+      rerender();
+
+      expect(hook2.current.soundEnabled).toBe(true);
+      expect(hook2.current.pushEnabled).toBe(false);
+    });
+  });
+
+  describe('function stability', () => {
+    it('should return stable function references', () => {
+      const { result, rerender } = renderHook(() => useNotificationPreferences());
+
+      const {
+        toggleSound: toggleSound1,
+        togglePush: togglePush1,
+        setSoundPreference: setSoundPreference1,
+        setPushPreference: setPushPreference1,
+      } = result.current;
+
+      rerender();
+
+      const {
+        toggleSound: toggleSound2,
+        togglePush: togglePush2,
+        setSoundPreference: setSoundPreference2,
+        setPushPreference: setPushPreference2,
+      } = result.current;
+
+      expect(toggleSound1).toBe(toggleSound2);
+      expect(togglePush1).toBe(togglePush2);
+      expect(setSoundPreference1).toBe(setSoundPreference2);
+      expect(setPushPreference1).toBe(setPushPreference2);
+    });
+  });
+});

@@ -20,6 +20,9 @@ import { useViewportHeight } from '@/hooks/useViewportHeight';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useNotificationDeeplink } from '@/hooks/useNotificationDeeplink';
 import { useInAppNotifications } from '@/hooks/useInAppNotifications';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { useSoundNotifications } from '@/hooks/useSoundNotifications';
+import { NotificationSettingsPanel } from '@/components/NotificationSettingsPanel';
 import { useSessionPolling, type SessionWithMachine } from '@/contexts/SessionPollingContext';
 // New layout components
 import { AppShell } from '@/components/layout';
@@ -54,8 +57,14 @@ export function HomeContent() {
   // Handle notification deep links (iOS PWA fallback)
   useNotificationDeeplink();
 
+  // Notification preferences and sound
+  const { soundEnabled } = useNotificationPreferences();
+  const { playSound } = useSoundNotifications();
+
   // Handle in-app notifications when app is in foreground (from push notifications)
-  useInAppNotifications();
+  useInAppNotifications({
+    onNotification: soundEnabled ? playSound : undefined,
+  });
 
   const {
     loading,
@@ -93,6 +102,7 @@ export function HomeContent() {
   // Slide-over panel states
   const [guideOpen, setGuideOpen] = useState(false);
   const [unifiedManagerOpen, setUnifiedManagerOpen] = useState(false);
+  const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
 
   // Filter states for sidebar
   const [machineFilter, setMachineFilter] = useState<string | null>(null);
@@ -342,6 +352,15 @@ export function HomeContent() {
       <SlideOverPanel open={guideOpen} onClose={() => setGuideOpen(false)} title="Connection Guide">
         <ConnectionGuide />
       </SlideOverPanel>
+
+      {/* Notification Settings Slide-Over Panel */}
+      <SlideOverPanel
+        open={notificationSettingsOpen}
+        onClose={() => setNotificationSettingsOpen(false)}
+        title="Notification Settings"
+      >
+        <NotificationSettingsPanel />
+      </SlideOverPanel>
     </>
   );
 
@@ -374,6 +393,7 @@ export function HomeContent() {
           currentProjectName={selectedSession?.project}
           isFullscreen={isFullscreen}
           onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+          onOpenNotificationSettings={() => setNotificationSettingsOpen(true)}
         >
           {/* Main content */}
           {selectedSession ? (

@@ -31,13 +31,18 @@ interface AppHeaderProps {
   onNewSession?: () => void;
   onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
+  onOpenNotificationSettings?: () => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // User Menu Component
 // ═══════════════════════════════════════════════════════════════════════════
 
-function UserMenu() {
+interface UserMenuProps {
+  onOpenNotificationSettings?: () => void;
+}
+
+function UserMenu({ onOpenNotificationSettings }: UserMenuProps) {
   const [open, setOpen] = useState(false);
 
   // Mock user data
@@ -107,7 +112,13 @@ function UserMenu() {
                 <Settings className="h-4 w-4" />
                 Settings
               </button>
-              <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white/90">
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  onOpenNotificationSettings?.();
+                }}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white/90"
+              >
                 <Bell className="h-4 w-4" />
                 Notifications
               </button>
@@ -178,6 +189,7 @@ export function AppHeader({
   onNewSession,
   onToggleFullscreen,
   isFullscreen,
+  onOpenNotificationSettings,
 }: AppHeaderProps) {
   return (
     <header
@@ -267,7 +279,7 @@ export function AppHeader({
         </button>
 
         {/* User Menu */}
-        <UserMenu />
+        <UserMenu onOpenNotificationSettings={onOpenNotificationSettings} />
       </div>
     </header>
   );

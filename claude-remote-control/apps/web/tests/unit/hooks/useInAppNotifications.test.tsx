@@ -91,4 +91,119 @@ describe('useInAppNotifications', () => {
     unmount();
     expect(removeEventListenerSpy).toHaveBeenCalledWith('message', handler);
   });
+
+  describe('onNotification callback', () => {
+    it('calls onNotification callback when notification is shown', () => {
+      const onNotification = vi.fn();
+      renderHook(() => useInAppNotifications({ onNotification }));
+
+      handler?.({
+        data: {
+          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          payload: {
+            title: 'Claude - Project',
+            body: 'Attention needed',
+            data: { sessionName: 'proj--123' },
+          },
+        },
+      } as MessageEvent);
+
+      expect(toastMock).toHaveBeenCalledTimes(1);
+      expect(onNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call onNotification when notification is deduped', () => {
+      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+      const onNotification = vi.fn();
+      renderHook(() => useInAppNotifications({ onNotification }));
+
+      // First notification
+      handler?.({
+        data: {
+          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          payload: {
+            title: 'Claude - Project',
+            body: 'Attention needed',
+            data: { sessionName: 'proj--123' },
+          },
+        },
+      } as MessageEvent);
+
+      // Duplicate notification (should be deduped)
+      handler?.({
+        data: {
+          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          payload: {
+            title: 'Claude - Project',
+            body: 'Attention needed',
+            data: { sessionName: 'proj--123' },
+          },
+        },
+      } as MessageEvent);
+
+      expect(toastMock).toHaveBeenCalledTimes(1);
+      expect(onNotification).toHaveBeenCalledTimes(1);
+      nowSpy.mockRestore();
+    });
+
+    it('works without onNotification callback', () => {
+      renderHook(() => useInAppNotifications());
+
+      handler?.({
+        data: {
+          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          payload: {
+            title: 'Claude - Project',
+            body: 'Attention needed',
+            data: { sessionName: 'proj--123' },
+          },
+        },
+      } as MessageEvent);
+
+      expect(toastMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('updates callback when options change', () => {
+      const onNotification1 = vi.fn();
+      const onNotification2 = vi.fn();
+
+      const { rerender } = renderHook(
+        ({ callback }) => useInAppNotifications({ onNotification: callback }),
+        { initialProps: { callback: onNotification1 } }
+      );
+
+      // Trigger with first callback
+      handler?.({
+        data: {
+          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          payload: {
+            title: 'First',
+            body: 'First notification',
+            data: { sessionName: 'first' },
+          },
+        },
+      } as MessageEvent);
+
+      expect(onNotification1).toHaveBeenCalledTimes(1);
+      expect(onNotification2).not.toHaveBeenCalled();
+
+      // Update callback
+      rerender({ callback: onNotification2 });
+
+      // Trigger with second callback
+      handler?.({
+        data: {
+          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          payload: {
+            title: 'Second',
+            body: 'Second notification',
+            data: { sessionName: 'second' },
+          },
+        },
+      } as MessageEvent);
+
+      expect(onNotification1).toHaveBeenCalledTimes(1);
+      expect(onNotification2).toHaveBeenCalledTimes(1);
+    });
+  });
 });
