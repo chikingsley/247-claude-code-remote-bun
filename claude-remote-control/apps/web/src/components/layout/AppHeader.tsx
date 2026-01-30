@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu,
@@ -13,9 +13,11 @@ import {
   Bell,
   Maximize2,
   Minimize2,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { spring } from '@/lib/animations';
+import { authClient } from '@/lib/auth-client';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -44,13 +46,64 @@ interface UserMenuProps {
 
 function UserMenu({ onOpenNotificationSettings }: UserMenuProps) {
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string; initials: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock user data
-  const user = {
-    name: 'Stan',
-    email: 'stan@quivr.com',
-    initials: 'S',
+  // Fetch real user data from session
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const session = await authClient.getSession();
+        if (session?.data?.user) {
+          const name = session.data.user.name || '';
+          const email = session.data.user.email || '';
+          const initials = name
+            ? name
+                .split(' ')
+                .map((n) => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2)
+            : email?.[0]?.toUpperCase() || 'U';
+          setUser({ name, email, initials });
+        }
+      } catch {
+        // Not logged in
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await authClient.signOut();
+      window.location.reload();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-8 w-8 items-center justify-center">
+        <Loader2 className="h-4 w-4 animate-spin text-white/30" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <a
+        href="/auth/sign-in"
+        className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-white/70 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white"
+      >
+        <User className="h-4 w-4" />
+        <span className="hidden sm:inline">Sign in</span>
+      </a>
+    );
+  }
 
   return (
     <div className="relative">
@@ -125,7 +178,10 @@ function UserMenu({ onOpenNotificationSettings }: UserMenuProps) {
 
               <div className="my-1 h-px bg-white/5" />
 
-              <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-red-400 hover:bg-red-500/10">
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-red-400 hover:bg-red-500/10"
+              >
                 <LogOut className="h-4 w-4" />
                 Sign out
               </button>

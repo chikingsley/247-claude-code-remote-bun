@@ -363,7 +363,15 @@
       "Skill(continuous-learning)",
       "Bash(git reset:*)",
       "Bash(git -C /Users/stan/Dev/BrainStorming/claude-remote-control commit -m \"$\\(cat <<''EOF''\nfix\\(web\\): remove duplicate in-app notification from WebSocket\n\nRemove showInAppToast from WebSocket session updates since push notifications\nalready handle this via useInAppNotifications hook. This prevents showing\ntwo identical toasts when a session needs attention.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(ffmpeg:*)"
+      "Bash(ffmpeg:*)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming/claude-remote-control log --oneline v2.41.2..HEAD)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming/claude-remote-control log --oneline -4)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming/claude-remote-control tag -d v2.41.2)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming/claude-remote-control reset --soft HEAD~1)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming/claude-remote-control checkout:*)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming/claude-remote-control tag v2.41.2 503e38c)",
+      "Bash(git -C /Users/stan/Dev/BrainStorming/claude-remote-control restore:*)",
+      "Bash(python3:*)"
     ]
   },
   "remote": {
