@@ -13,7 +13,10 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeft,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils';
 import { variants, spring, stagger } from '@/lib/animations';
 import { StatusDot, type ConnectionStatus } from '@/components/ui/status-indicator';
@@ -49,6 +52,9 @@ interface SidebarProps {
   onOpenSettings?: () => void;
   onSelectProject?: (projectName: string) => void;
   selectedProjectName?: string | null;
+  onEditMachine?: (machine: SidebarMachine) => void;
+  onRemoveMachine?: (machine: SidebarMachine) => void;
+  canRemoveMachine?: (machine: SidebarMachine) => boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -141,9 +147,39 @@ interface MachineItemProps {
   collapsed?: boolean;
   selected?: boolean;
   onClick?: () => void;
+  onEdit?: () => void;
+  onRemove?: () => void;
+  canRemove?: boolean;
 }
 
-function MachineItem({ machine, collapsed, selected, onClick }: MachineItemProps) {
+function MachineItem({
+  machine,
+  collapsed,
+  selected,
+  onClick,
+  onEdit,
+  onRemove,
+  canRemove = true,
+}: MachineItemProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  // Detect touch devices to always show actions
+  const isTouchDevice = typeof window !== 'undefined' && 'ontouchstart' in window;
+  const showActions = isHovered || isTouchDevice;
+
+  const handleRemoveConfirm = async () => {
+    if (!onRemove) return;
+    setIsRemoving(true);
+    try {
+      onRemove();
+    } finally {
+      setIsRemoving(false);
+      setShowRemoveConfirm(false);
+    }
+  };
+
   if (collapsed) {
     // Collapsed view - just icon with status
     return (
@@ -178,48 +214,124 @@ function MachineItem({ machine, collapsed, selected, onClick }: MachineItemProps
 
   // Expanded view
   return (
-    <motion.button
-      variants={variants.fadeInUp}
-      onClick={onClick}
-      className={cn(
-        'flex w-full items-center gap-3',
-        'rounded-lg px-3 py-2 transition-all duration-150',
-        'hover:bg-white/5 active:scale-[0.98]',
-        selected && 'bg-primary/10 border-primary border-l-2'
-      )}
-    >
-      {/* Icon with status */}
-      <div className="relative flex-shrink-0">
-        {machine.color ? (
-          <div
-            className="flex h-5 w-5 items-center justify-center rounded-md"
-            style={{ backgroundColor: machine.color }}
-          >
-            <MachineIcon type={machine.type} className="h-3 w-3 text-white" />
-          </div>
-        ) : (
-          <MachineIcon
-            type={machine.type}
-            className={cn(
-              'h-5 w-5',
-              machine.status === 'online' ? 'text-white/70' : 'text-white/30'
-            )}
-          />
+    <>
+      <motion.div
+        variants={variants.fadeInUp}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={cn(
+          'group relative flex w-full items-center gap-3',
+          'rounded-lg px-3 py-2 transition-all duration-150',
+          'hover:bg-white/5',
+          selected && 'bg-primary/10 border-primary border-l-2'
         )}
-        <StatusDot status={machine.status} size="xs" className="absolute -bottom-0.5 -right-0.5" />
-      </div>
+      >
+        {/* Clickable area for selection */}
+        <button
+          onClick={onClick}
+          className="absolute inset-0 z-0"
+          aria-label={`Select ${machine.name}`}
+        />
 
-      {/* Name and count */}
-      <div className="min-w-0 flex-1 text-left">
-        <div className="truncate text-sm font-medium text-white/90">{machine.name}</div>
-        <div className="text-xs text-white/40">
-          {machine.sessionCount} session{machine.sessionCount !== 1 ? 's' : ''}
+        {/* Icon with status */}
+        <div className="relative z-10 flex-shrink-0">
+          {machine.color ? (
+            <div
+              className="flex h-5 w-5 items-center justify-center rounded-md"
+              style={{ backgroundColor: machine.color }}
+            >
+              <MachineIcon type={machine.type} className="h-3 w-3 text-white" />
+            </div>
+          ) : (
+            <MachineIcon
+              type={machine.type}
+              className={cn(
+                'h-5 w-5',
+                machine.status === 'online' ? 'text-white/70' : 'text-white/30'
+              )}
+            />
+          )}
+          <StatusDot
+            status={machine.status}
+            size="xs"
+            className="absolute -bottom-0.5 -right-0.5"
+          />
         </div>
-      </div>
 
-      {/* Chevron */}
-      <ChevronRight className="h-4 w-4 flex-shrink-0 text-white/20" />
-    </motion.button>
+        {/* Name and count */}
+        <div className="z-10 min-w-0 flex-1 text-left">
+          <div className="truncate text-sm font-medium text-white/90">{machine.name}</div>
+          <div className="text-xs text-white/40">
+            {machine.sessionCount} session{machine.sessionCount !== 1 ? 's' : ''}
+          </div>
+        </div>
+
+        {/* Action buttons on hover OR Chevron when not hovered */}
+        <div className="z-10 flex-shrink-0">
+          <AnimatePresence mode="wait">
+            {showActions && (onEdit || (onRemove && canRemove)) ? (
+              <motion.div
+                key="actions"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.1 }}
+                className="flex items-center gap-0.5"
+              >
+                {onEdit && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit();
+                    }}
+                    className="rounded p-1.5 text-white/40 hover:bg-white/10 hover:text-white/80"
+                    title="Rename"
+                    aria-label="Rename machine"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {onRemove && canRemove && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowRemoveConfirm(true);
+                    }}
+                    className="rounded p-1.5 text-white/40 hover:bg-red-500/20 hover:text-red-400"
+                    title="Remove"
+                    aria-label="Remove machine"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="chevron"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.1 }}
+              >
+                <ChevronRight className="h-4 w-4 text-white/20" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        open={showRemoveConfirm}
+        onOpenChange={setShowRemoveConfirm}
+        title="Remove machine?"
+        description={`This will disconnect "${machine.name}" from your dashboard. You can add it back later.`}
+        confirmText="Remove"
+        variant="destructive"
+        onConfirm={handleRemoveConfirm}
+        isLoading={isRemoving}
+      />
+    </>
   );
 }
 
@@ -304,6 +416,9 @@ export function Sidebar({
   onOpenSettings,
   onSelectProject,
   selectedProjectName,
+  onEditMachine,
+  onRemoveMachine,
+  canRemoveMachine,
 }: SidebarProps) {
   return (
     <aside
@@ -375,6 +490,9 @@ export function Sidebar({
                   collapsed={collapsed}
                   selected={selectedMachineId === machine.id}
                   onClick={() => onSelectMachine?.(machine.id)}
+                  onEdit={onEditMachine ? () => onEditMachine(machine) : undefined}
+                  onRemove={onRemoveMachine ? () => onRemoveMachine(machine) : undefined}
+                  canRemove={canRemoveMachine?.(machine) ?? true}
                 />
               ))
             : !collapsed && (

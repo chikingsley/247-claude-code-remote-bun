@@ -8,6 +8,7 @@ import { SessionView } from '@/components/SessionView';
 import { NewSessionModal } from '@/components/NewSessionModal';
 import { AgentConnectionSettings } from '@/components/AgentConnectionSettings';
 import { UnifiedAgentManager } from '@/components/UnifiedAgentManager';
+import { EditAgentModal } from '@/components/EditAgentModal';
 import { MobileStatusStrip } from '@/components/mobile';
 import { InstallBanner } from '@/components/InstallBanner';
 import { SlideOverPanel } from '@/components/ui/SlideOverPanel';
@@ -117,6 +118,9 @@ export function HomeContent() {
   const [unifiedManagerOpen, setUnifiedManagerOpen] = useState(false);
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
 
+  // Edit machine modal state (for sidebar context menu)
+  const [editingMachine, setEditingMachine] = useState<SidebarMachine | null>(null);
+
   // Filter states for sidebar
   const [machineFilter, setMachineFilter] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
@@ -203,6 +207,24 @@ export function HomeContent() {
   const handleSelectProject = useCallback((projectName: string) => {
     setProjectFilter((prev) => (prev === projectName ? null : projectName));
   }, []);
+
+  // Handler for editing machine from sidebar
+  const handleEditMachineFromSidebar = useCallback((machine: SidebarMachine) => {
+    setEditingMachine(machine);
+  }, []);
+
+  // Handler for removing machine from sidebar
+  const handleRemoveMachineFromSidebar = useCallback(
+    async (machine: SidebarMachine) => {
+      await handleConnectionRemoved(machine.id);
+    },
+    [handleConnectionRemoved]
+  );
+
+  // Check if machine can be removed (not the last one)
+  const canRemoveMachine = useCallback(() => {
+    return agentConnections.length > 1;
+  }, [agentConnections.length]);
 
   // Handler pour sélection depuis SessionListPanel
   const handleSelectSessionFromList = useCallback(
@@ -374,6 +396,21 @@ export function HomeContent() {
       >
         <NotificationSettingsPanel />
       </SlideOverPanel>
+
+      {/* Edit Machine Modal - triggered from Sidebar */}
+      {editingMachine && (
+        <EditAgentModal
+          open={!!editingMachine}
+          onClose={() => setEditingMachine(null)}
+          agentId={editingMachine.id}
+          agentName={editingMachine.name}
+          agentColor={editingMachine.color}
+          onSave={async (id, data) => {
+            await handleConnectionEdited(id, data);
+            setEditingMachine(null);
+          }}
+        />
+      )}
     </>
   );
 
@@ -394,6 +431,9 @@ export function HomeContent() {
           onOpenSettings={() => setConnectionModalOpen(true)}
           selectedProjectName={projectFilter}
           onSelectProject={handleSelectProject}
+          onEditMachine={handleEditMachineFromSidebar}
+          onRemoveMachine={handleRemoveMachineFromSidebar}
+          canRemoveMachine={canRemoveMachine}
           // Session list props
           sessions={filteredSessionListItems}
           selectedSessionId={selectedSessionId}

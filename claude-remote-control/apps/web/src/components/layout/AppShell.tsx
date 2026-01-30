@@ -23,6 +23,9 @@ export interface AppShellProps {
   onOpenSettings?: () => void;
   onSelectProject?: (projectName: string) => void;
   selectedProjectName?: string | null;
+  onEditMachine?: (machine: SidebarMachine) => void;
+  onRemoveMachine?: (machine: SidebarMachine) => void;
+  canRemoveMachine?: (machine: SidebarMachine) => boolean;
   // Session list props
   sessions?: SessionListItem[];
   selectedSessionId?: string | null;
@@ -69,6 +72,9 @@ export function AppShell({
   onOpenSettings,
   onSelectProject,
   selectedProjectName,
+  onEditMachine,
+  onRemoveMachine,
+  canRemoveMachine,
   // Session list props
   sessions = [],
   selectedSessionId,
@@ -145,6 +151,9 @@ export function AppShell({
               onOpenSettings={onOpenSettings}
               onSelectProject={onSelectProject}
               selectedProjectName={selectedProjectName}
+              onEditMachine={onEditMachine}
+              onRemoveMachine={onRemoveMachine}
+              canRemoveMachine={canRemoveMachine}
             />
           </motion.div>
         </AnimatePresence>
