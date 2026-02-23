@@ -128,7 +128,7 @@ export function createTerminal(
       ...(isTestEnv ? { _247_SKIP_ANIMATION: '1' } : {}),
     } as Record<string, string>,
     terminal: {
-      columns: 120,
+      cols: 120,
       rows: 30,
       data(_terminal: unknown, data: string | Uint8Array) {
         const str = typeof data === 'string' ? data : new TextDecoder().decode(data);
