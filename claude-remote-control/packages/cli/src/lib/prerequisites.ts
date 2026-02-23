@@ -1,16 +1,37 @@
 import { execSync } from 'child_process';
-import { readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
 import { platform } from 'os';
 import * as net from 'net';
-import { getTestableHomedir } from './paths.js';
-import { getAgentPaths } from './paths.js';
 
 export interface PrerequisiteCheck {
   name: string;
   status: 'ok' | 'warn' | 'error';
   message: string;
   required: boolean;
+}
+
+/**
+ * Check if Bun is available (required for agent runtime)
+ */
+export function checkBun(): PrerequisiteCheck {
+  try {
+    const output = execSync('bun --version', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    return {
+      name: 'Bun',
+      status: 'ok',
+      message: output.trim(),
+      required: true,
+    };
+  } catch {
+    return {
+      name: 'Bun',
+      status: 'error',
+      message: 'Not installed. See: https://bun.sh',
+      required: true,
+    };
+  }
 }
 
 /**
@@ -146,7 +167,7 @@ export async function checkPort(port: number): Promise<PrerequisiteCheck> {
  * Run all prerequisite checks
  */
 export async function checkAllPrerequisites(port?: number): Promise<PrerequisiteCheck[]> {
-  const checks: PrerequisiteCheck[] = [checkPlatform(), checkNodeVersion(), checkTmux()];
+  const checks: PrerequisiteCheck[] = [checkPlatform(), checkNodeVersion(), checkTmux(), checkBun()];
 
   if (port) {
     checks.push(await checkPort(port));
@@ -160,141 +181,6 @@ export async function checkAllPrerequisites(port?: number): Promise<Prerequisite
  */
 export function allRequiredMet(checks: PrerequisiteCheck[]): boolean {
   return checks.filter((c) => c.required).every((c) => c.status !== 'error');
-}
-
-/**
- * Check native dependencies (node-pty, better-sqlite3)
- */
-export async function checkNativeDeps(): Promise<PrerequisiteCheck> {
-  const issues: string[] = [];
-
-  // Check node-pty
-  try {
-    await import('@homebridge/node-pty-prebuilt-multiarch');
-  } catch {
-    issues.push('node-pty');
-  }
-
-  // Check better-sqlite3
-  try {
-    await import('better-sqlite3');
-  } catch {
-    issues.push('better-sqlite3');
-  }
-
-  if (issues.length === 0) {
-    return {
-      name: 'Native modules',
-      status: 'ok',
-      message: 'All native modules loaded successfully',
-      required: true,
-    };
-  }
-
-  return {
-    name: 'Native modules',
-    status: 'error',
-    message: `Failed to load: ${issues.join(', ')}`,
-    required: true,
-  };
-}
-
-/**
- * Get the path to the ABI version tracking file
- */
-function getAbiVersionFile(): string {
-  return join(getTestableHomedir(), '.247', 'node-abi-version');
-}
-
-/**
- * Get the stored Node ABI version from the last successful run
- */
-export function getStoredAbiVersion(): string | null {
-  try {
-    return readFileSync(getAbiVersionFile(), 'utf-8').trim();
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Store the current Node ABI version after successful native module load
- */
-export function storeAbiVersion(): void {
-  try {
-    writeFileSync(getAbiVersionFile(), process.versions.modules, 'utf-8');
-  } catch {
-    // Non-critical, ignore
-  }
-}
-
-/**
- * Check if the Node ABI version has changed since last successful run
- */
-export function isAbiVersionChanged(): boolean {
-  const stored = getStoredAbiVersion();
-  if (!stored) return false; // First run, no stored version yet
-  return stored !== process.versions.modules;
-}
-
-/**
- * Rebuild native modules (better-sqlite3, node-pty) for the current Node version
- */
-export function rebuildNativeModules(): { success: boolean; error?: string } {
-  const paths = getAgentPaths();
-
-  try {
-    execSync('npm rebuild better-sqlite3 @homebridge/node-pty-prebuilt-multiarch', {
-      cwd: paths.cliRoot,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 120_000,
-    });
-    return { success: true };
-  } catch (err) {
-    return {
-      success: false,
-      error: (err as Error).message,
-    };
-  }
-}
-
-/**
- * Ensure native modules are compatible with the current Node version.
- * Automatically rebuilds if a Node version change is detected.
- */
-export async function ensureNativeModules(): Promise<PrerequisiteCheck> {
-  const abiChanged = isAbiVersionChanged();
-
-  if (!abiChanged) {
-    // ABI hasn't changed (or first run) — verify modules load
-    const check = await checkNativeDeps();
-    if (check.status === 'ok') {
-      storeAbiVersion();
-      return check;
-    }
-    // Modules failed to load even without ABI change — fall through to rebuild
-  }
-
-  // ABI version changed or modules failed to load — try rebuild
-  const rebuild = rebuildNativeModules();
-
-  if (!rebuild.success) {
-    return {
-      name: 'Native modules',
-      status: 'error',
-      message: `Node version changed and rebuild failed: ${rebuild.error}. Try: npm install -g 247-cli`,
-      required: true,
-    };
-  }
-
-  // Verify modules load after rebuild
-  const postCheck = await checkNativeDeps();
-
-  if (postCheck.status === 'ok') {
-    storeAbiVersion();
-  }
-
-  return postCheck;
 }
 
 // Aliases for backwards compatibility

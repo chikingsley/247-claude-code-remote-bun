@@ -176,16 +176,10 @@ export class LaunchdService implements ServiceManager {
     configPath: string;
     dataDir: string;
   }): string {
-    let programArgs: string;
-    if (options.isDev) {
-      programArgs = `        <string>/usr/bin/env</string>
-        <string>npx</string>
-        <string>tsx</string>
+    // Bun handles both .ts and .js natively
+    const programArgs = `        <string>/usr/bin/env</string>
+        <string>bun</string>
         <string>${escapeXml(options.agentScript)}</string>`;
-    } else {
-      programArgs = `        <string>${escapeXml(options.nodePath)}</string>
-        <string>${escapeXml(options.agentScript)}</string>`;
-    }
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

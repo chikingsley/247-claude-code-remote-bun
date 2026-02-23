@@ -1,12 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { existsSync } from 'fs';
-import {
-  checkNode,
-  checkTmux,
-  checkNativeDeps,
-  getStoredAbiVersion,
-} from '../lib/prerequisites.js';
+import { checkNode, checkTmux, checkBun } from '../lib/prerequisites.js';
 import { configExists, loadConfig } from '../lib/config.js';
 import { isAgentRunning, getAgentHealth } from '../lib/process.js';
 import { createServiceManager } from '../service/index.js';
@@ -51,33 +46,14 @@ export const doctorCommand = new Command('doctor')
           : undefined,
     });
 
-    // 3. Check native dependencies
-    const nativeCheck = await checkNativeDeps();
+    // 3. Check Bun runtime
+    const bunCheck = checkBun();
     results.push({
-      name: 'Native modules',
-      status:
-        nativeCheck.status === 'ok' ? 'pass' : nativeCheck.status === 'warn' ? 'warn' : 'fail',
-      message: nativeCheck.message,
-      hint: nativeCheck.status === 'error' ? 'Try reinstalling: npm install -g 247-cli' : undefined,
+      name: 'Bun',
+      status: bunCheck.status === 'ok' ? 'pass' : bunCheck.status === 'warn' ? 'warn' : 'fail',
+      message: bunCheck.message,
+      hint: bunCheck.status === 'error' ? 'Install Bun: https://bun.sh' : undefined,
     });
-
-    // 3b. Check Node ABI version
-    const storedAbi = getStoredAbiVersion();
-    const currentAbi = process.versions.modules;
-    if (storedAbi && storedAbi !== currentAbi) {
-      results.push({
-        name: 'Node ABI version',
-        status: 'warn',
-        message: `Changed (${storedAbi} → ${currentAbi}). Will rebuild on next start.`,
-        hint: 'Run "247 start" to auto-rebuild, or "npm rebuild -g 247-cli"',
-      });
-    } else {
-      results.push({
-        name: 'Node ABI version',
-        status: 'pass',
-        message: `${currentAbi} (Node ${process.version})`,
-      });
-    }
 
     // 4. Check configuration
     if (configExists()) {

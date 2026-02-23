@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import { Database } from 'bun:sqlite';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { CREATE_TABLES_SQL, SCHEMA_VERSION, RETENTION_CONFIG, MIGRATION_16 } from './schema.js';
@@ -9,12 +9,12 @@ const DATA_DIR = resolve(process.env.HOME || '~', '.247', 'data');
 const DB_PATH = join(DATA_DIR, 'agent.db');
 
 // Singleton database instance
-let db: Database.Database | null = null;
+let db: Database | null = null;
 
 /**
  * Get or create the database instance
  */
-export function getDatabase(): Database.Database {
+export function getDatabase(): Database {
   if (!db) {
     throw new Error('Database not initialized. Call initDatabase() first.');
   }
@@ -28,7 +28,7 @@ export function getDatabase(): Database.Database {
  * - Runs migrations
  * - Sets WAL mode for better performance
  */
-export function initDatabase(dbPath?: string): Database.Database {
+export function initDatabase(dbPath?: string): Database {
   const path = dbPath ?? DB_PATH;
 
   // Create data directory if it doesn't exist
@@ -40,10 +40,10 @@ export function initDatabase(dbPath?: string): Database.Database {
 
   // Open database (creates if doesn't exist)
   console.log(`[DB] Opening database: ${path}`);
-  db = new Database(path);
+  db = new Database(path, { strict: true });
 
   // Enable WAL mode for better concurrent performance
-  db.pragma('journal_mode = WAL');
+  db.run('PRAGMA journal_mode = WAL');
 
   // Run migrations
   runMigrations(db);
@@ -54,8 +54,8 @@ export function initDatabase(dbPath?: string): Database.Database {
 /**
  * Create an in-memory database for testing
  */
-export function initTestDatabase(): Database.Database {
-  db = new Database(':memory:');
+export function initTestDatabase(): Database {
+  db = new Database(':memory:', { strict: true });
   runMigrations(db);
   return db;
 }
@@ -74,7 +74,7 @@ export function closeDatabase(): void {
 /**
  * Run database migrations
  */
-function runMigrations(database: Database.Database): void {
+function runMigrations(database: Database): void {
   const currentVersion = getCurrentSchemaVersion(database);
 
   if (currentVersion < SCHEMA_VERSION) {
@@ -116,7 +116,7 @@ function runMigrations(database: Database.Database): void {
  * Migration to v15: Simplification - remove unused columns and tables
  * SQLite doesn't support dropping columns easily, so we recreate the sessions table
  */
-function migrateToV15(database: Database.Database): void {
+function migrateToV15(database: Database): void {
   console.log('[DB] v15 migration: Simplifying schema');
 
   // Drop status_history table if it exists
@@ -130,7 +130,7 @@ function migrateToV15(database: Database.Database): void {
   }
 
   // Check if sessions table has the old columns we want to remove
-  const columns = database.pragma('table_info(sessions)') as Array<{ name: string }>;
+  const columns = database.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
   const columnNames = new Set(columns.map((c) => c.name));
 
   // If we have old columns like model, cost_usd, worktree_path, etc., recreate the table
@@ -199,11 +199,11 @@ function migrateToV15(database: Database.Database): void {
  * Migration to v16: Remove status tracking
  * Remove status, attention_reason, and last_status_change columns
  */
-function migrateToV16(database: Database.Database): void {
+function migrateToV16(database: Database): void {
   console.log('[DB] v16 migration: Removing status tracking');
 
   // Check if sessions table has the status columns we want to remove
-  const columns = database.pragma('table_info(sessions)') as Array<{ name: string }>;
+  const columns = database.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
   const columnNames = new Set(columns.map((c) => c.name));
 
   const hasStatusColumns =
@@ -224,12 +224,12 @@ function migrateToV16(database: Database.Database): void {
  * Migration to v17: Add status tracking via hooks
  * Adds status, status_source, attention_reason, and last_status_change columns
  */
-function migrateToV17(database: Database.Database): void {
+function migrateToV17(database: Database): void {
   console.log('[DB] v17 migration: Adding status tracking via hooks');
 
   // Helper to get current columns
   const getColumnNames = (): Set<string> => {
-    const columns = database.pragma('table_info(sessions)') as Array<{ name: string }>;
+    const columns = database.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
     return new Set(columns.map((c) => c.name));
   };
 
@@ -267,7 +267,7 @@ function migrateToV17(database: Database.Database): void {
 /**
  * Get current schema version
  */
-function getCurrentSchemaVersion(database: Database.Database): number {
+function getCurrentSchemaVersion(database: Database): number {
   try {
     // Check if schema_version table exists
     const tableExists = database

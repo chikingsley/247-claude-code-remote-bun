@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
+import { Database } from 'bun:sqlite';
 
 // Mock fs module
 vi.mock('fs', () => ({
@@ -171,7 +171,7 @@ describe('Database Index', () => {
       const db = initTestDatabase();
 
       // Check sessions table has archived_at column
-      const sessionColumns = db.pragma('table_info(sessions)') as Array<{ name: string }>;
+      const sessionColumns = db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
       const sessionColumnNames = sessionColumns.map((c) => c.name);
       expect(sessionColumnNames).toContain('archived_at');
     });

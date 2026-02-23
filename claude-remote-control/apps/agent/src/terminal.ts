@@ -1,4 +1,3 @@
-import * as pty from '@homebridge/node-pty-prebuilt-multiarch';
 import { exec, execSync } from 'child_process';
 import { promisify } from 'util';
 import {
@@ -7,6 +6,7 @@ import {
   cleanupInitScript,
   detectUserShell,
 } from './lib/init-script.js';
+import { spawnPty } from './lib/bun-pty.js';
 import * as path from 'path';
 
 const execAsync = promisify(exec);
@@ -106,10 +106,11 @@ export function createTerminal(
 
   console.log(`[Terminal] Spawning: tmux ${tmuxArgs.join(' ')}`);
 
-  const shell = pty.spawn('tmux', tmuxArgs, {
-    name: 'xterm-256color',
-    cols: 120,
-    rows: 30,
+  // Callback arrays for dispatching terminal data and exit events
+  const dataCallbacks: ((data: string) => void)[] = [];
+  const exitCallbacks: ((info: { exitCode: number }) => void)[] = [];
+
+  const proc = spawnPty(['tmux', ...tmuxArgs], {
     cwd,
     env: {
       ...process.env,
@@ -125,30 +126,39 @@ export function createTerminal(
       BASH_SILENCE_DEPRECATION_WARNING: '1',
       // Pass CI/test detection to init script for animation skipping
       ...(isTestEnv ? { _247_SKIP_ANIMATION: '1' } : {}),
-    } as { [key: string]: string },
+    } as Record<string, string>,
+    terminal: {
+      columns: 120,
+      rows: 30,
+      data(_terminal: unknown, data: string | Uint8Array) {
+        const str = typeof data === 'string' ? data : new TextDecoder().decode(data);
+        for (const cb of dataCallbacks) cb(str);
+      },
+    },
   });
 
-  // Debug: log any immediate output or errors
+  // Handle process exit
+  proc.exited.then((code) => {
+    const exitCode = code ?? 0;
+    console.log(`[Terminal] Shell exited: code=${exitCode}, session='${sessionName}'`);
+    for (const cb of exitCallbacks) cb({ exitCode });
+  });
+
+  // Debug: log any immediate output
   let initialOutput = '';
-  const debugHandler = (data: string) => {
+  let debugEnabled = true;
+  dataCallbacks.push((data) => {
+    if (!debugEnabled) return;
     initialOutput += data;
     if (initialOutput.length < 500) {
       console.log(`[Terminal] Initial output: ${data.substring(0, 100)}`);
     }
-  };
-  shell.onData(debugHandler);
-
-  // Remove debug handler after 2 seconds to prevent memory leak
-  setTimeout(() => {
-    (shell as any).removeListener('data', debugHandler);
-  }, 2000);
-
-  // Debug: log when shell exits
-  shell.onExit(({ exitCode, signal }) => {
-    console.log(
-      `[Terminal] Shell exited: code=${exitCode}, signal=${signal}, session='${sessionName}'`
-    );
   });
+
+  // Disable debug logging after 2 seconds to prevent noise
+  setTimeout(() => {
+    debugEnabled = false;
+  }, 2000);
 
   // Track terminal readiness state for onReady callback
   // Existing sessions are ready immediately
@@ -189,14 +199,20 @@ export function createTerminal(
   }
 
   return {
-    write: (data) => shell.write(data),
-    resize: (cols, rows) => shell.resize(cols, rows),
-    onData: (callback) => shell.onData(callback),
-    onExit: (callback) => shell.onExit(callback),
-    kill: () => shell.kill(),
+    write: (data) => proc.terminal!.write(data),
+    resize: (cols, rows) => proc.terminal!.resize(cols, rows),
+    onData: (callback) => {
+      dataCallbacks.push(callback);
+    },
+    onExit: (callback) => {
+      exitCallbacks.push(callback);
+    },
+    kill: () => {
+      proc.kill();
+    },
     detach: () => {
       // Send tmux detach command (Ctrl+B, d)
-      shell.write('\x02d');
+      proc.terminal!.write('\x02d');
     },
     isExistingSession: () => existingSession,
     onReady: (callback: () => void) => {

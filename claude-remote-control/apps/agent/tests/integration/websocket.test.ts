@@ -134,19 +134,6 @@ vi.mock('child_process', () => ({
   }),
 }));
 
-// Mock node-pty
-vi.mock('@homebridge/node-pty-prebuilt-multiarch', () => ({
-  spawn: vi.fn(() => {
-    const proc = new EventEmitter() as any;
-    proc.write = vi.fn();
-    proc.resize = vi.fn();
-    proc.kill = vi.fn();
-    proc.onData = (cb: any) => proc.on('data', cb);
-    proc.onExit = (cb: any) => proc.on('exit', cb);
-    return proc;
-  }),
-}));
-
 // Mock editor
 vi.mock('../../src/editor.js', () => ({
   initEditor: vi.fn(),

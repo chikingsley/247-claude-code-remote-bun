@@ -7,7 +7,7 @@ const config: KnipConfig = {
       project: ['tests/**/*.ts'],
     },
     'apps/agent': {
-      entry: ['src/server.ts', 'tests/**/*.test.ts'],
+      entry: ['src/index.ts', 'src/server.ts', 'tests/**/*.test.ts'],
       project: ['src/**/*.ts', 'tests/**/*.ts'],
       // pino-pretty: Used at runtime via dynamic require
       // http-proxy, web-push: Used in routes
@@ -19,6 +19,7 @@ const config: KnipConfig = {
         '@types/http-proxy',
         '@types/web-push',
       ],
+      ignoreBinaries: ['dist/index.js'],
     },
     'apps/web': {
       entry: [

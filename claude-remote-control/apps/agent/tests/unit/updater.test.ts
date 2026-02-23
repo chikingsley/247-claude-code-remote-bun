@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Module-level variable to control os.platform() mock return value
+let mockPlatformValue: string = process.platform;
+
 // Mock dependencies before importing
 vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal<typeof import('fs')>();
@@ -17,6 +20,14 @@ vi.mock('child_process', async (importOriginal) => {
       unref: vi.fn(),
       pid: 12345,
     })),
+  };
+});
+
+vi.mock('os', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('os')>();
+  return {
+    ...actual,
+    platform: vi.fn(() => mockPlatformValue),
   };
 });
 
@@ -45,6 +56,7 @@ describe('Updater Module', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers();
+    mockPlatformValue = process.platform;
   });
 
   describe('isUpdateInProgress', () => {
@@ -180,8 +192,7 @@ describe('Updater Module', () => {
   describe('platform-specific restart commands', () => {
     it('uses launchctl on darwin', async () => {
       vi.useFakeTimers();
-      const originalPlatform = process.platform;
-      Object.defineProperty(process, 'platform', { value: 'darwin' });
+      mockPlatformValue = 'darwin';
 
       const { writeFileSync } = await import('fs');
       const mockedWriteFileSync = vi.mocked(writeFileSync);
@@ -195,14 +206,11 @@ describe('Updater Module', () => {
       expect(scriptContent).toContain('launchctl kickstart');
 
       vi.advanceTimersByTime(1100);
-
-      Object.defineProperty(process, 'platform', { value: originalPlatform });
     });
 
     it('uses systemctl on linux', async () => {
       vi.useFakeTimers();
-      const originalPlatform = process.platform;
-      Object.defineProperty(process, 'platform', { value: 'linux' });
+      mockPlatformValue = 'linux';
 
       const { writeFileSync } = await import('fs');
       const mockedWriteFileSync = vi.mocked(writeFileSync);
@@ -215,8 +223,6 @@ describe('Updater Module', () => {
       expect(scriptContent).toContain('systemctl --user restart');
 
       vi.advanceTimersByTime(1100);
-
-      Object.defineProperty(process, 'platform', { value: originalPlatform });
     });
   });
 

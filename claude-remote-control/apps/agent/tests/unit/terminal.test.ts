@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { EventEmitter } from 'events';
 
 // Force bash shell for consistent test results
 const originalShell = process.env.SHELL;
@@ -16,34 +15,29 @@ vi.mock('fs', () => ({
   unlinkSync: vi.fn(),
 }));
 
-// Create mock PTY process
-const createMockPtyProcess = () => {
-  const emitter = new EventEmitter();
-  return {
-    write: vi.fn(),
-    resize: vi.fn(),
-    kill: vi.fn(),
-    pid: 12345,
-    onData: (cb: (data: string) => void) => {
-      emitter.on('data', cb);
-      return { dispose: () => emitter.off('data', cb) };
-    },
-    onExit: (cb: (info: { exitCode: number; signal?: number }) => void) => {
-      emitter.on('exit', cb);
-      return { dispose: () => emitter.off('exit', cb) };
-    },
-    _emit: (event: string, data: unknown) => emitter.emit(event, data),
-  };
-};
+// --- Bun.spawn mock infrastructure ---
+// Capture the terminal.data callback from spawnPty options so tests can simulate data events
+let capturedTerminalDataCb: ((terminal: any, data: Uint8Array) => void) | null = null;
+let mockExitResolve: ((code: number) => void) | null = null;
 
-let mockPtyProcess: ReturnType<typeof createMockPtyProcess>;
+const createMockTerminal = () => ({
+  write: vi.fn(),
+  resize: vi.fn(),
+});
+
+let mockTerminal = createMockTerminal();
+let mockKill = vi.fn();
+
+const mockSpawnPty = vi.fn();
+
+// Mock the bun-pty module (Bun global is non-configurable)
+vi.mock('../../src/lib/bun-pty.js', () => ({
+  spawnPty: (...args: any[]) => mockSpawnPty(...args),
+}));
+
+// --- child_process / util mocks ---
 let execSyncResponses: Record<string, string | Error> = {};
 let execAsyncResponses: Record<string, { stdout: string; stderr: string } | Error> = {};
-
-// Mock node-pty
-vi.mock('@homebridge/node-pty-prebuilt-multiarch', () => ({
-  spawn: vi.fn(() => mockPtyProcess),
-}));
 
 // Mock child_process
 vi.mock('child_process', () => ({
@@ -82,10 +76,29 @@ vi.mock('util', () => ({
 describe('Terminal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPtyProcess = createMockPtyProcess();
+    mockTerminal = createMockTerminal();
+    mockKill = vi.fn();
+    capturedTerminalDataCb = null;
+    mockExitResolve = null;
     execSyncResponses = {};
     execAsyncResponses = {};
     writtenInitScripts = [];
+
+    // Configure mock spawnPty to capture terminal callbacks
+    mockSpawnPty.mockImplementation((_cmd: string[], opts: any) => {
+      capturedTerminalDataCb = opts?.terminal?.data ?? null;
+
+      const exitPromise = new Promise<number>((resolve) => {
+        mockExitResolve = resolve;
+      });
+
+      return {
+        terminal: mockTerminal,
+        kill: mockKill,
+        pid: 12345,
+        exited: exitPromise,
+      };
+    });
   });
 
   afterEach(() => {
@@ -129,7 +142,7 @@ describe('Terminal', () => {
       const terminal = createTerminal('/tmp/test', 'write-test');
 
       terminal.write('hello');
-      expect(mockPtyProcess.write).toHaveBeenCalledWith('hello');
+      expect(mockTerminal.write).toHaveBeenCalledWith('hello');
     });
 
     it('forwards resize calls to PTY', async () => {
@@ -140,7 +153,7 @@ describe('Terminal', () => {
       const terminal = createTerminal('/tmp/test', 'resize-test');
 
       terminal.resize(120, 40);
-      expect(mockPtyProcess.resize).toHaveBeenCalledWith(120, 40);
+      expect(mockTerminal.resize).toHaveBeenCalledWith(120, 40);
     });
 
     it('sends detach command when detach is called', async () => {
@@ -152,7 +165,7 @@ describe('Terminal', () => {
 
       terminal.detach();
       // Ctrl+B, d for tmux detach
-      expect(mockPtyProcess.write).toHaveBeenCalledWith('\x02d');
+      expect(mockTerminal.write).toHaveBeenCalledWith('\x02d');
     });
 
     it('captures history from tmux scrollback', async () => {
@@ -192,8 +205,9 @@ describe('Terminal', () => {
       const dataCallback = vi.fn();
       terminal.onData(dataCallback);
 
-      // Simulate data from PTY
-      mockPtyProcess._emit('data', 'test output');
+      // Simulate data from terminal via the captured callback
+      expect(capturedTerminalDataCb).not.toBeNull();
+      capturedTerminalDataCb!(mockTerminal, new TextEncoder().encode('test output'));
       expect(dataCallback).toHaveBeenCalledWith('test output');
     });
 
@@ -207,8 +221,13 @@ describe('Terminal', () => {
       const exitCallback = vi.fn();
       terminal.onExit(exitCallback);
 
-      // Simulate exit from PTY
-      mockPtyProcess._emit('exit', { exitCode: 0 });
+      // Simulate exit by resolving the exited promise
+      expect(mockExitResolve).not.toBeNull();
+      mockExitResolve!(0);
+
+      // Let the promise resolution propagate
+      await new Promise((r) => setTimeout(r, 10));
+
       expect(exitCallback).toHaveBeenCalledWith({ exitCode: 0 });
     });
 
@@ -220,7 +239,7 @@ describe('Terminal', () => {
       const terminal = createTerminal('/tmp/test', 'kill-test');
 
       terminal.kill();
-      expect(mockPtyProcess.kill).toHaveBeenCalled();
+      expect(mockKill).toHaveBeenCalled();
     });
 
     it('writes init script with env vars for new sessions', async () => {

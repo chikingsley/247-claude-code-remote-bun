@@ -25,8 +25,7 @@ vi.mock('fs', () => ({
 vi.mock('../../../src/lib/prerequisites.js', () => ({
   checkNode: vi.fn(),
   checkTmux: vi.fn(),
-  checkNativeDeps: vi.fn(),
-  getStoredAbiVersion: vi.fn().mockReturnValue(null),
+  checkBun: vi.fn(),
 }));
 
 // Mock config
@@ -104,7 +103,7 @@ describe('Doctor Command', () => {
   });
 
   const setupAllMocks = async (overrides: Record<string, any> = {}) => {
-    const { checkNode, checkTmux, checkNativeDeps } =
+    const { checkNode, checkTmux, checkBun } =
       await import('../../../src/lib/prerequisites.js');
     const { configExists, loadConfig } = await import('../../../src/lib/config.js');
     const { isAgentRunning, getAgentHealth } = await import('../../../src/lib/process.js');
@@ -128,10 +127,10 @@ describe('Doctor Command', () => {
       required: true,
     });
 
-    vi.mocked(checkNativeDeps).mockResolvedValue({
-      name: 'Native modules',
+    vi.mocked(checkBun).mockReturnValue({
+      name: 'Bun',
       status: 'ok',
-      message: 'All native modules loaded',
+      message: '1.3.9',
       required: true,
     });
 
@@ -178,8 +177,7 @@ describe('Doctor Command', () => {
     // Apply overrides
     if (overrides.checkNode) vi.mocked(checkNode).mockReturnValue(overrides.checkNode);
     if (overrides.checkTmux) vi.mocked(checkTmux).mockReturnValue(overrides.checkTmux);
-    if (overrides.checkNativeDeps)
-      vi.mocked(checkNativeDeps).mockResolvedValue(overrides.checkNativeDeps);
+    if (overrides.checkBun) vi.mocked(checkBun).mockReturnValue(overrides.checkBun);
     if (overrides.configExists !== undefined)
       vi.mocked(configExists).mockReturnValue(overrides.configExists);
     if (overrides.loadConfig !== undefined)

@@ -206,12 +206,8 @@ export class SystemdService implements ServiceManager {
     configPath: string;
     dataDir: string;
   }): string {
-    let execStart: string;
-    if (options.isDev) {
-      execStart = `/usr/bin/env npx tsx ${options.agentScript}`;
-    } else {
-      execStart = `${options.nodePath} ${options.agentScript}`;
-    }
+    // Bun handles both .ts and .js natively
+    const execStart = `/usr/bin/env bun ${options.agentScript}`;
 
     return `[Unit]
 Description=${options.description}

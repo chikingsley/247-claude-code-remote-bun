@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import Database from 'better-sqlite3';
+import { Database } from 'bun:sqlite';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
 // Create a test database in a temp directory
 let testDbPath: string;
-let db: Database.Database;
+let db: Database;
 
 // Minimal session functions for testing (extracted from sessions.ts logic)
 interface DbSession {
@@ -22,7 +22,7 @@ interface DbSession {
   updated_at: number;
 }
 
-function initTestDb(dbInstance: Database.Database): void {
+function initTestDb(dbInstance: Database): void {
   dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
       name TEXT PRIMARY KEY,
@@ -39,13 +39,13 @@ function initTestDb(dbInstance: Database.Database): void {
   `);
 }
 
-function getSession(dbInstance: Database.Database, name: string): DbSession | null {
+function getSession(dbInstance: Database, name: string): DbSession | null {
   const row = dbInstance.prepare('SELECT * FROM sessions WHERE name = ?').get(name) as DbSession | undefined;
   return row ?? null;
 }
 
 function upsertSession(
-  dbInstance: Database.Database,
+  dbInstance: Database,
   name: string,
   input: {
     project: string;
@@ -100,7 +100,7 @@ describe('Sessions Database - createdAt Stability', () => {
   beforeAll(() => {
     // Create temp directory for test database
     testDbPath = path.join(os.tmpdir(), `test-sessions-${Date.now()}.db`);
-    db = new Database(testDbPath);
+    db = new Database(testDbPath, { strict: true });
     initTestDb(db);
   });
 

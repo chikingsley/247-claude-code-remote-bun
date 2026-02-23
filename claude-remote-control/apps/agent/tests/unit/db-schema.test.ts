@@ -4,7 +4,7 @@
  * Tests for schema definitions, types, and configuration constants.
  */
 import { describe, it, expect } from 'vitest';
-import Database from 'better-sqlite3';
+import { Database } from 'bun:sqlite';
 import {
   CREATE_TABLES_SQL,
   SCHEMA_VERSION,
@@ -78,7 +78,7 @@ describe('Database Schema', () => {
     });
 
     it('executes without error on fresh database', () => {
-      const db = new Database(':memory:');
+      const db = new Database(':memory:', { strict: true });
 
       expect(() => {
         db.exec(CREATE_TABLES_SQL);
@@ -88,7 +88,7 @@ describe('Database Schema', () => {
     });
 
     it('creates correct table structure', () => {
-      const db = new Database(':memory:');
+      const db = new Database(':memory:', { strict: true });
       db.exec(CREATE_TABLES_SQL);
 
       // Get table names
@@ -104,10 +104,10 @@ describe('Database Schema', () => {
     });
 
     it('sessions table has all required columns', () => {
-      const db = new Database(':memory:');
+      const db = new Database(':memory:', { strict: true });
       db.exec(CREATE_TABLES_SQL);
 
-      const columns = db.pragma('table_info(sessions)') as Array<{ name: string }>;
+      const columns = db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
       const columnNames = columns.map((c) => c.name);
 
       expect(columnNames).toContain('id');
@@ -203,7 +203,7 @@ describe('Database Schema', () => {
 
   describe('Schema constraints', () => {
     it('sessions.name is unique', () => {
-      const db = new Database(':memory:');
+      const db = new Database(':memory:', { strict: true });
       db.exec(CREATE_TABLES_SQL);
 
       const now = Date.now();

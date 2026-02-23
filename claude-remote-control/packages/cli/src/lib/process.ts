@@ -83,15 +83,9 @@ export async function startAgentDaemon(profileName?: string | null): Promise<{ s
   let command: string;
   let args: string[];
 
-  if (paths.isDev) {
-    // Development: use tsx for TypeScript
-    command = 'npx';
-    args = ['tsx', entryPoint];
-  } else {
-    // Production: use node directly
-    command = paths.nodePath;
-    args = [entryPoint];
-  }
+  // Bun handles both .ts and .js natively
+  command = 'bun';
+  args = [entryPoint];
 
   // Spawn detached process
   const child = spawn(command, args, {
