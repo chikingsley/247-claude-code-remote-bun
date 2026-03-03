@@ -2,5 +2,15 @@ claude-remote-control/apps/agent/environments.json
 .playwright-mcp/
 .claude/ralph-loop.local.md
 
+# Root dependency artifacts
+/node_modules/
+
+# Generated local analysis outputs
+/analysis_logs/
+/analysis_reports/
+/patterns.csv
+/top_failure_loops.md
+/preflight_checklist.md
+
 # Force track settings.local.json (overrides global gitignore)
 !.claude/settings.local.json
