@@ -1,31 +1,31 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import '@xterm/xterm/css/xterm.css';
-import { generateSessionName } from './constants';
-import { SearchBar } from './SearchBar';
-import { ScrollToBottomButton } from './ScrollToBottomButton';
-import { MobileKeybar } from './MobileKeybar';
-import { KeybarToggleButton } from './KeybarToggleButton';
-import { useTerminalConnection, useTerminalSearch } from './hooks';
-import { useKeybarVisibility } from '@/hooks/useKeybarVisibility';
-import { MinimalSessionHeader } from '@/components/MinimalSessionHeader';
+import { useEffect, useRef, useState } from "react";
+import "@xterm/xterm/css/xterm.css";
+import { MinimalSessionHeader } from "@/components/MinimalSessionHeader";
+import { useKeybarVisibility } from "@/hooks/useKeybarVisibility";
+import { generateSessionName } from "./constants";
+import { useTerminalConnection, useTerminalSearch } from "./hooks";
+import { KeybarToggleButton } from "./KeybarToggleButton";
+import { MobileKeybar } from "./MobileKeybar";
+import { ScrollToBottomButton } from "./ScrollToBottomButton";
+import { SearchBar } from "./SearchBar";
 
 interface TerminalProps {
   agentUrl: string;
-  project: string;
-  sessionName?: string;
+  costUsd?: number;
   environmentId?: string;
-  planningProjectId?: string;
-  onConnectionChange?: (connected: boolean) => void;
-  onSessionCreated?: (sessionName: string) => void;
-  /** Callback when menu button is clicked (opens sidebar) */
-  onMenuClick: () => void;
   /** Mobile mode for responsive styling and smaller font */
   isMobile?: boolean;
   // StatusLine metrics
   model?: string;
-  costUsd?: number;
+  onConnectionChange?: (connected: boolean) => void;
+  /** Callback when menu button is clicked (opens sidebar) */
+  onMenuClick: () => void;
+  onSessionCreated?: (sessionName: string) => void;
+  planningProjectId?: string;
+  project: string;
+  sessionName?: string;
 }
 
 export function Terminal({
@@ -43,14 +43,15 @@ export function Terminal({
 }: TerminalProps) {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
-  const { isVisible: keybarVisible, toggle: toggleKeybar } = useKeybarVisibility();
+  const { isVisible: keybarVisible, toggle: toggleKeybar } =
+    useKeybarVisibility();
 
   // Generate session name ONCE on first render, persisted across re-mounts
   const generatedSessionRef = useRef<string | null>(null);
-  if (!sessionName && !generatedSessionRef.current) {
+  if (!(sessionName || generatedSessionRef.current)) {
     generatedSessionRef.current = generateSessionName(project);
   }
-  const effectiveSessionName = sessionName || generatedSessionRef.current || '';
+  const effectiveSessionName = sessionName || generatedSessionRef.current || "";
 
   const handleCopySuccess = () => {
     setCopied(true);
@@ -110,7 +111,9 @@ export function Terminal({
 
   // Trigger terminal resize when keybar visibility changes (mobile only)
   useEffect(() => {
-    if (!isMobile) return;
+    if (!isMobile) {
+      return;
+    }
     // Small delay to allow CSS transition to start
     const timer = setTimeout(() => {
       triggerResize();
@@ -121,46 +124,49 @@ export function Terminal({
   return (
     <div className="relative flex w-full flex-1 flex-col overflow-hidden">
       <MinimalSessionHeader
-        sessionName={effectiveSessionName}
-        connectionState={connectionState}
         connected={connected}
+        connectionState={connectionState}
         copied={copied}
-        searchVisible={searchVisible}
-        isMobile={isMobile}
-        onMenuClick={onMenuClick}
-        onStartClaude={startClaude}
-        onCopySelection={copySelection}
-        onPaste={isMobile ? handlePaste : undefined}
-        onToggleSearch={toggleSearch}
-        model={model}
         costUsd={costUsd}
+        isMobile={isMobile}
+        model={model}
+        onCopySelection={copySelection}
+        onMenuClick={onMenuClick}
+        onPaste={isMobile ? handlePaste : undefined}
+        onStartClaude={startClaude}
+        onToggleSearch={toggleSearch}
+        searchVisible={searchVisible}
+        sessionName={effectiveSessionName}
       />
 
       <SearchBar
-        ref={searchInputRef}
-        visible={searchVisible}
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
+        onClose={closeSearch}
         onFindNext={findNext}
         onFindPrevious={findPrevious}
-        onClose={closeSearch}
+        onQueryChange={setSearchQuery}
+        query={searchQuery}
+        ref={searchInputRef}
+        visible={searchVisible}
       />
 
       {/* Terminal container - NO padding! FitAddon reads offsetHeight which includes padding,
           but xterm renders inside padding box, causing dimension mismatch */}
       {/* touch-action: none is CRITICAL for mobile - prevents browser from intercepting touch events */}
       <div
-        ref={terminalRef}
         className="min-h-0 w-full flex-1 overflow-hidden bg-[#0a0a10]"
-        style={isMobile ? { touchAction: 'none' } : undefined}
+        ref={terminalRef}
+        style={isMobile ? { touchAction: "none" } : undefined}
       />
 
-      <ScrollToBottomButton visible={!isAtBottom} onClick={scrollToBottom} />
+      <ScrollToBottomButton onClick={scrollToBottom} visible={!isAtBottom} />
 
       {/* Mobile: Keybar toggle button and virtual keyboard */}
       {isMobile && (
         <>
-          <KeybarToggleButton isVisible={keybarVisible} onToggle={toggleKeybar} />
+          <KeybarToggleButton
+            isVisible={keybarVisible}
+            onToggle={toggleKeybar}
+          />
           <MobileKeybar onKeyPress={sendInput} visible={keybarVisible} />
         </>
       )}

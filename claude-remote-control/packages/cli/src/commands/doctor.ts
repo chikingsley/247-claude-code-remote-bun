@@ -1,58 +1,77 @@
-import { Command } from 'commander';
-import chalk from 'chalk';
-import { existsSync } from 'fs';
-import { checkNode, checkTmux, checkBun } from '../lib/prerequisites.js';
-import { configExists, loadConfig } from '../lib/config.js';
-import { isAgentRunning, getAgentHealth } from '../lib/process.js';
-import { createServiceManager } from '../service/index.js';
-import { getAgentPaths } from '../lib/paths.js';
-import { getHooksStatus } from '../lib/hooks.js';
+import chalk from "chalk";
+import { Command } from "commander";
+import { existsSync } from "fs";
+import { configExists, loadConfig } from "../lib/config.js";
+import { getHooksStatus } from "../lib/hooks.js";
+import { getAgentPaths } from "../lib/paths.js";
+import { checkBun, checkRuntime, checkTmux } from "../lib/prerequisites.js";
+import { getAgentHealth, isAgentRunning } from "../lib/process.js";
+import { createServiceManager } from "../service/index.js";
 
 interface CheckResult {
-  name: string;
-  status: 'pass' | 'warn' | 'fail';
-  message: string;
   hint?: string;
+  message: string;
+  name: string;
+  status: "pass" | "warn" | "fail";
 }
 
-export const doctorCommand = new Command('doctor')
-  .description('Diagnose issues with your 247 installation')
+export const doctorCommand = new Command("doctor")
+  .description("Diagnose issues with your 247 installation")
   .action(async () => {
-    console.log(chalk.bold('\n247 Doctor\n'));
-    console.log(chalk.dim('Running diagnostics...\n'));
+    console.log(chalk.bold("\n247 Doctor\n"));
+    console.log(chalk.dim("Running diagnostics...\n"));
 
     const results: CheckResult[] = [];
 
-    // 1. Check Node.js
-    const nodeCheck = checkNode();
+    // 1. Check runtime (Node.js or Bun)
+    const runtimeCheck = checkRuntime();
     results.push({
-      name: 'Node.js',
-      status: nodeCheck.status === 'ok' ? 'pass' : nodeCheck.status === 'warn' ? 'warn' : 'fail',
-      message: nodeCheck.message,
-      hint: nodeCheck.status === 'error' ? 'Install Node.js 22 or later' : undefined,
+      name: "Runtime",
+      status:
+        runtimeCheck.status === "ok"
+          ? "pass"
+          : runtimeCheck.status === "warn"
+            ? "warn"
+            : "fail",
+      message: runtimeCheck.message,
+      hint:
+        runtimeCheck.status === "error"
+          ? "Install Bun (https://bun.sh) or Node.js 18+"
+          : undefined,
     });
 
     // 2. Check tmux
     const tmuxCheck = checkTmux();
     results.push({
-      name: 'tmux',
-      status: tmuxCheck.status === 'ok' ? 'pass' : tmuxCheck.status === 'warn' ? 'warn' : 'fail',
+      name: "tmux",
+      status:
+        tmuxCheck.status === "ok"
+          ? "pass"
+          : tmuxCheck.status === "warn"
+            ? "warn"
+            : "fail",
       message: tmuxCheck.message,
       hint:
-        tmuxCheck.status === 'error'
-          ? process.platform === 'darwin'
-            ? 'Install with: brew install tmux'
-            : 'Install with: sudo apt install tmux'
+        tmuxCheck.status === "error"
+          ? process.platform === "darwin"
+            ? "Install with: brew install tmux"
+            : "Install with: sudo apt install tmux"
           : undefined,
     });
 
     // 3. Check Bun runtime
     const bunCheck = checkBun();
     results.push({
-      name: 'Bun',
-      status: bunCheck.status === 'ok' ? 'pass' : bunCheck.status === 'warn' ? 'warn' : 'fail',
+      name: "Bun",
+      status:
+        bunCheck.status === "ok"
+          ? "pass"
+          : bunCheck.status === "warn"
+            ? "warn"
+            : "fail",
       message: bunCheck.message,
-      hint: bunCheck.status === 'error' ? 'Install Bun: https://bun.sh' : undefined,
+      hint:
+        bunCheck.status === "error" ? "Install Bun: https://bun.sh" : undefined,
     });
 
     // 4. Check configuration
@@ -60,23 +79,23 @@ export const doctorCommand = new Command('doctor')
       const config = loadConfig();
       if (config) {
         results.push({
-          name: 'Configuration',
-          status: 'pass',
+          name: "Configuration",
+          status: "pass",
           message: `Configured for "${config.machine.name}"`,
         });
       } else {
         results.push({
-          name: 'Configuration',
-          status: 'fail',
-          message: 'Config file exists but is invalid',
+          name: "Configuration",
+          status: "fail",
+          message: "Config file exists but is invalid",
           hint: 'Run "247 init" to reconfigure',
         });
       }
     } else {
       results.push({
-        name: 'Configuration',
-        status: 'fail',
-        message: 'Not configured',
+        name: "Configuration",
+        status: "fail",
+        message: "Not configured",
         hint: 'Run "247 init" to configure',
       });
     }
@@ -85,8 +104,8 @@ export const doctorCommand = new Command('doctor')
     const processStatus = isAgentRunning();
     if (processStatus.running) {
       results.push({
-        name: 'Agent process',
-        status: 'pass',
+        name: "Agent process",
+        status: "pass",
         message: `Running (PID: ${processStatus.pid})`,
       });
 
@@ -96,25 +115,25 @@ export const doctorCommand = new Command('doctor')
         const health = await getAgentHealth(config.agent.port);
         if (health.healthy) {
           results.push({
-            name: 'Agent health',
-            status: 'pass',
+            name: "Agent health",
+            status: "pass",
             message: `Healthy (${health.sessions} sessions)`,
           });
         } else {
           results.push({
-            name: 'Agent health',
-            status: 'warn',
+            name: "Agent health",
+            status: "warn",
             message: `Not responding: ${health.error}`,
-            hint: 'Try restarting: 247 restart',
+            hint: "Try restarting: 247 restart",
           });
         }
       }
     } else {
       results.push({
-        name: 'Agent process',
-        status: 'warn',
-        message: 'Not running',
-        hint: 'Start with: 247 start',
+        name: "Agent process",
+        status: "warn",
+        message: "Not running",
+        hint: "Start with: 247 start",
       });
     }
 
@@ -127,29 +146,29 @@ export const doctorCommand = new Command('doctor')
         if (serviceStatus.running) {
           results.push({
             name: `Service (${serviceManager.platform})`,
-            status: 'pass',
-            message: `Installed and running${serviceStatus.enabled ? ', enabled at boot' : ''}`,
+            status: "pass",
+            message: `Installed and running${serviceStatus.enabled ? ", enabled at boot" : ""}`,
           });
         } else {
           results.push({
             name: `Service (${serviceManager.platform})`,
-            status: 'warn',
-            message: 'Installed but not running',
-            hint: 'Start with: 247 service start',
+            status: "warn",
+            message: "Installed but not running",
+            hint: "Start with: 247 service start",
           });
         }
       } else {
         results.push({
           name: `Service (${serviceManager.platform})`,
-          status: 'warn',
-          message: 'Not installed',
-          hint: 'Install with: 247 service install --start',
+          status: "warn",
+          message: "Not installed",
+          hint: "Install with: 247 service install --start",
         });
       }
     } catch (err) {
       results.push({
-        name: 'Service',
-        status: 'fail',
+        name: "Service",
+        status: "fail",
         message: (err as Error).message,
       });
     }
@@ -160,14 +179,14 @@ export const doctorCommand = new Command('doctor')
     // Config directory
     if (existsSync(paths.configDir)) {
       results.push({
-        name: 'Config directory',
-        status: 'pass',
+        name: "Config directory",
+        status: "pass",
         message: paths.configDir,
       });
     } else {
       results.push({
-        name: 'Config directory',
-        status: 'warn',
+        name: "Config directory",
+        status: "warn",
         message: `Missing: ${paths.configDir}`,
         hint: 'Run "247 init" to create',
       });
@@ -176,16 +195,16 @@ export const doctorCommand = new Command('doctor')
     // Log directory
     if (existsSync(paths.logDir)) {
       results.push({
-        name: 'Log directory',
-        status: 'pass',
+        name: "Log directory",
+        status: "pass",
         message: paths.logDir,
       });
     } else {
       results.push({
-        name: 'Log directory',
-        status: 'warn',
+        name: "Log directory",
+        status: "warn",
         message: `Missing: ${paths.logDir}`,
-        hint: 'Will be created when agent starts',
+        hint: "Will be created when agent starts",
       });
     }
 
@@ -193,29 +212,29 @@ export const doctorCommand = new Command('doctor')
     if (!processStatus.running) {
       const config = loadConfig();
       if (config) {
-        const net = await import('net');
+        const net = await import("net");
         const portAvailable = await new Promise<boolean>((resolve) => {
           const server = net.createServer();
-          server.once('error', () => resolve(false));
-          server.once('listening', () => {
+          server.once("error", () => resolve(false));
+          server.once("listening", () => {
             server.close();
             resolve(true);
           });
-          server.listen(config.agent.port, '127.0.0.1');
+          server.listen(config.agent.port, "127.0.0.1");
         });
 
         if (portAvailable) {
           results.push({
-            name: 'Port availability',
-            status: 'pass',
+            name: "Port availability",
+            status: "pass",
             message: `Port ${config.agent.port} is available`,
           });
         } else {
           results.push({
-            name: 'Port availability',
-            status: 'fail',
+            name: "Port availability",
+            status: "fail",
             message: `Port ${config.agent.port} is in use`,
-            hint: 'Change the port in ~/.247/config.json or stop the conflicting process',
+            hint: "Change the port in ~/.247/config.json or stop the conflicting process",
           });
         }
       }
@@ -226,29 +245,29 @@ export const doctorCommand = new Command('doctor')
     if (hooksStatus.installed) {
       if (hooksStatus.needsUpdate) {
         results.push({
-          name: 'Notification hooks',
-          status: 'warn',
+          name: "Notification hooks",
+          status: "warn",
           message: `Installed (v${hooksStatus.version}) - update available`,
           hint: 'Run "247 hooks install" to update',
         });
       } else {
         results.push({
-          name: 'Notification hooks',
-          status: 'pass',
+          name: "Notification hooks",
+          status: "pass",
           message: `Installed (v${hooksStatus.version})`,
         });
       }
     } else {
       results.push({
-        name: 'Notification hooks',
-        status: 'warn',
-        message: 'Not installed',
+        name: "Notification hooks",
+        status: "warn",
+        message: "Not installed",
         hint: 'Run "247 hooks install" for attention notifications',
       });
     }
 
     // Print results
-    console.log(chalk.bold('Results:\n'));
+    console.log(chalk.bold("Results:\n"));
 
     let passCount = 0;
     let warnCount = 0;
@@ -259,18 +278,18 @@ export const doctorCommand = new Command('doctor')
       let color: (text: string) => string;
 
       switch (result.status) {
-        case 'pass':
-          icon = '✓';
+        case "pass":
+          icon = "✓";
           color = chalk.green;
           passCount++;
           break;
-        case 'warn':
-          icon = '!';
+        case "warn":
+          icon = "!";
           color = chalk.yellow;
           warnCount++;
           break;
-        case 'fail':
-          icon = '✗';
+        case "fail":
+          icon = "✗";
           color = chalk.red;
           failCount++;
           break;
@@ -284,23 +303,27 @@ export const doctorCommand = new Command('doctor')
 
     // Summary
     console.log();
-    console.log(chalk.bold('Summary:'));
+    console.log(chalk.bold("Summary:"));
     console.log(
-      `  ${chalk.green(passCount + ' passed')}, ${chalk.yellow(warnCount + ' warnings')}, ${chalk.red(failCount + ' failures')}`
+      `  ${chalk.green(passCount + " passed")}, ${chalk.yellow(warnCount + " warnings")}, ${chalk.red(failCount + " failures")}`
     );
 
     if (failCount > 0) {
       console.log();
-      console.log(chalk.red('Some checks failed. Please resolve the issues above.'));
+      console.log(
+        chalk.red("Some checks failed. Please resolve the issues above.")
+      );
       process.exit(1);
     } else if (warnCount > 0) {
       console.log();
       console.log(
-        chalk.yellow('Some warnings detected. Consider resolving them for best experience.')
+        chalk.yellow(
+          "Some warnings detected. Consider resolving them for best experience."
+        )
       );
     } else {
       console.log();
-      console.log(chalk.green('All checks passed! 247 is ready to use.'));
+      console.log(chalk.green("All checks passed! 247 is ready to use."));
     }
 
     console.log();

@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { buildApiUrl } from '@/lib/utils';
+import { useState } from "react";
+import { buildApiUrl } from "@/lib/utils";
 
 interface Machine {
-  id: string;
-  name: string;
-  status: string;
   config?: {
     projects: string[];
     agentUrl?: string;
   };
+  id: string;
+  name: string;
+  status: string;
 }
 
 interface CloneResult {
-  success: boolean;
-  project?: string;
-  path?: string;
   error?: string;
+  path?: string;
+  project?: string;
+  success: boolean;
 }
 
 export function useClone(selectedMachine: Machine | null) {
@@ -26,18 +26,18 @@ export function useClone(selectedMachine: Machine | null) {
 
   const cloneRepo = async (url: string): Promise<CloneResult> => {
     if (!selectedMachine) {
-      return { success: false, error: 'No machine selected' };
+      return { success: false, error: "No machine selected" };
     }
 
     setCloning(true);
     setCloneError(null);
 
     try {
-      const agentUrl = selectedMachine.config?.agentUrl || 'localhost:4678';
-      const response = await fetch(buildApiUrl(agentUrl, '/api/clone'), {
-        method: 'POST',
+      const agentUrl = selectedMachine.config?.agentUrl || "localhost:4678";
+      const response = await fetch(buildApiUrl(agentUrl, "/api/clone"), {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ url }),
       });
@@ -45,12 +45,12 @@ export function useClone(selectedMachine: Machine | null) {
       const result: CloneResult = await response.json();
 
       if (!result.success) {
-        setCloneError(result.error || 'Clone failed');
+        setCloneError(result.error || "Clone failed");
       }
 
       return result;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Clone failed';
+      const errorMessage = err instanceof Error ? err.message : "Clone failed";
       setCloneError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {

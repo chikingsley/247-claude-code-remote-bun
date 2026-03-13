@@ -1,44 +1,49 @@
-'use client';
+"use client";
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
 
 interface SlideOverPanelProps {
-  open: boolean;
-  onClose: () => void;
-  title: string;
   children: React.ReactNode;
+  onClose: () => void;
+  open: boolean;
+  title: string;
 }
 
-export function SlideOverPanel({ open, onClose, title, children }: SlideOverPanelProps) {
+export function SlideOverPanel({
+  open,
+  onClose,
+  title,
+  children,
+}: SlideOverPanelProps) {
   return (
     <AnimatePresence>
       {open && (
         <>
           {/* Backdrop */}
           <motion.div
-            initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
+            onClick={onClose}
           />
 
           {/* Panel from right */}
           <motion.div
-            initial={{ x: '100%' }}
             animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 right-0 top-0 z-50 w-full max-w-lg"
+            className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-lg"
+            exit={{ x: "100%" }}
+            initial={{ x: "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
           >
-            <div className="flex h-full flex-col border-l border-white/10 bg-[#0d0d14]">
+            <div className="flex h-full flex-col border-white/10 border-l bg-[#0d0d14]">
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-white/5 p-4">
-                <h2 className="text-lg font-semibold text-white">{title}</h2>
+              <div className="flex items-center justify-between border-white/5 border-b p-4">
+                <h2 className="font-semibold text-lg text-white">{title}</h2>
                 <button
-                  onClick={onClose}
                   className="rounded-lg p-2 text-white/50 hover:bg-white/5 hover:text-white"
+                  onClick={onClose}
                 >
                   <X className="h-5 w-5" />
                 </button>

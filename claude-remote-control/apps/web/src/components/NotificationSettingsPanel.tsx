@@ -1,40 +1,40 @@
-'use client';
+"use client";
 
-import { Bell, Volume2, AlertCircle, CheckCircle, Play } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { AlertCircle, Bell, CheckCircle, Play, Volume2 } from "lucide-react";
 import {
-  useNotificationPreferences,
   NOTIFICATION_SOUNDS,
   type NotificationSoundId,
-} from '@/hooks/useNotificationPreferences';
-import { useSoundNotifications } from '@/hooks/useSoundNotifications';
+  useNotificationPreferences,
+} from "@/hooks/useNotificationPreferences";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useSoundNotifications } from "@/hooks/useSoundNotifications";
+import { cn } from "@/lib/utils";
 
 interface ToggleSwitchProps {
+  disabled?: boolean;
   enabled: boolean;
   onChange: () => void;
-  disabled?: boolean;
 }
 
 function ToggleSwitch({ enabled, onChange, disabled }: ToggleSwitchProps) {
   return (
     <button
-      type="button"
-      role="switch"
       aria-checked={enabled}
+      className={cn(
+        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+        "focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2 focus:ring-offset-[#0d0d14]",
+        enabled ? "bg-orange-500" : "bg-white/10",
+        disabled && "cursor-not-allowed opacity-50"
+      )}
       disabled={disabled}
       onClick={onChange}
-      className={cn(
-        'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-        'focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:ring-offset-2 focus:ring-offset-[#0d0d14]',
-        enabled ? 'bg-orange-500' : 'bg-white/10',
-        disabled && 'cursor-not-allowed opacity-50'
-      )}
+      role="switch"
+      type="button"
     >
       <span
         className={cn(
-          'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-          enabled ? 'translate-x-6' : 'translate-x-1'
+          "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+          enabled ? "translate-x-6" : "translate-x-1"
         )}
       />
     </button>
@@ -60,7 +60,9 @@ export function NotificationSettingsPanel() {
     getSelectedSoundPath,
   } = useNotificationPreferences();
 
-  const { previewSound } = useSoundNotifications({ soundPath: getSelectedSoundPath() });
+  const { previewSound } = useSoundNotifications({
+    soundPath: getSelectedSoundPath(),
+  });
 
   const handlePushToggle = async () => {
     if (isPushSubscribed) {
@@ -81,25 +83,25 @@ export function NotificationSettingsPanel() {
   const handlePreviewSound = async (path: string) => {
     const played = await previewSound(path);
     if (!played) {
-      console.warn('Could not play preview sound');
+      console.warn("Could not play preview sound");
     }
   };
 
   const getPushStatusMessage = () => {
     if (!isPushSupported) {
-      return 'Browser notifications are not supported on this device.';
+      return "Browser notifications are not supported on this device.";
     }
-    if (pushPermission === 'denied') {
-      return 'Notifications are blocked. Please enable them in your browser settings.';
+    if (pushPermission === "denied") {
+      return "Notifications are blocked. Please enable them in your browser settings.";
     }
     if (isPushSubscribed) {
-      return 'You will receive browser notifications when sessions need attention.';
+      return "You will receive browser notifications when sessions need attention.";
     }
-    return 'Enable to receive browser notifications when sessions need attention.';
+    return "Enable to receive browser notifications when sessions need attention.";
   };
 
   const getPushStatusIcon = () => {
-    if (!isPushSupported || pushPermission === 'denied') {
+    if (!isPushSupported || pushPermission === "denied") {
       return <AlertCircle className="h-4 w-4 text-amber-400" />;
     }
     if (isPushSubscribed) {
@@ -113,7 +115,8 @@ export function NotificationSettingsPanel() {
       {/* Header */}
       <div className="space-y-1">
         <p className="text-sm text-white/60">
-          Configure how you want to be notified when sessions need your attention.
+          Configure how you want to be notified when sessions need your
+          attention.
         </p>
       </div>
 
@@ -127,14 +130,17 @@ export function NotificationSettingsPanel() {
             <div className="space-y-1">
               <h3 className="font-medium text-white">Browser Notifications</h3>
               <p className="text-sm text-white/50">
-                Receive push notifications even when the browser is in the background.
+                Receive push notifications even when the browser is in the
+                background.
               </p>
             </div>
           </div>
           <ToggleSwitch
+            disabled={
+              !isPushSupported || isPushLoading || pushPermission === "denied"
+            }
             enabled={isPushSubscribed}
             onChange={handlePushToggle}
-            disabled={!isPushSupported || isPushLoading || pushPermission === 'denied'}
           />
         </div>
 
@@ -143,18 +149,20 @@ export function NotificationSettingsPanel() {
           {getPushStatusIcon()}
           <span
             className={cn(
-              !isPushSupported || pushPermission === 'denied'
-                ? 'text-amber-400'
+              !isPushSupported || pushPermission === "denied"
+                ? "text-amber-400"
                 : isPushSubscribed
-                  ? 'text-emerald-400'
-                  : 'text-white/50'
+                  ? "text-emerald-400"
+                  : "text-white/50"
             )}
           >
-            {isPushLoading ? 'Loading...' : getPushStatusMessage()}
+            {isPushLoading ? "Loading..." : getPushStatusMessage()}
           </span>
         </div>
 
-        {pushError && <div className="mt-2 text-sm text-red-400">Error: {pushError}</div>}
+        {pushError && (
+          <div className="mt-2 text-red-400 text-sm">Error: {pushError}</div>
+        )}
       </div>
 
       {/* Sound Notifications */}
@@ -167,7 +175,8 @@ export function NotificationSettingsPanel() {
             <div className="space-y-1">
               <h3 className="font-medium text-white">Sound Notifications</h3>
               <p className="text-sm text-white/50">
-                Play a sound when a notification appears while the app is in the foreground.
+                Play a sound when a notification appears while the app is in the
+                foreground.
               </p>
             </div>
           </div>
@@ -177,28 +186,34 @@ export function NotificationSettingsPanel() {
         {/* Sound Selector */}
         {soundEnabled && (
           <div className="mt-4 space-y-2">
-            <label className="text-sm font-medium text-white/70">Choose a sound</label>
+            <label className="font-medium text-sm text-white/70">
+              Choose a sound
+            </label>
             <div className="grid grid-cols-2 gap-2">
               {NOTIFICATION_SOUNDS.map((sound) => (
                 <button
+                  className={cn(
+                    "flex items-center justify-between gap-2 rounded-lg px-3 py-2",
+                    "border transition-colors",
+                    selectedSound === sound.id
+                      ? "border-orange-500 bg-orange-500/10 text-white"
+                      : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                  )}
                   key={sound.id}
                   onClick={() => handleSoundSelect(sound.id)}
-                  className={cn(
-                    'flex items-center justify-between gap-2 rounded-lg px-3 py-2',
-                    'border transition-colors',
-                    selectedSound === sound.id
-                      ? 'border-orange-500 bg-orange-500/10 text-white'
-                      : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
-                  )}
                 >
                   <span className="text-sm">{sound.name}</span>
                   <button
+                    aria-label={`Preview ${sound.name} sound`}
+                    className={cn(
+                      "rounded-full p-1",
+                      "hover:bg-white/10",
+                      "transition-colors"
+                    )}
                     onClick={(e) => {
                       e.stopPropagation();
                       handlePreviewSound(sound.path);
                     }}
-                    className={cn('rounded-full p-1', 'hover:bg-white/10', 'transition-colors')}
-                    aria-label={`Preview ${sound.name} sound`}
                   >
                     <Play className="h-3 w-3" />
                   </button>
@@ -212,9 +227,9 @@ export function NotificationSettingsPanel() {
       {/* Info */}
       <div className="rounded-xl bg-white/5 p-4 text-sm text-white/50">
         <p>
-          <strong className="text-white/70">Tip:</strong> You can enable both notification types.
-          Browser notifications work in the background, while sound notifications are great for when
-          the app is visible.
+          <strong className="text-white/70">Tip:</strong> You can enable both
+          notification types. Browser notifications work in the background,
+          while sound notifications are great for when the app is visible.
         </p>
       </div>
     </div>

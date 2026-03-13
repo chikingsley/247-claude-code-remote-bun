@@ -1,26 +1,32 @@
-import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
-import { join } from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from "child_process";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "fs";
+import { join } from "path";
+import { promisify } from "util";
+import { getAgentPaths, getTestableHomedir } from "../lib/paths.js";
+import { checkTmux } from "../lib/prerequisites.js";
 import type {
-  ServiceManager,
-  ServiceStatus,
   ServiceInstallOptions,
+  ServiceManager,
   ServiceResult,
-} from './index.js';
-import { getAgentPaths, getTestableHomedir } from '../lib/paths.js';
-import { checkTmux } from '../lib/prerequisites.js';
+  ServiceStatus,
+} from "./index.js";
 
 const execAsync = promisify(exec);
 
-const SERVICE_NAME = '247-agent';
+const SERVICE_NAME = "247-agent";
 
 export class SystemdService implements ServiceManager {
-  platform = 'linux' as const;
+  platform = "linux" as const;
   serviceName = SERVICE_NAME;
 
   private get unitPath(): string {
-    return join(getTestableHomedir(), '.config', 'systemd', 'user', `${SERVICE_NAME}.service`);
+    return join(
+      getTestableHomedir(),
+      ".config",
+      "systemd",
+      "user",
+      `${SERVICE_NAME}.service`
+    );
   }
 
   async status(): Promise<ServiceStatus> {
@@ -34,18 +40,18 @@ export class SystemdService implements ServiceManager {
         const { stdout: statusOutput } = await execAsync(
           `systemctl --user is-active ${SERVICE_NAME} 2>/dev/null || true`
         );
-        running = statusOutput.trim() === 'active';
+        running = statusOutput.trim() === "active";
 
         const { stdout: enabledOutput } = await execAsync(
           `systemctl --user is-enabled ${SERVICE_NAME} 2>/dev/null || true`
         );
-        enabled = enabledOutput.trim() === 'enabled';
+        enabled = enabledOutput.trim() === "enabled";
 
         if (running) {
           const { stdout: pidOutput } = await execAsync(
             `systemctl --user show ${SERVICE_NAME} --property=MainPID --value 2>/dev/null || true`
           );
-          const parsedPid = parseInt(pidOutput.trim(), 10);
+          const parsedPid = Number.parseInt(pidOutput.trim(), 10);
           if (!isNaN(parsedPid) && parsedPid > 0) {
             pid = parsedPid;
           }
@@ -69,35 +75,36 @@ export class SystemdService implements ServiceManager {
 
     // Verify tmux is installed
     const tmuxCheck = checkTmux();
-    if (tmuxCheck.status === 'error') {
+    if (tmuxCheck.status === "error") {
       return {
         success: false,
-        error: 'tmux is not installed. Please install it first: sudo apt install tmux',
+        error:
+          "tmux is not installed. Please install it first: sudo apt install tmux",
       };
     }
 
     const home = getTestableHomedir();
 
     // Create systemd user directory
-    const systemdUserDir = join(home, '.config', 'systemd', 'user');
+    const systemdUserDir = join(home, ".config", "systemd", "user");
     if (!existsSync(systemdUserDir)) {
       mkdirSync(systemdUserDir, { recursive: true });
     }
 
     // Create log directory
-    const logDir = join(home, '.local', 'log', '247-agent');
+    const logDir = join(home, ".local", "log", "247-agent");
     if (!existsSync(logDir)) {
       mkdirSync(logDir, { recursive: true });
     }
 
     // Determine entry point
     const entryPoint = paths.isDev
-      ? join(paths.agentRoot, 'src', 'index.ts')
-      : join(paths.agentRoot, 'dist', 'index.js');
+      ? join(paths.agentRoot, "src", "index.ts")
+      : join(paths.agentRoot, "dist", "index.js");
 
     // Generate unit content
     const unitContent = this.generateUnit({
-      description: '247 Agent - The Vibe Company',
+      description: "247 Agent - The Vibe Company",
       nodePath: paths.nodePath,
       agentScript: entryPoint,
       workingDirectory: paths.agentRoot,
@@ -106,13 +113,16 @@ export class SystemdService implements ServiceManager {
       dataDir: paths.dataDir,
     });
 
-    writeFileSync(this.unitPath, unitContent, 'utf-8');
+    writeFileSync(this.unitPath, unitContent, "utf-8");
 
     // Reload systemd
     try {
-      await execAsync('systemctl --user daemon-reload');
+      await execAsync("systemctl --user daemon-reload");
     } catch (err) {
-      return { success: false, error: `Failed to reload systemd: ${(err as Error).message}` };
+      return {
+        success: false,
+        error: `Failed to reload systemd: ${(err as Error).message}`,
+      };
     }
 
     // Enable at boot if requested
@@ -120,7 +130,10 @@ export class SystemdService implements ServiceManager {
       try {
         await execAsync(`systemctl --user enable ${SERVICE_NAME}`);
       } catch (err) {
-        return { success: false, error: `Failed to enable service: ${(err as Error).message}` };
+        return {
+          success: false,
+          error: `Failed to enable service: ${(err as Error).message}`,
+        };
       }
     }
 
@@ -154,9 +167,12 @@ export class SystemdService implements ServiceManager {
     if (existsSync(this.unitPath)) {
       try {
         unlinkSync(this.unitPath);
-        await execAsync('systemctl --user daemon-reload');
+        await execAsync("systemctl --user daemon-reload");
       } catch (err) {
-        return { success: false, error: `Failed to remove unit file: ${(err as Error).message}` };
+        return {
+          success: false,
+          error: `Failed to remove unit file: ${(err as Error).message}`,
+        };
       }
     }
 

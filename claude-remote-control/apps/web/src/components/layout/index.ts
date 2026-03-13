@@ -5,4 +5,4 @@
  * Inspired by Craft Agents' 3-panel design pattern.
  */
 
-export { AppShell } from './AppShell';
+export { AppShell } from "./AppShell";

@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Loader2, Search, Home } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown, Home, Loader2, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
 // Special value for "Terminal at root" option
-export const TERMINAL_AT_ROOT = '__ROOT__';
+export const TERMINAL_AT_ROOT = "__ROOT__";
 
 interface ProjectDropdownProps {
+  accentColor?: "orange" | "purple";
   folders: string[];
-  selectedProject: string;
-  onSelectProject: (project: string) => void;
   loading: boolean;
-  accentColor?: 'orange' | 'purple';
+  onSelectProject: (project: string) => void;
+  selectedProject: string;
   showRootOption?: boolean;
 }
 
@@ -22,11 +22,11 @@ export function ProjectDropdown({
   selectedProject,
   onSelectProject,
   loading,
-  accentColor = 'orange',
+  accentColor = "orange",
   showRootOption = true,
 }: ProjectDropdownProps) {
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -36,14 +36,16 @@ export function ProjectDropdown({
       inputRef.current.focus();
     }
     if (!open) {
-      setSearchQuery('');
+      setSearchQuery("");
     }
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const rafId = requestAnimationFrame(() => {
-      menuRef.current?.scrollIntoView({ block: 'nearest' });
+      menuRef.current?.scrollIntoView({ block: "nearest" });
     });
     return () => cancelAnimationFrame(rafId);
   }, [open]);
@@ -54,69 +56,74 @@ export function ProjectDropdown({
   );
 
   const selectedClass =
-    accentColor === 'purple'
-      ? 'bg-purple-500/10 text-purple-400'
-      : 'bg-orange-500/10 text-orange-400';
+    accentColor === "purple"
+      ? "bg-purple-500/10 text-purple-400"
+      : "bg-orange-500/10 text-orange-400";
 
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
         className={cn(
-          'w-full rounded-xl px-4 py-3 text-left',
-          'border border-white/10 bg-white/5',
-          'hover:border-white/20 hover:bg-white/10',
-          'flex items-center justify-between',
-          'transition-all'
+          "w-full rounded-xl px-4 py-3 text-left",
+          "border border-white/10 bg-white/5",
+          "hover:border-white/20 hover:bg-white/10",
+          "flex items-center justify-between",
+          "transition-all"
         )}
+        onClick={() => setOpen(!open)}
       >
         <span
           className={cn(
-            'flex items-center gap-2',
-            selectedProject ? 'text-white' : 'text-white/40'
+            "flex items-center gap-2",
+            selectedProject ? "text-white" : "text-white/40"
           )}
         >
-          {selectedProject === TERMINAL_AT_ROOT && <Home className="h-4 w-4 text-white/60" />}
+          {selectedProject === TERMINAL_AT_ROOT && (
+            <Home className="h-4 w-4 text-white/60" />
+          )}
           {selectedProject === TERMINAL_AT_ROOT
-            ? 'Terminal at root'
-            : selectedProject || 'Choose a project...'}
+            ? "Terminal at root"
+            : selectedProject || "Choose a project..."}
         </span>
         <ChevronDown
-          className={cn('h-4 w-4 text-white/40 transition-transform', open && 'rotate-180')}
+          className={cn(
+            "h-4 w-4 text-white/40 transition-transform",
+            open && "rotate-180"
+          )}
         />
       </button>
 
       <AnimatePresence>
         {open && (
           <motion.div
-            ref={menuRef}
-            initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: 0.15 }}
             className={cn(
-              'absolute left-0 right-0 top-full z-10 mt-2',
-              'rounded-xl border border-white/10 bg-[#12121a]',
-              'shadow-xl shadow-black/50',
-              'flex max-h-[50vh] flex-col overflow-hidden sm:max-h-64'
+              "absolute top-full right-0 left-0 z-10 mt-2",
+              "rounded-xl border border-white/10 bg-[#12121a]",
+              "shadow-black/50 shadow-xl",
+              "flex max-h-[50vh] flex-col overflow-hidden sm:max-h-64"
             )}
+            exit={{ opacity: 0, y: -5 }}
+            initial={{ opacity: 0, y: -5 }}
+            ref={menuRef}
+            transition={{ duration: 0.15 }}
           >
             {/* Search input */}
-            <div className="flex-shrink-0 border-b border-white/10 p-2">
+            <div className="flex-shrink-0 border-white/10 border-b p-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-white/30" />
                 <input
+                  className={cn(
+                    "w-full rounded-lg py-2 pr-3 pl-9 text-sm",
+                    "border border-white/10 bg-white/5",
+                    "text-white placeholder:text-white/30",
+                    "focus:border-white/20 focus:outline-none"
+                  )}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search projects..."
                   ref={inputRef}
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search projects..."
-                  className={cn(
-                    'w-full rounded-lg py-2 pl-9 pr-3 text-sm',
-                    'border border-white/10 bg-white/5',
-                    'text-white placeholder:text-white/30',
-                    'focus:border-white/20 focus:outline-none'
-                  )}
                 />
               </div>
             </div>
@@ -134,21 +141,23 @@ export function ProjectDropdown({
                   {showRootOption && !searchQuery && (
                     <>
                       <button
+                        className={cn(
+                          "flex w-full items-center gap-2 px-4 py-2.5 text-left",
+                          "transition-colors hover:bg-white/5",
+                          selectedProject === TERMINAL_AT_ROOT
+                            ? selectedClass
+                            : "text-white/60"
+                        )}
                         onClick={() => {
                           onSelectProject(TERMINAL_AT_ROOT);
                           setOpen(false);
                         }}
-                        className={cn(
-                          'flex w-full items-center gap-2 px-4 py-2.5 text-left',
-                          'transition-colors hover:bg-white/5',
-                          selectedProject === TERMINAL_AT_ROOT ? selectedClass : 'text-white/60'
-                        )}
                       >
                         <Home className="h-4 w-4" />
                         Terminal at root
                       </button>
                       {filteredFolders.length > 0 && (
-                        <div className="mx-4 my-1 border-t border-white/10" />
+                        <div className="mx-4 my-1 border-white/10 border-t" />
                       )}
                     </>
                   )}
@@ -157,23 +166,27 @@ export function ProjectDropdown({
                   {filteredFolders.length > 0 ? (
                     filteredFolders.map((folder) => (
                       <button
+                        className={cn(
+                          "w-full px-4 py-2.5 text-left",
+                          "transition-colors hover:bg-white/5",
+                          selectedProject === folder
+                            ? selectedClass
+                            : "text-white/80"
+                        )}
                         key={folder}
                         onClick={() => {
                           onSelectProject(folder);
                           setOpen(false);
                         }}
-                        className={cn(
-                          'w-full px-4 py-2.5 text-left',
-                          'transition-colors hover:bg-white/5',
-                          selectedProject === folder ? selectedClass : 'text-white/80'
-                        )}
                       >
                         {folder}
                       </button>
                     ))
                   ) : (
                     <div className="px-4 py-3 text-sm text-white/30">
-                      {folders.length > 0 ? 'No matching projects' : 'No folders found'}
+                      {folders.length > 0
+                        ? "No matching projects"
+                        : "No folders found"}
                     </div>
                   )}
                 </>

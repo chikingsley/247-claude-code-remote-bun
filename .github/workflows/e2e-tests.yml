@@ -23,7 +23,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        node: [22]
 
     runs-on: ${{ matrix.os }}
     defaults:
@@ -34,17 +33,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
-          cache: 'pnpm'
-          cache-dependency-path: claude-remote-control/pnpm-lock.yaml
+          node-version: '22'
 
       # Install tmux (required for E2E tests)
       - name: Install tmux (Ubuntu)
@@ -59,21 +54,21 @@ jobs:
         run: tmux -V
 
       - name: Install dependencies
-        run: pnpm install
+        run: bun install
 
       - name: Build packages
-        run: pnpm build
+        run: bun run build
         env:
           DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
           NEON_AUTH_BASE_URL: https://auth.example.com
 
       # Run unit tests first (fast feedback)
       - name: Run unit tests
-        run: pnpm test
+        run: bun run test
 
       # Run E2E tests
       - name: Run E2E tests
-        run: pnpm --filter 247-cli test:e2e
+        run: bun run --filter 247-cli test:e2e
         env:
           CI: true
 

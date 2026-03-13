@@ -1,15 +1,15 @@
-import { Command } from 'commander';
-import chalk from 'chalk';
-import ora from 'ora';
-import { stopAgent, isAgentRunning } from '../lib/process.js';
+import chalk from "chalk";
+import { Command } from "commander";
+import ora from "ora";
+import { isAgentRunning, stopAgent } from "../lib/process.js";
 
-export const stopCommand = new Command('stop')
-  .description('Stop the 247 agent')
+export const stopCommand = new Command("stop")
+  .description("Stop the 247 agent")
   .action(async () => {
     const status = isAgentRunning();
 
     if (!status.running) {
-      console.log(chalk.yellow('Agent is not running.\n'));
+      console.log(chalk.yellow("Agent is not running.\n"));
       return;
     }
 
@@ -18,7 +18,7 @@ export const stopCommand = new Command('stop')
     const result = stopAgent();
 
     if (result.success) {
-      spinner.succeed('Agent stopped');
+      spinner.succeed("Agent stopped");
     } else {
       spinner.fail(`Failed to stop: ${result.error}`);
       process.exit(1);

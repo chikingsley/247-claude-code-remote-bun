@@ -1,27 +1,28 @@
-import { describe, it, expect, expectTypeOf } from 'vitest';
+import { describe, expect, it } from "bun:test";
+
 import type {
-  Machine,
-  MachineConfig,
-  Session,
-  User,
-  WSMessageToAgent,
-  WSMessageFromAgent,
-  RegisterMachineRequest,
+  AgentConfig,
   AgentInfo,
   EditorConfig,
   EditorStatus,
-  AgentConfig,
-} from '../src/types/index.js';
+  Machine,
+  MachineConfig,
+  RegisterMachineRequest,
+  Session,
+  User,
+  WSMessageFromAgent,
+  WSMessageToAgent,
+} from "../src/types/index.js";
 
-describe('Shared Types', () => {
-  describe('Machine types', () => {
-    it('validates Machine structure', () => {
+describe("Shared Types", () => {
+  describe("Machine types", () => {
+    it("validates Machine structure", () => {
       const machine: Machine = {
-        id: 'machine-1',
-        name: 'Test Machine',
-        status: 'online',
+        id: "machine-1",
+        name: "Test Machine",
+        status: "online",
         lastSeen: new Date(),
-        config: { projects: ['project-a'] },
+        config: { projects: ["project-a"] },
         createdAt: new Date(),
       };
 
@@ -29,20 +30,20 @@ describe('Shared Types', () => {
       expect(machine.status).toMatch(/^(online|offline)$/);
     });
 
-    it('validates MachineConfig structure', () => {
+    it("validates MachineConfig structure", () => {
       const config: MachineConfig = {
-        projects: ['project-a', 'project-b'],
-        agentUrl: 'localhost:4678',
+        projects: ["project-a", "project-b"],
+        agentUrl: "localhost:4678",
       };
 
       expect(config.projects).toBeInstanceOf(Array);
     });
 
-    it('allows null values where specified', () => {
+    it("allows null values where specified", () => {
       const machine: Machine = {
-        id: 'machine-1',
-        name: 'Test Machine',
-        status: 'offline',
+        id: "machine-1",
+        name: "Test Machine",
+        status: "offline",
         lastSeen: null,
         config: null,
         createdAt: new Date(),
@@ -53,14 +54,14 @@ describe('Shared Types', () => {
     });
   });
 
-  describe('Session types', () => {
-    it('validates Session structure', () => {
+  describe("Session types", () => {
+    it("validates Session structure", () => {
       const session: Session = {
-        id: 'session-1',
-        machineId: 'machine-1',
-        project: 'test-project',
-        status: 'working',
-        tmuxSession: 'project--brave-lion-42',
+        id: "session-1",
+        machineId: "machine-1",
+        project: "test-project",
+        status: "working",
+        tmuxSession: "project--brave-lion-42",
         startedAt: new Date(),
         endedAt: null,
       };
@@ -69,44 +70,56 @@ describe('Shared Types', () => {
     });
   });
 
-  describe('SessionStatus types', () => {
-    it('only allows 4 valid status values', async () => {
-      const types = await import('../src/types/index.js');
+  describe("SessionStatus types", () => {
+    it("only allows 4 valid status values", async () => {
+      const types = await import("../src/types/index.js");
 
       // Test that the type exports exist
       expect(types).toBeDefined();
 
       // Valid statuses: init (starting), working (active), needs_attention (user intervention), idle (ended)
-      const validStatuses = ['init', 'working', 'needs_attention', 'idle'];
+      const validStatuses = ["init", "working", "needs_attention", "idle"];
       validStatuses.forEach((status) => {
-        expect(['init', 'working', 'needs_attention', 'idle']).toContain(status);
+        expect(["init", "working", "needs_attention", "idle"]).toContain(
+          status
+        );
       });
     });
 
-    it('AttentionReason has valid values', () => {
-      const validReasons = ['permission', 'input', 'plan_approval', 'task_complete'];
+    it("AttentionReason has valid values", () => {
+      const validReasons = [
+        "permission",
+        "input",
+        "plan_approval",
+        "task_complete",
+      ];
       validReasons.forEach((reason) => {
-        expect(['permission', 'input', 'plan_approval', 'task_complete']).toContain(reason);
+        expect([
+          "permission",
+          "input",
+          "plan_approval",
+          "task_complete",
+        ]).toContain(reason);
       });
     });
   });
 
-  describe('User types', () => {
-    it('validates User structure', () => {
+  describe("User types", () => {
+    it("validates User structure", () => {
       const user: User = {
-        id: 'user-1',
-        email: 'test@example.com',
-        name: 'Test User',
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test User",
         createdAt: new Date(),
       };
 
-      expect(user.email).toContain('@');
+      expect(user.email).toContain("@");
     });
 
-    it('allows null name', () => {
+    it("allows null name", () => {
       const user: User = {
-        id: 'user-1',
-        email: 'test@example.com',
+        id: "user-1",
+        email: "test@example.com",
         name: null,
         createdAt: new Date(),
       };
@@ -115,90 +128,90 @@ describe('Shared Types', () => {
     });
   });
 
-  describe('WebSocket message types', () => {
-    it('validates input message', () => {
-      const msg: WSMessageToAgent = { type: 'input', data: 'ls -la' };
-      expect(msg.type).toBe('input');
+  describe("WebSocket message types", () => {
+    it("validates input message", () => {
+      const msg: WSMessageToAgent = { type: "input", data: "ls -la" };
+      expect(msg.type).toBe("input");
       expect(msg.data).toBeDefined();
     });
 
-    it('validates resize message', () => {
-      const msg: WSMessageToAgent = { type: 'resize', cols: 120, rows: 40 };
-      expect(msg.type).toBe('resize');
+    it("validates resize message", () => {
+      const msg: WSMessageToAgent = { type: "resize", cols: 120, rows: 40 };
+      expect(msg.type).toBe("resize");
       expect(msg.cols).toBe(120);
       expect(msg.rows).toBe(40);
     });
 
-    it('validates start-claude message', () => {
-      const msg: WSMessageToAgent = { type: 'start-claude' };
-      expect(msg.type).toBe('start-claude');
+    it("validates start-claude message", () => {
+      const msg: WSMessageToAgent = { type: "start-claude" };
+      expect(msg.type).toBe("start-claude");
     });
 
-    it('validates ping message', () => {
-      const msg: WSMessageToAgent = { type: 'ping' };
-      expect(msg.type).toBe('ping');
+    it("validates ping message", () => {
+      const msg: WSMessageToAgent = { type: "ping" };
+      expect(msg.type).toBe("ping");
     });
 
-    it('validates request-history message', () => {
-      const msg: WSMessageToAgent = { type: 'request-history', lines: 100 };
-      expect(msg.type).toBe('request-history');
+    it("validates request-history message", () => {
+      const msg: WSMessageToAgent = { type: "request-history", lines: 100 };
+      expect(msg.type).toBe("request-history");
     });
 
-    it('validates output message from agent', () => {
-      const msg: WSMessageFromAgent = { type: 'output', data: 'Hello' };
-      expect(msg.type).toBe('output');
+    it("validates output message from agent", () => {
+      const msg: WSMessageFromAgent = { type: "output", data: "Hello" };
+      expect(msg.type).toBe("output");
     });
 
-    it('validates pong message from agent', () => {
-      const msg: WSMessageFromAgent = { type: 'pong' };
-      expect(msg.type).toBe('pong');
+    it("validates pong message from agent", () => {
+      const msg: WSMessageFromAgent = { type: "pong" };
+      expect(msg.type).toBe("pong");
     });
 
-    it('validates history message from agent', () => {
+    it("validates history message from agent", () => {
       const msg: WSMessageFromAgent = {
-        type: 'history',
-        data: '$ echo hello\nhello\n',
+        type: "history",
+        data: "$ echo hello\nhello\n",
         lines: 2,
       };
-      expect(msg.type).toBe('history');
+      expect(msg.type).toBe("history");
       expect(msg.lines).toBe(2);
     });
   });
 
-  describe('API types', () => {
-    it('validates RegisterMachineRequest', () => {
+  describe("API types", () => {
+    it("validates RegisterMachineRequest", () => {
       const request: RegisterMachineRequest = {
-        id: 'machine-1',
-        name: 'Test Machine',
-        config: { projects: ['project-a'] },
+        id: "machine-1",
+        name: "Test Machine",
+        config: { projects: ["project-a"] },
       };
 
       expect(request.id).toBeDefined();
       expect(request.name).toBeDefined();
     });
 
-    it('allows optional config', () => {
+    it("allows optional config", () => {
       const request: RegisterMachineRequest = {
-        id: 'machine-1',
-        name: 'Test Machine',
+        id: "machine-1",
+        name: "Test Machine",
       };
 
       expect(request.config).toBeUndefined();
     });
 
-    it('validates AgentInfo', () => {
+    it("validates AgentInfo", () => {
       const info: AgentInfo = {
-        machine: { id: 'machine-1', name: 'Test' },
-        status: 'online',
-        projects: ['project-a'],
+        machine: { id: "machine-1", name: "Test" },
+        status: "online",
+        projects: ["project-a"],
       };
 
       expect(info.status).toMatch(/^(online|offline)$/);
     });
   });
 
-  describe('Editor types', () => {
-    it('validates EditorConfig', () => {
+  describe("Editor types", () => {
+    it("validates EditorConfig", () => {
       const config: EditorConfig = {
         enabled: true,
         portRange: { start: 4680, end: 4699 },
@@ -209,12 +222,12 @@ describe('Shared Types', () => {
       expect(config.idleTimeout).toBeGreaterThan(0);
     });
 
-    it('validates EditorStatus', () => {
+    it("validates EditorStatus", () => {
       const status: EditorStatus = {
-        project: 'test-project',
+        project: "test-project",
         running: true,
         port: 4680,
-        pid: 12345,
+        pid: 12_345,
         startedAt: Date.now(),
         lastActivity: Date.now(),
       };
@@ -222,9 +235,9 @@ describe('Shared Types', () => {
       expect(status.running).toBe(true);
     });
 
-    it('allows optional fields in EditorStatus', () => {
+    it("allows optional fields in EditorStatus", () => {
       const status: EditorStatus = {
-        project: 'test-project',
+        project: "test-project",
         running: false,
       };
 
@@ -233,40 +246,40 @@ describe('Shared Types', () => {
     });
   });
 
-  describe('AgentConfig', () => {
-    it('validates full AgentConfig', () => {
+  describe("AgentConfig", () => {
+    it("validates full AgentConfig", () => {
       const config: AgentConfig = {
-        machine: { id: 'machine-1', name: 'Test Machine' },
-        agent: { port: 4678, url: 'localhost:4678' },
+        machine: { id: "machine-1", name: "Test Machine" },
+        agent: { port: 4678, url: "localhost:4678" },
         editor: {
           enabled: true,
           portRange: { start: 4680, end: 4699 },
-          idleTimeout: 30000,
+          idleTimeout: 30_000,
         },
         projects: {
-          basePath: '~/Dev',
-          whitelist: ['project-a', 'project-b'],
+          basePath: "~/Dev",
+          whitelist: ["project-a", "project-b"],
         },
         dashboard: {
-          apiUrl: 'http://localhost:3001/api',
-          apiKey: 'test-key',
+          apiUrl: "http://localhost:3001/api",
+          apiKey: "test-key",
         },
       };
 
       expect(config.machine.id).toBeDefined();
-      expect(config.dashboard.apiUrl).toContain('http');
+      expect(config.dashboard.apiUrl).toContain("http");
     });
 
-    it('allows optional agent and editor', () => {
+    it("allows optional agent and editor", () => {
       const config: AgentConfig = {
-        machine: { id: 'machine-1', name: 'Test Machine' },
+        machine: { id: "machine-1", name: "Test Machine" },
         projects: {
-          basePath: '~/Dev',
+          basePath: "~/Dev",
           whitelist: [],
         },
         dashboard: {
-          apiUrl: 'http://localhost:3001/api',
-          apiKey: 'test-key',
+          apiUrl: "http://localhost:3001/api",
+          apiKey: "test-key",
         },
       };
 
@@ -275,9 +288,9 @@ describe('Shared Types', () => {
     });
   });
 
-  describe('Type exports', () => {
-    it('exports all required types', async () => {
-      const types = await import('../src/types/index.js');
+  describe("Type exports", () => {
+    it("exports all required types", async () => {
+      const types = await import("../src/types/index.js");
 
       // Verify module can be imported without error
       expect(types).toBeDefined();

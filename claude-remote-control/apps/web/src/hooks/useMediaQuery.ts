@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Custom hook for responsive media query detection
@@ -10,9 +10,12 @@ import { useState, useEffect, useCallback } from 'react';
 export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
 
-  const handleChange = useCallback((event: MediaQueryListEvent | MediaQueryList) => {
-    setMatches(event.matches);
-  }, []);
+  const handleChange = useCallback(
+    (event: MediaQueryListEvent | MediaQueryList) => {
+      setMatches(event.matches);
+    },
+    []
+  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(query);
@@ -21,10 +24,10 @@ export function useMediaQuery(query: string): boolean {
     setMatches(mediaQuery.matches);
 
     // Listen for changes
-    mediaQuery.addEventListener('change', handleChange);
+    mediaQuery.addEventListener("change", handleChange);
 
     return () => {
-      mediaQuery.removeEventListener('change', handleChange);
+      mediaQuery.removeEventListener("change", handleChange);
     };
   }, [query, handleChange]);
 
@@ -37,7 +40,7 @@ export const BREAKPOINTS = {
   md: 768,
   lg: 1024,
   xl: 1280,
-  '2xl': 1536,
+  "2xl": 1536,
 } as const;
 
 /**

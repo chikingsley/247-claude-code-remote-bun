@@ -1,65 +1,74 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  Monitor,
-  Globe,
-  Cloud,
-  Wifi,
   ChevronRight,
-  Plus,
+  Cloud,
   FolderOpen,
-  PanelLeftClose,
+  Globe,
+  Monitor,
   PanelLeft,
+  PanelLeftClose,
   Pencil,
+  Plus,
   Trash2,
-} from 'lucide-react';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { cn } from '@/lib/utils';
-import { variants, spring, stagger } from '@/lib/animations';
-import { StatusDot, type ConnectionStatus } from '@/components/ui/status-indicator';
+  Wifi,
+} from "lucide-react";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  type ConnectionStatus,
+  StatusDot,
+} from "@/components/ui/status-indicator";
+import { spring, stagger, variants } from "@/lib/animations";
+import { cn } from "@/lib/utils";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface SidebarMachine {
+  color?: string;
   id: string;
   name: string;
-  type: 'localhost' | 'tailscale' | 'fly' | 'custom';
-  status: ConnectionStatus;
   sessionCount: number;
+  status: ConnectionStatus;
+  type: "localhost" | "tailscale" | "fly" | "custom";
   url?: string;
-  color?: string;
 }
 
 export interface SidebarProject {
+  activeSessionCount: number;
   name: string;
   path: string;
-  activeSessionCount: number;
 }
 
 interface SidebarProps {
+  canRemoveMachine?: (machine: SidebarMachine) => boolean;
   collapsed?: boolean;
-  onToggle?: () => void;
   machines?: SidebarMachine[];
-  projects?: SidebarProject[];
-  selectedMachineId?: string | null;
-  onSelectMachine?: (id: string) => void;
   onAddMachine?: () => void;
-  onSelectProject?: (projectName: string) => void;
-  selectedProjectName?: string | null;
   onEditMachine?: (machine: SidebarMachine) => void;
   onRemoveMachine?: (machine: SidebarMachine) => void;
-  canRemoveMachine?: (machine: SidebarMachine) => boolean;
+  onSelectMachine?: (id: string) => void;
+  onSelectProject?: (projectName: string) => void;
+  onToggle?: () => void;
+  projects?: SidebarProject[];
+  selectedMachineId?: string | null;
+  selectedProjectName?: string | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Machine Icon Component
 // ═══════════════════════════════════════════════════════════════════════════
 
-function MachineIcon({ type, className }: { type: SidebarMachine['type']; className?: string }) {
+function MachineIcon({
+  type,
+  className,
+}: {
+  type: SidebarMachine["type"];
+  className?: string;
+}) {
   const icons = {
     localhost: Monitor,
     tailscale: Globe,
@@ -75,14 +84,20 @@ function MachineIcon({ type, className }: { type: SidebarMachine['type']; classN
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface SectionProps {
-  title: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
   collapsed?: boolean;
   defaultExpanded?: boolean;
-  action?: React.ReactNode;
+  title: string;
 }
 
-function Section({ title, children, collapsed, defaultExpanded = true, action }: SectionProps) {
+function Section({
+  title,
+  children,
+  collapsed,
+  defaultExpanded = true,
+  action,
+}: SectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   if (collapsed) {
@@ -93,16 +108,19 @@ function Section({ title, children, collapsed, defaultExpanded = true, action }:
     <div className="py-1">
       {/* Section Header */}
       <button
-        onClick={() => setExpanded(!expanded)}
         className={cn(
-          'flex w-full items-center justify-between',
-          'px-3 py-2 text-xs font-semibold uppercase tracking-wider',
-          'text-foreground-subtle hover:text-foreground-muted',
-          'transition-colors duration-150'
+          "flex w-full items-center justify-between",
+          "px-3 py-2 font-semibold text-xs uppercase tracking-wider",
+          "text-foreground-subtle hover:text-foreground-muted",
+          "transition-colors duration-150"
         )}
+        onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-1.5">
-          <motion.div animate={{ rotate: expanded ? 90 : 0 }} transition={spring.snappy}>
+          <motion.div
+            animate={{ rotate: expanded ? 90 : 0 }}
+            transition={spring.snappy}
+          >
             <ChevronRight className="h-3 w-3" />
           </motion.div>
           <span>{title}</span>
@@ -114,18 +132,18 @@ function Section({ title, children, collapsed, defaultExpanded = true, action }:
       <AnimatePresence>
         {expanded && (
           <motion.div
-            initial="initial"
             animate="animate"
-            exit="exit"
-            variants={variants.collapse}
-            transition={spring.gentle}
             className="overflow-hidden"
+            exit="exit"
+            initial="initial"
+            transition={spring.gentle}
+            variants={variants.collapse}
           >
             <motion.div
-              variants={stagger.fast}
-              initial="initial"
               animate="animate"
               className="px-2 pb-1"
+              initial="initial"
+              variants={stagger.fast}
             >
               {children}
             </motion.div>
@@ -141,13 +159,13 @@ function Section({ title, children, collapsed, defaultExpanded = true, action }:
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface MachineItemProps {
-  machine: SidebarMachine;
+  canRemove?: boolean;
   collapsed?: boolean;
-  selected?: boolean;
+  machine: SidebarMachine;
   onClick?: () => void;
   onEdit?: () => void;
   onRemove?: () => void;
-  canRemove?: boolean;
+  selected?: boolean;
 }
 
 function MachineItem({
@@ -164,11 +182,14 @@ function MachineItem({
   const [isRemoving, setIsRemoving] = useState(false);
 
   // Detect touch devices to always show actions
-  const isTouchDevice = typeof window !== 'undefined' && 'ontouchstart' in window;
+  const isTouchDevice =
+    typeof window !== "undefined" && "ontouchstart" in window;
   const showActions = isHovered || isTouchDevice;
 
   const handleRemoveConfirm = async () => {
-    if (!onRemove) return;
+    if (!onRemove) {
+      return;
+    }
     setIsRemoving(true);
     try {
       onRemove();
@@ -182,28 +203,28 @@ function MachineItem({
     // Collapsed view - just icon with status
     return (
       <motion.button
-        variants={variants.fadeInUp}
-        onClick={onClick}
         className={cn(
-          'relative flex w-full items-center justify-center',
-          'rounded-lg p-2 transition-all duration-150',
-          'hover:bg-white/5',
-          selected && 'bg-primary/10 ring-primary/50 ring-2'
+          "relative flex w-full items-center justify-center",
+          "rounded-lg p-2 transition-all duration-150",
+          "hover:bg-white/5",
+          selected && "bg-primary/10 ring-2 ring-primary/50"
         )}
+        onClick={onClick}
         title={machine.name}
+        variants={variants.fadeInUp}
       >
         <div className="relative">
           <MachineIcon
-            type={machine.type}
             className={cn(
-              'h-5 w-5',
-              machine.status === 'online' ? 'text-white/70' : 'text-white/30'
+              "h-5 w-5",
+              machine.status === "online" ? "text-white/70" : "text-white/30"
             )}
+            type={machine.type}
           />
           <StatusDot
-            status={machine.status}
+            className="absolute -right-0.5 -bottom-0.5"
             size="xs"
-            className="absolute -bottom-0.5 -right-0.5"
+            status={machine.status}
           />
         </div>
       </motion.button>
@@ -214,21 +235,21 @@ function MachineItem({
   return (
     <>
       <motion.div
-        variants={variants.fadeInUp}
+        className={cn(
+          "group relative flex w-full items-center gap-3",
+          "rounded-lg px-3 py-2 transition-all duration-150",
+          "hover:bg-white/5",
+          selected && "border-primary border-l-2 bg-primary/10"
+        )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={cn(
-          'group relative flex w-full items-center gap-3',
-          'rounded-lg px-3 py-2 transition-all duration-150',
-          'hover:bg-white/5',
-          selected && 'bg-primary/10 border-primary border-l-2'
-        )}
+        variants={variants.fadeInUp}
       >
         {/* Clickable area for selection */}
         <button
-          onClick={onClick}
-          className="absolute inset-0 z-0"
           aria-label={`Select ${machine.name}`}
+          className="absolute inset-0 z-0"
+          onClick={onClick}
         />
 
         {/* Icon with status */}
@@ -238,29 +259,32 @@ function MachineItem({
               className="flex h-5 w-5 items-center justify-center rounded-md"
               style={{ backgroundColor: machine.color }}
             >
-              <MachineIcon type={machine.type} className="h-3 w-3 text-white" />
+              <MachineIcon className="h-3 w-3 text-white" type={machine.type} />
             </div>
           ) : (
             <MachineIcon
-              type={machine.type}
               className={cn(
-                'h-5 w-5',
-                machine.status === 'online' ? 'text-white/70' : 'text-white/30'
+                "h-5 w-5",
+                machine.status === "online" ? "text-white/70" : "text-white/30"
               )}
+              type={machine.type}
             />
           )}
           <StatusDot
-            status={machine.status}
+            className="absolute -right-0.5 -bottom-0.5"
             size="xs"
-            className="absolute -bottom-0.5 -right-0.5"
+            status={machine.status}
           />
         </div>
 
         {/* Name and count */}
         <div className="z-10 min-w-0 flex-1 text-left">
-          <div className="truncate text-sm font-medium text-white/90">{machine.name}</div>
-          <div className="text-xs text-white/40">
-            {machine.sessionCount} session{machine.sessionCount !== 1 ? 's' : ''}
+          <div className="truncate font-medium text-sm text-white/90">
+            {machine.name}
+          </div>
+          <div className="text-white/40 text-xs">
+            {machine.sessionCount} session
+            {machine.sessionCount !== 1 ? "s" : ""}
           </div>
         </div>
 
@@ -269,35 +293,35 @@ function MachineItem({
           <AnimatePresence mode="wait">
             {showActions && (onEdit || (onRemove && canRemove)) ? (
               <motion.div
-                key="actions"
-                initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.1 }}
                 className="flex items-center gap-0.5"
+                exit={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                key="actions"
+                transition={{ duration: 0.1 }}
               >
                 {onEdit && (
                   <button
+                    aria-label="Rename machine"
+                    className="rounded p-1.5 text-white/40 hover:bg-white/10 hover:text-white/80"
                     onClick={(e) => {
                       e.stopPropagation();
                       onEdit();
                     }}
-                    className="rounded p-1.5 text-white/40 hover:bg-white/10 hover:text-white/80"
                     title="Rename"
-                    aria-label="Rename machine"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                 )}
                 {onRemove && canRemove && (
                   <button
+                    aria-label="Remove machine"
+                    className="rounded p-1.5 text-white/40 hover:bg-red-500/20 hover:text-red-400"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowRemoveConfirm(true);
                     }}
-                    className="rounded p-1.5 text-white/40 hover:bg-red-500/20 hover:text-red-400"
                     title="Remove"
-                    aria-label="Remove machine"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -305,10 +329,10 @@ function MachineItem({
               </motion.div>
             ) : (
               <motion.div
-                key="chevron"
-                initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                initial={{ opacity: 0 }}
+                key="chevron"
                 transition={{ duration: 0.1 }}
               >
                 <ChevronRight className="h-4 w-4 text-white/20" />
@@ -320,14 +344,14 @@ function MachineItem({
 
       {/* Confirmation Dialog */}
       <ConfirmDialog
-        open={showRemoveConfirm}
-        onOpenChange={setShowRemoveConfirm}
-        title="Remove machine?"
-        description={`This will disconnect "${machine.name}" from your dashboard. You can add it back later.`}
         confirmText="Remove"
-        variant="destructive"
-        onConfirm={handleRemoveConfirm}
+        description={`This will disconnect "${machine.name}" from your dashboard. You can add it back later.`}
         isLoading={isRemoving}
+        onConfirm={handleRemoveConfirm}
+        onOpenChange={setShowRemoveConfirm}
+        open={showRemoveConfirm}
+        title="Remove machine?"
+        variant="destructive"
       />
     </>
   );
@@ -338,29 +362,36 @@ function MachineItem({
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ProjectItemProps {
-  project: SidebarProject;
   collapsed?: boolean;
-  selected?: boolean;
   onClick?: () => void;
+  project: SidebarProject;
+  selected?: boolean;
 }
 
-function ProjectItem({ project, collapsed, selected, onClick }: ProjectItemProps) {
+function ProjectItem({
+  project,
+  collapsed,
+  selected,
+  onClick,
+}: ProjectItemProps) {
   if (collapsed) {
     return (
       <motion.button
-        variants={variants.fadeInUp}
-        onClick={onClick}
         className={cn(
-          'flex w-full items-center justify-center',
-          'rounded-lg p-2 transition-all duration-150',
-          'hover:bg-white/5',
-          selected && 'bg-primary/10 ring-primary/50 ring-2'
+          "flex w-full items-center justify-center",
+          "rounded-lg p-2 transition-all duration-150",
+          "hover:bg-white/5",
+          selected && "bg-primary/10 ring-2 ring-primary/50"
         )}
+        onClick={onClick}
         title={project.name}
+        variants={variants.fadeInUp}
       >
-        <FolderOpen className={cn('h-5 w-5', selected ? 'text-primary' : 'text-white/50')} />
+        <FolderOpen
+          className={cn("h-5 w-5", selected ? "text-primary" : "text-white/50")}
+        />
         {project.activeSessionCount > 0 && (
-          <span className="bg-primary absolute -right-0.5 -top-0.5 flex h-3 w-3 items-center justify-center rounded-full text-[8px] font-bold text-white">
+          <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary font-bold text-[8px] text-white">
             {project.activeSessionCount}
           </span>
         )}
@@ -370,28 +401,31 @@ function ProjectItem({ project, collapsed, selected, onClick }: ProjectItemProps
 
   return (
     <motion.button
-      variants={variants.fadeInUp}
-      onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-3',
-        'rounded-lg px-3 py-2 transition-all duration-150',
-        'hover:bg-white/5 active:scale-[0.98]',
-        selected && 'bg-primary/10 border-primary border-l-2'
+        "flex w-full items-center gap-3",
+        "rounded-lg px-3 py-2 transition-all duration-150",
+        "hover:bg-white/5 active:scale-[0.98]",
+        selected && "border-primary border-l-2 bg-primary/10"
       )}
+      onClick={onClick}
+      variants={variants.fadeInUp}
     >
       <FolderOpen
-        className={cn('h-4 w-4 flex-shrink-0', selected ? 'text-primary' : 'text-white/50')}
+        className={cn(
+          "h-4 w-4 flex-shrink-0",
+          selected ? "text-primary" : "text-white/50"
+        )}
       />
       <span
         className={cn(
-          'flex-1 truncate text-left text-sm',
-          selected ? 'font-medium text-white' : 'text-white/70'
+          "flex-1 truncate text-left text-sm",
+          selected ? "font-medium text-white" : "text-white/70"
         )}
       >
         {project.name}
       </span>
       {project.activeSessionCount > 0 && (
-        <span className="rounded bg-white/5 px-1.5 py-0.5 text-xs text-white/40">
+        <span className="rounded bg-white/5 px-1.5 py-0.5 text-white/40 text-xs">
           {project.activeSessionCount}
         </span>
       )}
@@ -419,39 +453,42 @@ export function Sidebar({
 }: SidebarProps) {
   return (
     <aside
-      className={cn('panel flex h-full w-full flex-col', 'transition-all duration-200')}
       aria-label="Sidebar navigation"
+      className={cn(
+        "panel flex h-full w-full flex-col",
+        "transition-all duration-200"
+      )}
     >
       {/* Logo / Collapse Toggle */}
       <div
         className={cn(
-          'flex items-center border-b border-white/5',
-          collapsed ? 'justify-center p-3' : 'justify-between p-4'
+          "flex items-center border-white/5 border-b",
+          collapsed ? "justify-center p-3" : "justify-between p-4"
         )}
       >
         {!collapsed && (
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-orange-500 to-amber-500">
-              <span className="text-xs font-bold text-white">24</span>
+              <span className="font-bold text-white text-xs">24</span>
             </div>
             <span className="font-semibold text-white/90">247</span>
           </div>
         )}
 
         <button
-          onClick={onToggle}
-          className={cn(
-            'rounded-md p-2 transition-colors',
-            'text-white/40 hover:bg-white/5 hover:text-white/70'
-          )}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={cn(
+            "rounded-md p-2 transition-colors",
+            "text-white/40 hover:bg-white/5 hover:text-white/70"
+          )}
+          onClick={onToggle}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
-            <PanelLeft className="h-4 w-4" aria-hidden="true" />
+            <PanelLeft aria-hidden="true" className="h-4 w-4" />
           ) : (
-            <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+            <PanelLeftClose aria-hidden="true" className="h-4 w-4" />
           )}
         </button>
       </div>
@@ -460,45 +497,49 @@ export function Sidebar({
       <div className="scrollbar-hide flex-1 overflow-y-auto py-2">
         {/* Machines Section */}
         <Section
-          title="Machines"
-          collapsed={collapsed}
           action={
             !collapsed &&
             onAddMachine && (
               <button
+                aria-label="Add machine"
+                className="rounded p-1.5 text-white/40 hover:bg-white/5 hover:text-white/70"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddMachine();
                 }}
-                className="rounded p-1.5 text-white/40 hover:bg-white/5 hover:text-white/70"
                 title="Add machine"
-                aria-label="Add machine"
               >
-                <Plus className="h-3 w-3" aria-hidden="true" />
+                <Plus aria-hidden="true" className="h-3 w-3" />
               </button>
             )
           }
+          collapsed={collapsed}
+          title="Machines"
         >
           {machines.length > 0
             ? machines.map((machine) => (
                 <MachineItem
+                  canRemove={canRemoveMachine?.(machine) ?? true}
+                  collapsed={collapsed}
                   key={machine.id}
                   machine={machine}
-                  collapsed={collapsed}
-                  selected={selectedMachineId === machine.id}
                   onClick={() => onSelectMachine?.(machine.id)}
-                  onEdit={onEditMachine ? () => onEditMachine(machine) : undefined}
-                  onRemove={onRemoveMachine ? () => onRemoveMachine(machine) : undefined}
-                  canRemove={canRemoveMachine?.(machine) ?? true}
+                  onEdit={
+                    onEditMachine ? () => onEditMachine(machine) : undefined
+                  }
+                  onRemove={
+                    onRemoveMachine ? () => onRemoveMachine(machine) : undefined
+                  }
+                  selected={selectedMachineId === machine.id}
                 />
               ))
             : !collapsed && (
                 <div className="px-3 py-4 text-center">
-                  <p className="text-xs text-white/30">No machines connected</p>
+                  <p className="text-white/30 text-xs">No machines connected</p>
                   {onAddMachine && (
                     <button
+                      className="mt-2 text-primary text-xs hover:text-primary/80"
                       onClick={onAddMachine}
-                      className="text-primary hover:text-primary/80 mt-2 text-xs"
                     >
                       + Add machine
                     </button>
@@ -512,14 +553,14 @@ export function Sidebar({
 
         {/* Projects Section */}
         {projects.length > 0 && (
-          <Section title="Projects" collapsed={collapsed}>
+          <Section collapsed={collapsed} title="Projects">
             {projects.map((project) => (
               <ProjectItem
-                key={project.path}
-                project={project}
                 collapsed={collapsed}
-                selected={selectedProjectName === project.name}
+                key={project.path}
                 onClick={() => onSelectProject?.(project.name)}
+                project={project}
+                selected={selectedProjectName === project.name}
               />
             ))}
           </Section>

@@ -1,25 +1,25 @@
-'use client';
+"use client";
 
-import { useState, useRef, useCallback, type TouchEvent } from 'react';
+import { type TouchEvent, useCallback, useRef, useState } from "react";
 
 interface UsePullToRefreshOptions {
-  onRefresh: () => Promise<void>;
-  threshold?: number; // Distance to trigger refresh (default: 80px)
-  resistance?: number; // Pull resistance factor (default: 2.5)
-  maxPullZoneY?: number; // Max Y position to start pull (default: 100px)
   disabled?: boolean;
+  maxPullZoneY?: number; // Max Y position to start pull (default: 100px)
+  onRefresh: () => Promise<void>;
+  resistance?: number; // Pull resistance factor (default: 2.5)
+  threshold?: number; // Distance to trigger refresh (default: 80px)
 }
 
 interface UsePullToRefreshReturn {
-  pullDistance: number;
-  isRefreshing: boolean;
-  isPulling: boolean;
-  isThresholdReached: boolean;
   handlers: {
     onTouchStart: (e: TouchEvent) => void;
     onTouchMove: (e: TouchEvent) => void;
     onTouchEnd: () => void;
   };
+  isPulling: boolean;
+  isRefreshing: boolean;
+  isThresholdReached: boolean;
+  pullDistance: number;
 }
 
 const DEFAULT_THRESHOLD = 80;
@@ -42,13 +42,19 @@ export function usePullToRefresh({
 
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
-      if (disabled || isRefreshing) return;
+      if (disabled || isRefreshing) {
+        return;
+      }
 
       const touch = e.touches[0];
-      if (!touch) return;
+      if (!touch) {
+        return;
+      }
 
       // Only activate if touch starts near the top of the screen
-      if (touch.clientY > maxPullZoneY) return;
+      if (touch.clientY > maxPullZoneY) {
+        return;
+      }
 
       startYRef.current = touch.clientY;
       isActiveRef.current = true;
@@ -58,10 +64,18 @@ export function usePullToRefresh({
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
-      if (!isActiveRef.current || !startYRef.current || disabled || isRefreshing) return;
+      if (
+        !(isActiveRef.current && startYRef.current) ||
+        disabled ||
+        isRefreshing
+      ) {
+        return;
+      }
 
       const touch = e.touches[0];
-      if (!touch) return;
+      if (!touch) {
+        return;
+      }
 
       const deltaY = touch.clientY - startYRef.current;
 

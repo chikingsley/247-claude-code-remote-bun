@@ -1,51 +1,51 @@
 /**
  * Shared mocking utilities for CLI integration tests
  */
-import { vi } from 'vitest';
-import { EventEmitter } from 'events';
+import { mock, spyOn } from "bun:test";
+import { EventEmitter } from "events";
 
 // ============= TYPES =============
 
 export interface MockFsState {
-  files: Map<string, string>;
   directories: Set<string>;
+  files: Map<string, string>;
 }
 
 export interface MockChildProcess extends EventEmitter {
+  kill: ReturnType<typeof mock>;
   pid: number;
-  unref: ReturnType<typeof vi.fn>;
-  kill: ReturnType<typeof vi.fn>;
+  unref: ReturnType<typeof mock>;
 }
 
 export interface CapturedOutput {
-  logs: string[];
   errors: string[];
+  logs: string[];
   warns: string[];
 }
 
 // ============= MOCK PATHS =============
 
 export const mockPaths = {
-  cliRoot: '/mock/cli',
-  agentRoot: '/mock/agent',
-  hooksSource: '/mock/hooks',
-  hooksDestination: '/mock/.claude-plugins/247-hooks',
-  configDir: '/mock/.247',
-  configPath: '/mock/.247/config.json',
-  profilesDir: '/mock/.247/profiles',
-  dataDir: '/mock/.247/data',
-  logDir: '/mock/.247/logs',
-  pidFile: '/mock/.247/agent.pid',
-  nodePath: '/usr/local/bin/node',
+  cliRoot: "/mock/cli",
+  agentRoot: "/mock/agent",
+  hooksSource: "/mock/hooks",
+  hooksDestination: "/mock/.claude-plugins/247-hooks",
+  configDir: "/mock/.247",
+  configPath: "/mock/.247/config.json",
+  profilesDir: "/mock/.247/profiles",
+  dataDir: "/mock/.247/data",
+  logDir: "/mock/.247/logs",
+  pidFile: "/mock/.247/agent.pid",
+  nodePath: "/usr/local/bin/node",
   isDev: false,
 };
 
 // ============= TEST FIXTURES =============
 
 export const validConfig = {
-  machine: { id: 'test-uuid-1234', name: 'Test Machine' },
+  machine: { id: "test-uuid-1234", name: "Test Machine" },
   agent: { port: 4678 },
-  projects: { basePath: '~/Dev', whitelist: [] },
+  projects: { basePath: "~/Dev", whitelist: [] },
 };
 
 // ============= FACTORY FUNCTIONS =============
@@ -57,29 +57,36 @@ export function createMockFsState(): MockFsState {
   };
 }
 
-export function createMockChild(options: { pid?: number } = {}): MockChildProcess {
+export function createMockChild(
+  options: { pid?: number } = {}
+): MockChildProcess {
   const child = new EventEmitter() as MockChildProcess;
-  child.pid = options.pid ?? 99999;
-  child.unref = vi.fn();
-  child.kill = vi.fn();
+  child.pid = options.pid ?? 99_999;
+  child.unref = mock();
+  child.kill = mock();
   return child;
 }
 
 // ============= MOCK IMPLEMENTATIONS =============
 
 export function createProcessKillMock(runningPids: Set<number>) {
-  return vi.fn((pid: number, signal?: string | number) => {
+  return mock((pid: number, signal?: string | number) => {
     // Signal 0 is used to check if process exists
     if (signal === 0) {
       if (!runningPids.has(pid)) {
-        const err = new Error('ESRCH');
-        (err as NodeJS.ErrnoException).code = 'ESRCH';
+        const err = new Error("ESRCH");
+        (err as NodeJS.ErrnoException).code = "ESRCH";
         throw err;
       }
       return true;
     }
     // SIGTERM or SIGKILL kills the process
-    if (signal === 'SIGTERM' || signal === 'SIGKILL' || signal === 15 || signal === 9) {
+    if (
+      signal === "SIGTERM" ||
+      signal === "SIGKILL" ||
+      signal === 15 ||
+      signal === 9
+    ) {
       runningPids.delete(pid);
     }
     return true;
@@ -91,14 +98,14 @@ export function createProcessKillMock(runningPids: Set<number>) {
 export function captureConsole(): CapturedOutput {
   const output: CapturedOutput = { logs: [], errors: [], warns: [] };
 
-  vi.spyOn(console, 'log').mockImplementation((...args) => {
-    output.logs.push(args.join(' '));
+  spyOn(console, "log").mockImplementation((...args) => {
+    output.logs.push(args.join(" "));
   });
-  vi.spyOn(console, 'error').mockImplementation((...args) => {
-    output.errors.push(args.join(' '));
+  spyOn(console, "error").mockImplementation((...args) => {
+    output.errors.push(args.join(" "));
   });
-  vi.spyOn(console, 'warn').mockImplementation((...args) => {
-    output.warns.push(args.join(' '));
+  spyOn(console, "warn").mockImplementation((...args) => {
+    output.warns.push(args.join(" "));
   });
 
   return output;
@@ -107,24 +114,27 @@ export function captureConsole(): CapturedOutput {
 // ============= SETUP HELPERS =============
 
 export function setupDefaultDirectories(state: MockFsState) {
-  state.directories.add('/mock');
-  state.directories.add('/mock/.247');
-  state.directories.add('/mock/.247/profiles');
-  state.directories.add('/mock/.247/data');
-  state.directories.add('/mock/.247/logs');
-  state.directories.add('/mock/agent');
-  state.directories.add('/mock/hooks');
+  state.directories.add("/mock");
+  state.directories.add("/mock/.247");
+  state.directories.add("/mock/.247/profiles");
+  state.directories.add("/mock/.247/data");
+  state.directories.add("/mock/.247/logs");
+  state.directories.add("/mock/agent");
+  state.directories.add("/mock/hooks");
 }
 
 export function setupAgentEntryPoint(state: MockFsState) {
-  state.files.set('/mock/agent/dist/index.js', '// agent entry point');
+  state.files.set("/mock/agent/dist/index.js", "// agent entry point");
 }
 
 export function setupHooksSource(state: MockFsState) {
-  state.directories.add('/mock/hooks/.claude-plugin');
-  state.files.set('/mock/hooks/.claude-plugin/plugin.json', JSON.stringify({ version: '1.0.0' }));
+  state.directories.add("/mock/hooks/.claude-plugin");
+  state.files.set(
+    "/mock/hooks/.claude-plugin/plugin.json",
+    JSON.stringify({ version: "1.0.0" })
+  );
 }
 
 export function setupExistingConfig(state: MockFsState, config = validConfig) {
-  state.files.set('/mock/.247/config.json', JSON.stringify(config, null, 2));
+  state.files.set("/mock/.247/config.json", JSON.stringify(config, null, 2));
 }

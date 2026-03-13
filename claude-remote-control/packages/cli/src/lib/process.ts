@@ -1,8 +1,14 @@
-import { existsSync, readFileSync, writeFileSync, unlinkSync, openSync } from 'fs';
-import { spawn } from 'child_process';
-import { join } from 'path';
-import { getAgentPaths, ensureDirectories } from './paths.js';
-import { loadConfig } from './config.js';
+import { spawn } from "child_process";
+import {
+  existsSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "fs";
+import { join } from "path";
+import { loadConfig } from "./config.js";
+import { ensureDirectories, getAgentPaths } from "./paths.js";
 
 /**
  * Check if the agent process is running
@@ -15,8 +21,8 @@ export function isAgentRunning(): { running: boolean; pid?: number } {
   }
 
   try {
-    const pidStr = readFileSync(paths.pidFile, 'utf-8').trim();
-    const pid = parseInt(pidStr, 10);
+    const pidStr = readFileSync(paths.pidFile, "utf-8").trim();
+    const pid = Number.parseInt(pidStr, 10);
 
     if (isNaN(pid)) {
       return { running: false };
@@ -44,77 +50,93 @@ export function isAgentRunning(): { running: boolean; pid?: number } {
  * Start the agent as a background daemon
  * @param profileName - Optional profile name to use
  */
-export async function startAgentDaemon(profileName?: string | null): Promise<{ success: boolean; pid?: number; error?: string }> {
+export async function startAgentDaemon(
+  profileName?: string | null
+): Promise<{ success: boolean; pid?: number; error?: string }> {
   const paths = getAgentPaths();
   const config = loadConfig(profileName);
 
   if (!config) {
     if (profileName) {
-      return { success: false, error: `Profile '${profileName}' not found. Run: 247 profile create ${profileName}` };
+      return {
+        success: false,
+        error: `Profile '${profileName}' not found. Run: 247 profile create ${profileName}`,
+      };
     }
-    return { success: false, error: 'Configuration not found. Run: 247 init' };
+    return { success: false, error: "Configuration not found. Run: 247 init" };
   }
 
   // Check if already running
   const status = isAgentRunning();
   if (status.running) {
-    return { success: false, error: `Agent is already running (PID: ${status.pid})` };
+    return {
+      success: false,
+      error: `Agent is already running (PID: ${status.pid})`,
+    };
   }
 
   ensureDirectories();
 
   // Determine the entry point
   const entryPoint = paths.isDev
-    ? join(paths.agentRoot, 'src', 'index.ts')
-    : join(paths.agentRoot, 'dist', 'index.js');
+    ? join(paths.agentRoot, "src", "index.ts")
+    : join(paths.agentRoot, "dist", "index.js");
 
-  if (!existsSync(entryPoint) && !existsSync(entryPoint.replace('.ts', '.js'))) {
-    return { success: false, error: `Agent entry point not found: ${entryPoint}` };
+  if (
+    !(existsSync(entryPoint) || existsSync(entryPoint.replace(".ts", ".js")))
+  ) {
+    return {
+      success: false,
+      error: `Agent entry point not found: ${entryPoint}`,
+    };
   }
 
   // Prepare log files
-  const stdoutLog = join(paths.logDir, 'agent.log');
-  const stderrLog = join(paths.logDir, 'agent.error.log');
+  const stdoutLog = join(paths.logDir, "agent.log");
+  const stderrLog = join(paths.logDir, "agent.error.log");
 
-  const stdout = openSync(stdoutLog, 'a');
-  const stderr = openSync(stderrLog, 'a');
+  const stdout = openSync(stdoutLog, "a");
+  const stderr = openSync(stderrLog, "a");
 
   // Build command
   let command: string;
   let args: string[];
 
   // Bun handles both .ts and .js natively
-  command = 'bun';
+  command = "bun";
   args = [entryPoint];
 
   // Spawn detached process
   const child = spawn(command, args, {
     cwd: paths.agentRoot,
     detached: true,
-    stdio: ['ignore', stdout, stderr],
+    stdio: ["ignore", stdout, stderr],
     env: {
       ...process.env,
       AGENT_247_DATA: paths.dataDir,
-      AGENT_247_PROFILE: profileName || '',
+      AGENT_247_PROFILE: profileName || "",
     },
   });
 
   if (!child.pid) {
-    return { success: false, error: 'Failed to start agent process' };
+    return { success: false, error: "Failed to start agent process" };
   }
 
   // Write PID file
-  writeFileSync(paths.pidFile, String(child.pid), 'utf-8');
+  writeFileSync(paths.pidFile, String(child.pid), "utf-8");
 
   // Detach from parent
   child.unref();
 
   // Wait a moment to check if process started successfully
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
   const checkStatus = isAgentRunning();
   if (!checkStatus.running) {
-    return { success: false, error: 'Agent process exited immediately. Check logs for errors.' };
+    return {
+      success: false,
+      error: "Agent process exited immediately. Check logs for errors.",
+    };
   }
 
   return { success: true, pid: child.pid };
@@ -126,13 +148,13 @@ export async function startAgentDaemon(profileName?: string | null): Promise<{ s
 export function stopAgent(): { success: boolean; error?: string } {
   const status = isAgentRunning();
 
-  if (!status.running || !status.pid) {
+  if (!(status.running && status.pid)) {
     return { success: true }; // Already stopped
   }
 
   try {
     // Send SIGTERM for graceful shutdown
-    process.kill(status.pid, 'SIGTERM');
+    process.kill(status.pid, "SIGTERM");
 
     // Wait for process to exit (max 5 seconds)
     const maxWait = 5000;
@@ -157,7 +179,7 @@ export function stopAgent(): { success: boolean; error?: string } {
     // If still running after timeout, force kill
     try {
       process.kill(status.pid, 0);
-      process.kill(status.pid, 'SIGKILL');
+      process.kill(status.pid, "SIGKILL");
     } catch {
       // Process already exited
     }
@@ -181,14 +203,18 @@ export function stopAgent(): { success: boolean; error?: string } {
 /**
  * Restart the agent
  */
-export async function restartAgent(): Promise<{ success: boolean; pid?: number; error?: string }> {
+export async function restartAgent(): Promise<{
+  success: boolean;
+  pid?: number;
+  error?: string;
+}> {
   const stopResult = stopAgent();
   if (!stopResult.success) {
     return { success: false, error: `Failed to stop: ${stopResult.error}` };
   }
 
   // Wait a moment before starting
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
   return startAgentDaemon();
 }
@@ -206,7 +232,7 @@ export async function getAgentHealth(port: number): Promise<{
     if (!response.ok) {
       return { healthy: false, error: `HTTP ${response.status}` };
     }
-    const sessions = await response.json() as unknown[];
+    const sessions = (await response.json()) as unknown[];
     return { healthy: true, sessions: sessions.length };
   } catch (err) {
     return { healthy: false, error: (err as Error).message };

@@ -1,26 +1,26 @@
-import { exec, execSync } from 'child_process';
-import { promisify } from 'util';
+import { exec, execSync } from "child_process";
+import * as path from "path";
+import { promisify } from "util";
+import { spawnPty } from "./lib/bun-pty.js";
 import {
-  generateInitScript,
-  writeInitScript,
   cleanupInitScript,
   detectUserShell,
-} from './lib/init-script.js';
-import { spawnPty } from './lib/bun-pty.js';
-import * as path from 'path';
+  generateInitScript,
+  writeInitScript,
+} from "./lib/init-script.js";
 
 const execAsync = promisify(exec);
 
 export interface Terminal {
-  write(data: string): void;
-  resize(cols: number, rows: number): void;
+  captureHistory(lines?: number): Promise<string>;
+  detach(): void;
+  isExistingSession(): boolean;
+  kill(): void;
   onData(callback: (data: string) => void): void;
   onExit(callback: (info: { exitCode: number }) => void): void;
-  kill(): void;
-  detach(): void;
-  captureHistory(lines?: number): Promise<string>;
-  isExistingSession(): boolean;
   onReady(callback: () => void): void;
+  resize(cols: number, rows: number): void;
+  write(data: string): void;
 }
 
 export interface CreateTerminalOptions {
@@ -35,7 +35,7 @@ export function createTerminal(
 ): Terminal {
   // Support both old signature (customEnvVars object) and new options object
   const customEnvVars =
-    'customEnvVars' in options
+    "customEnvVars" in options
       ? ((options as CreateTerminalOptions).customEnvVars ?? {})
       : (options as Record<string, string>);
 
@@ -47,12 +47,14 @@ export function createTerminal(
     console.log(`[Terminal] Session '${sessionName}' exists, will attach`);
   } catch {
     existingSession = false;
-    console.log(`[Terminal] Session '${sessionName}' does not exist, will create`);
+    console.log(
+      `[Terminal] Session '${sessionName}' does not exist, will create`
+    );
   }
 
   if (Object.keys(customEnvVars).length > 0) {
     console.log(
-      `[Terminal] Custom env vars for injection: ${Object.keys(customEnvVars).join(', ')}`
+      `[Terminal] Custom env vars for injection: ${Object.keys(customEnvVars).join(", ")}`
     );
   }
 
@@ -63,13 +65,17 @@ export function createTerminal(
   let initScriptPath: string | null = null;
 
   // Detect test/CI environment for animation skipping
-  const isTestEnv = !!(process.env.VITEST || process.env.CI || process.env.JEST_WORKER_ID);
+  const isTestEnv = !!(
+    process.env.VITEST ||
+    process.env.CI ||
+    process.env.JEST_WORKER_ID
+  );
 
   if (existingSession) {
-    tmuxArgs = ['attach-session', '-t', sessionName];
+    tmuxArgs = ["attach-session", "-t", sessionName];
   } else {
     // Extract project name from cwd (last directory component)
-    const projectName = path.basename(cwd) || 'unknown';
+    const projectName = path.basename(cwd) || "unknown";
 
     // Detect user's preferred shell for the interactive session
     const userShell = detectUserShell();
@@ -82,7 +88,7 @@ export function createTerminal(
       sessionName,
       projectName,
       customEnvVars,
-      shell: 'bash', // Always bash since bash sources the init-file
+      shell: "bash", // Always bash since bash sources the init-file
       targetShell: userShell, // User's preferred shell for interactive session
     });
     initScriptPath = writeInitScript(sessionName, scriptContent);
@@ -94,45 +100,48 @@ export function createTerminal(
     // The script sets up env vars, tmux config, then runs `exec ${userShell} -i`
     // Use -e to pass environment variable for animation skipping in tests
     tmuxArgs = [
-      'new-session',
-      '-s',
+      "new-session",
+      "-s",
       sessionName,
-      '-c',
+      "-c",
       cwd,
-      ...(isTestEnv ? ['-e', '_247_SKIP_ANIMATION=1'] : []),
+      ...(isTestEnv ? ["-e", "_247_SKIP_ANIMATION=1"] : []),
       `bash --init-file ${initScriptPath}`,
     ];
   }
 
-  console.log(`[Terminal] Spawning: tmux ${tmuxArgs.join(' ')}`);
+  console.log(`[Terminal] Spawning: tmux ${tmuxArgs.join(" ")}`);
 
   // Callback arrays for dispatching terminal data and exit events
   const dataCallbacks: ((data: string) => void)[] = [];
   const exitCallbacks: ((info: { exitCode: number }) => void)[] = [];
 
-  const proc = spawnPty(['tmux', ...tmuxArgs], {
+  const proc = spawnPty(["tmux", ...tmuxArgs], {
     cwd,
     env: {
       ...process.env,
-      TERM: 'xterm-256color',
+      TERM: "xterm-256color",
       AGENT_247_SESSION: sessionName, // Shared session id for hooks
       CLAUDE_TMUX_SESSION: sessionName, // Also set at PTY level for hook detection
       CODEX_TMUX_SESSION: sessionName,
       PATH: `/opt/homebrew/bin:${process.env.PATH}`,
       // Ensure UTF-8 encoding for proper accent/unicode support
-      LANG: process.env.LANG || 'en_US.UTF-8',
-      LC_ALL: process.env.LC_ALL || 'en_US.UTF-8',
+      LANG: process.env.LANG || "en_US.UTF-8",
+      LC_ALL: process.env.LC_ALL || "en_US.UTF-8",
       // Suppress macOS bash deprecation warning
-      BASH_SILENCE_DEPRECATION_WARNING: '1',
+      BASH_SILENCE_DEPRECATION_WARNING: "1",
       // Pass CI/test detection to init script for animation skipping
-      ...(isTestEnv ? { _247_SKIP_ANIMATION: '1' } : {}),
+      ...(isTestEnv ? { _247_SKIP_ANIMATION: "1" } : {}),
     } as Record<string, string>,
     terminal: {
       cols: 120,
       rows: 30,
       data(_terminal: unknown, data: string | Uint8Array) {
-        const str = typeof data === 'string' ? data : new TextDecoder().decode(data);
-        for (const cb of dataCallbacks) cb(str);
+        const str =
+          typeof data === "string" ? data : new TextDecoder().decode(data);
+        for (const cb of dataCallbacks) {
+          cb(str);
+        }
       },
     },
   });
@@ -140,15 +149,21 @@ export function createTerminal(
   // Handle process exit
   proc.exited.then((code) => {
     const exitCode = code ?? 0;
-    console.log(`[Terminal] Shell exited: code=${exitCode}, session='${sessionName}'`);
-    for (const cb of exitCallbacks) cb({ exitCode });
+    console.log(
+      `[Terminal] Shell exited: code=${exitCode}, session='${sessionName}'`
+    );
+    for (const cb of exitCallbacks) {
+      cb({ exitCode });
+    }
   });
 
   // Debug: log any immediate output
-  let initialOutput = '';
+  let initialOutput = "";
   let debugEnabled = true;
   dataCallbacks.push((data) => {
-    if (!debugEnabled) return;
+    if (!debugEnabled) {
+      return;
+    }
     initialOutput += data;
     if (initialOutput.length < 500) {
       console.log(`[Terminal] Initial output: ${data.substring(0, 100)}`);
@@ -175,11 +190,19 @@ export function createTerminal(
   };
 
   // Handle session initialization and readiness
-  if (!existingSession) {
+  if (existingSession) {
+    // For existing sessions, just ensure mouse is enabled
+    // isReady is already true for existing sessions (set above)
+    setTimeout(() => {
+      exec(`tmux set-option -t "${sessionName}" mouse on`);
+    }, 100);
+  } else {
     // For new sessions, the init script handles env vars and tmux config
     // Fire ready callbacks once shell is likely initialized
     setTimeout(() => {
-      console.log(`[Terminal] New session '${sessionName}' ready (init script executed)`);
+      console.log(
+        `[Terminal] New session '${sessionName}' ready (init script executed)`
+      );
       fireReadyCallbacks();
     }, 150);
 
@@ -190,12 +213,6 @@ export function createTerminal(
         console.log(`[Terminal] Init script cleaned up for '${sessionName}'`);
       }, 5000);
     }
-  } else {
-    // For existing sessions, just ensure mouse is enabled
-    // isReady is already true for existing sessions (set above)
-    setTimeout(() => {
-      exec(`tmux set-option -t "${sessionName}" mouse on`);
-    }, 100);
   }
 
   return {
@@ -212,7 +229,7 @@ export function createTerminal(
     },
     detach: () => {
       // Send tmux detach command (Ctrl+B, d)
-      proc.terminal!.write('\x02d');
+      proc.terminal!.write("\x02d");
     },
     isExistingSession: () => existingSession,
     onReady: (callback: () => void) => {
@@ -222,11 +239,13 @@ export function createTerminal(
         );
         callback();
       } else {
-        console.log(`[Terminal] onReady: not ready yet, queuing callback for '${sessionName}'`);
+        console.log(
+          `[Terminal] onReady: not ready yet, queuing callback for '${sessionName}'`
+        );
         readyCallbacks.push(callback);
       }
     },
-    captureHistory: async (lines = 10000): Promise<string> => {
+    captureHistory: async (lines = 10_000): Promise<string> => {
       try {
         // Capture scrollback buffer from tmux
         // -p = print to stdout
@@ -237,7 +256,7 @@ export function createTerminal(
         );
         return stdout;
       } catch {
-        return '';
+        return "";
       }
     },
   };

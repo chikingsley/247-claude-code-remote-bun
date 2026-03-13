@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
-const DEFAULT_SOUND_PATH = '/sounds/chime.mp3';
+const DEFAULT_SOUND_PATH = "/sounds/chime.mp3";
 
 interface UseSoundNotificationsOptions {
   soundPath?: string;
@@ -21,12 +21,14 @@ export function useSoundNotifications(options?: UseSoundNotificationsOptions) {
 
   // Preload audio on mount and when sound path changes
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") {
+      return;
+    }
 
     setIsLoaded(false);
 
     const audio = new Audio(soundPath);
-    audio.preload = 'auto';
+    audio.preload = "auto";
     audio.volume = 0.5;
 
     const handleCanPlay = () => {
@@ -34,40 +36,42 @@ export function useSoundNotifications(options?: UseSoundNotificationsOptions) {
     };
 
     const handleError = () => {
-      console.warn('Failed to load notification sound:', soundPath);
+      console.warn("Failed to load notification sound:", soundPath);
     };
 
-    audio.addEventListener('canplaythrough', handleCanPlay);
-    audio.addEventListener('error', handleError);
+    audio.addEventListener("canplaythrough", handleCanPlay);
+    audio.addEventListener("error", handleError);
 
     audioRef.current = audio;
 
     return () => {
-      audio.removeEventListener('canplaythrough', handleCanPlay);
-      audio.removeEventListener('error', handleError);
+      audio.removeEventListener("canplaythrough", handleCanPlay);
+      audio.removeEventListener("error", handleError);
       audioRef.current = null;
     };
   }, [soundPath]);
 
   // Track user interaction for autoplay policy
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") {
+      return;
+    }
 
     const handleInteraction = () => {
       setHasUserInteracted(true);
-      document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('keydown', handleInteraction);
-      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener("click", handleInteraction);
+      document.removeEventListener("keydown", handleInteraction);
+      document.removeEventListener("touchstart", handleInteraction);
     };
 
-    document.addEventListener('click', handleInteraction);
-    document.addEventListener('keydown', handleInteraction);
-    document.addEventListener('touchstart', handleInteraction);
+    document.addEventListener("click", handleInteraction);
+    document.addEventListener("keydown", handleInteraction);
+    document.addEventListener("touchstart", handleInteraction);
 
     return () => {
-      document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('keydown', handleInteraction);
-      document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener("click", handleInteraction);
+      document.removeEventListener("keydown", handleInteraction);
+      document.removeEventListener("touchstart", handleInteraction);
     };
   }, []);
 
@@ -76,7 +80,7 @@ export function useSoundNotifications(options?: UseSoundNotificationsOptions) {
    * Returns true if sound was played, false if blocked or unavailable.
    */
   const playSound = useCallback(async (): Promise<boolean> => {
-    if (!audioRef.current || !isLoaded) {
+    if (!(audioRef.current && isLoaded)) {
       return false;
     }
 
@@ -87,7 +91,7 @@ export function useSoundNotifications(options?: UseSoundNotificationsOptions) {
       return true;
     } catch (error) {
       // Browser blocked autoplay - this is expected before user interaction
-      console.debug('Sound playback blocked:', error);
+      console.debug("Sound playback blocked:", error);
       return false;
     }
   }, [isLoaded]);
@@ -104,19 +108,24 @@ export function useSoundNotifications(options?: UseSoundNotificationsOptions) {
    * Preview a specific sound without changing the main audio.
    * Used in settings panel for trying different sounds.
    */
-  const previewSound = useCallback(async (previewPath: string): Promise<boolean> => {
-    if (typeof window === 'undefined') return false;
+  const previewSound = useCallback(
+    async (previewPath: string): Promise<boolean> => {
+      if (typeof window === "undefined") {
+        return false;
+      }
 
-    try {
-      const previewAudio = new Audio(previewPath);
-      previewAudio.volume = 0.5;
-      await previewAudio.play();
-      return true;
-    } catch (error) {
-      console.debug('Preview sound playback blocked:', error);
-      return false;
-    }
-  }, []);
+      try {
+        const previewAudio = new Audio(previewPath);
+        previewAudio.volume = 0.5;
+        await previewAudio.play();
+        return true;
+      } catch (error) {
+        console.debug("Preview sound playback blocked:", error);
+        return false;
+      }
+    },
+    []
+  );
 
   return {
     playSound,

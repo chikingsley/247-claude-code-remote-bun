@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { toast } from 'sonner';
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 interface UseInAppNotificationsOptions {
   /**
@@ -27,10 +27,12 @@ export function useInAppNotifications(options?: UseInAppNotificationsOptions) {
   }, [options?.onNotification]);
 
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+    if (!("serviceWorker" in navigator)) {
+      return;
+    }
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'PUSH_NOTIFICATION_FOREGROUND') {
+      if (event.data?.type === "PUSH_NOTIFICATION_FOREGROUND") {
         const { title, body } = event.data.payload;
         const key = event.data.payload?.data?.sessionName || `${title}-${body}`;
         const now = Date.now();
@@ -39,8 +41,11 @@ export function useInAppNotifications(options?: UseInAppNotificationsOptions) {
           return;
         }
         recentNotificationsRef.current.set(key, now);
-        for (const [id, timestamp] of recentNotificationsRef.current.entries()) {
-          if (now - timestamp > 10000) {
+        for (const [
+          id,
+          timestamp,
+        ] of recentNotificationsRef.current.entries()) {
+          if (now - timestamp > 10_000) {
             recentNotificationsRef.current.delete(id);
           }
         }
@@ -56,9 +61,9 @@ export function useInAppNotifications(options?: UseInAppNotificationsOptions) {
       }
     };
 
-    navigator.serviceWorker.addEventListener('message', handleMessage);
+    navigator.serviceWorker.addEventListener("message", handleMessage);
     return () => {
-      navigator.serviceWorker.removeEventListener('message', handleMessage);
+      navigator.serviceWorker.removeEventListener("message", handleMessage);
     };
   }, []);
 }

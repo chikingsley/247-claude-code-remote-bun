@@ -1,58 +1,62 @@
-import { NextResponse } from 'next/server';
-import { db, agentConnection } from '@/lib/db';
-import { eq, and } from 'drizzle-orm';
+import { getDb, SELECT_CONNECTION } from "@/lib/db";
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+const LOCAL_USER_ID = "local";
+
+export async function DELETE(
+  req: Request & { params: Record<string, string> }
+) {
   try {
-    const { neonAuth } = await import('@neondatabase/auth/next/server');
-    const { user } = await neonAuth();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const id = req.params.id;
 
-    const { id } = await params;
+    getDb()
+      .prepare("DELETE FROM agent_connection WHERE id = ? AND user_id = ?")
+      .run(id, LOCAL_USER_ID);
 
-    await db
-      .delete(agentConnection)
-      .where(and(eq(agentConnection.id, id), eq(agentConnection.userId, user.id)));
-
-    return NextResponse.json({ success: true });
+    return Response.json({ success: true });
   } catch (error) {
-    console.error('Error deleting connection:', error);
-    return NextResponse.json({ error: 'Failed to delete connection' }, { status: 500 });
+    console.error("Error deleting connection:", error);
+    return Response.json(
+      { error: "Failed to delete connection" },
+      { status: 500 }
+    );
   }
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(req: Request & { params: Record<string, string> }) {
   try {
-    const { neonAuth } = await import('@neondatabase/auth/next/server');
-    const { user } = await neonAuth();
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id } = await params;
+    const id = req.params.id;
     const body = await req.json();
+    const now = Date.now();
 
-    const [connection] = await db
-      .update(agentConnection)
-      .set({
-        name: body.name,
-        url: body.url,
-        method: body.method,
-        color: body.color,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(agentConnection.id, id), eq(agentConnection.userId, user.id)))
-      .returning();
+    getDb()
+      .prepare(
+        `UPDATE agent_connection SET name = ?, url = ?, method = ?, color = ?, updated_at = ?
+         WHERE id = ? AND user_id = ?`
+      )
+      .run(
+        body.name,
+        body.url,
+        body.method,
+        body.color ?? null,
+        now,
+        id,
+        LOCAL_USER_ID
+      );
+
+    const connection = getDb()
+      .prepare(`${SELECT_CONNECTION} WHERE id = ? AND user_id = ?`)
+      .get(id, LOCAL_USER_ID);
 
     if (!connection) {
-      return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
+      return Response.json({ error: "Connection not found" }, { status: 404 });
     }
 
-    return NextResponse.json(connection);
+    return Response.json(connection);
   } catch (error) {
-    console.error('Error updating connection:', error);
-    return NextResponse.json({ error: 'Failed to update connection' }, { status: 500 });
+    console.error("Error updating connection:", error);
+    return Response.json(
+      { error: "Failed to update connection" },
+      { status: 500 }
+    );
   }
 }

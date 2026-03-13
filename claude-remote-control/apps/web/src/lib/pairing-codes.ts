@@ -5,19 +5,19 @@
  */
 
 export interface PairingCodeInfo {
-  code: string;
-  machineId: string;
-  machineName: string;
   agentUrl: string;
+  code: string;
   createdAt: number;
   expiresAt: number;
+  machineId: string;
+  machineName: string;
 }
 
 // In-memory store - codes expire after 10 minutes
 const pairingCodes = new Map<string, PairingCodeInfo>();
 
 // Cleanup interval - remove expired codes every minute
-if (typeof setInterval !== 'undefined') {
+if (typeof setInterval !== "undefined") {
   setInterval(() => {
     const now = Date.now();
     for (const [code, data] of pairingCodes.entries()) {
@@ -31,7 +31,9 @@ if (typeof setInterval !== 'undefined') {
 /**
  * Register a pairing code from an agent
  */
-export function registerPairingCode(info: Omit<PairingCodeInfo, 'createdAt' | 'expiresAt'>): void {
+export function registerPairingCode(
+  info: Omit<PairingCodeInfo, "createdAt" | "expiresAt">
+): void {
   // Remove any existing code for this machine
   for (const [existingCode, data] of pairingCodes.entries()) {
     if (data.machineId === info.machineId) {

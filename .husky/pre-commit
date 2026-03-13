@@ -1,1 +1,1 @@
-cd claude-remote-control && pnpm lint-staged && pnpm typecheck && pnpm deadcode && pnpm build
+cd claude-remote-control && bun run lint-staged && bun run typecheck && bun run deadcode && bun run build

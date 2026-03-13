@@ -7,7 +7,7 @@ A CLI tool by [Quivr](https://247.quivr.com) that lets you run Claude Code remot
 ## Installation
 
 ```bash
-npm install -g 247-cli
+bun install -g 247-cli
 ```
 
 ### Prerequisites

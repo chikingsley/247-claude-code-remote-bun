@@ -35,7 +35,7 @@ Sessions persist forever with tmux. Disconnect and reconnect anytime. Your AI ke
 ## Quick Start
 
 ```bash
-npm install -g 247-cli
+bun install -g 247-cli
 247 init
 247 start
 open https://247.quivr.com
@@ -67,7 +67,7 @@ open https://247.quivr.com
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Your Phone/Browser                       │
 │                        https://247.quivr.com                     │
@@ -84,7 +84,7 @@ open https://247.quivr.com
 ┌─────────────────────────────────────────────────────────────────┐
 │              247 Agent (local machine or Fly.io VM)              │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  Express    │  │  WebSocket  │  │  tmux + Claude Code     │  │
+│  │  Bun        │  │  WebSocket  │  │  tmux + Claude Code     │  │
 │  │  Server     │  │  Terminal   │  │  Sessions               │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
 │                         │                                        │

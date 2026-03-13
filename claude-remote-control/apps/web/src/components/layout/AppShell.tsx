@@ -1,43 +1,43 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { spring } from '@/lib/animations';
-import { Sidebar, type SidebarMachine, type SidebarProject } from './Sidebar';
-import { SessionListPanel, type SessionListItem } from './SessionListPanel';
-import { AppHeader } from './AppHeader';
+import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useState } from "react";
+import { spring } from "@/lib/animations";
+import { cn } from "@/lib/utils";
+import { AppHeader } from "./AppHeader";
+import { type SessionListItem, SessionListPanel } from "./SessionListPanel";
+import { Sidebar, type SidebarMachine, type SidebarProject } from "./Sidebar";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface AppShellProps {
-  children: React.ReactNode;
-  // Sidebar props
-  machines?: SidebarMachine[];
-  projects?: SidebarProject[];
-  selectedMachineId?: string | null;
-  onSelectMachine?: (id: string) => void;
-  onAddMachine?: () => void;
-  onSelectProject?: (projectName: string) => void;
-  selectedProjectName?: string | null;
-  onEditMachine?: (machine: SidebarMachine) => void;
-  onRemoveMachine?: (machine: SidebarMachine) => void;
   canRemoveMachine?: (machine: SidebarMachine) => boolean;
-  // Session list props
-  sessions?: SessionListItem[];
-  selectedSessionId?: string | null;
-  onSelectSession?: (session: SessionListItem) => void;
-  onNewSession?: () => void;
-  onKillSession?: (session: SessionListItem) => void;
-  onArchiveSession?: (session: SessionListItem) => void;
+  children: React.ReactNode;
   // Header props
   currentMachineName?: string;
   currentProjectName?: string;
-  onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
+  // Sidebar props
+  machines?: SidebarMachine[];
+  onAddMachine?: () => void;
+  onArchiveSession?: (session: SessionListItem) => void;
+  onEditMachine?: (machine: SidebarMachine) => void;
+  onKillSession?: (session: SessionListItem) => void;
+  onNewSession?: () => void;
   onOpenNotificationSettings?: () => void;
+  onRemoveMachine?: (machine: SidebarMachine) => void;
+  onSelectMachine?: (id: string) => void;
+  onSelectProject?: (projectName: string) => void;
+  onSelectSession?: (session: SessionListItem) => void;
+  onToggleFullscreen?: () => void;
+  projects?: SidebarProject[];
+  selectedMachineId?: string | null;
+  selectedProjectName?: string | null;
+  selectedSessionId?: string | null;
+  // Session list props
+  sessions?: SessionListItem[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -48,8 +48,8 @@ function ResizeHandle({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'w-1 flex-shrink-0 cursor-col-resize',
-        'hover:bg-primary/20 transition-colors duration-150',
+        "w-1 flex-shrink-0 cursor-col-resize",
+        "transition-colors duration-150 hover:bg-primary/20",
         className
       )}
     />
@@ -96,16 +96,16 @@ export function AppShell({
   // In fullscreen mode, hide the sidebar and session list
   if (isFullscreen) {
     return (
-      <div className="h-screen-safe bg-background flex flex-col overflow-hidden">
+      <div className="flex h-screen-safe flex-col overflow-hidden bg-background">
         <AppHeader
-          onSidebarToggle={handleSidebarToggle}
-          sidebarCollapsed={sidebarCollapsed}
           currentMachineName={currentMachineName}
           currentProjectName={currentProjectName}
-          onNewSession={onNewSession}
-          onToggleFullscreen={onToggleFullscreen}
           isFullscreen={isFullscreen}
+          onNewSession={onNewSession}
           onOpenNotificationSettings={onOpenNotificationSettings}
+          onSidebarToggle={handleSidebarToggle}
+          onToggleFullscreen={onToggleFullscreen}
+          sidebarCollapsed={sidebarCollapsed}
         />
         <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
       </div>
@@ -113,17 +113,17 @@ export function AppShell({
   }
 
   return (
-    <div className="h-screen-safe bg-background flex flex-col overflow-hidden">
+    <div className="flex h-screen-safe flex-col overflow-hidden bg-background">
       {/* Header */}
       <AppHeader
-        onSidebarToggle={handleSidebarToggle}
-        sidebarCollapsed={sidebarCollapsed}
         currentMachineName={currentMachineName}
         currentProjectName={currentProjectName}
-        onNewSession={onNewSession}
-        onToggleFullscreen={onToggleFullscreen}
         isFullscreen={isFullscreen}
+        onNewSession={onNewSession}
         onOpenNotificationSettings={onOpenNotificationSettings}
+        onSidebarToggle={handleSidebarToggle}
+        onToggleFullscreen={onToggleFullscreen}
+        sidebarCollapsed={sidebarCollapsed}
       />
 
       {/* Main Content - 3 Panel Layout */}
@@ -131,26 +131,26 @@ export function AppShell({
         {/* Panel 1: Sidebar (Machines & Projects) - Fixed width */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={sidebarCollapsed ? 'collapsed' : 'expanded'}
-            initial={{ width: sidebarCollapsed ? 56 : 240 }}
             animate={{ width: sidebarCollapsed ? 56 : 240 }}
-            exit={{ opacity: 0 }}
-            transition={spring.snappy}
             className="h-full flex-shrink-0"
+            exit={{ opacity: 0 }}
+            initial={{ width: sidebarCollapsed ? 56 : 240 }}
+            key={sidebarCollapsed ? "collapsed" : "expanded"}
+            transition={spring.snappy}
           >
             <Sidebar
+              canRemoveMachine={canRemoveMachine}
               collapsed={sidebarCollapsed}
-              onToggle={handleSidebarToggle}
               machines={machines}
-              projects={projects}
-              selectedMachineId={selectedMachineId}
-              onSelectMachine={onSelectMachine}
               onAddMachine={onAddMachine}
-              onSelectProject={onSelectProject}
-              selectedProjectName={selectedProjectName}
               onEditMachine={onEditMachine}
               onRemoveMachine={onRemoveMachine}
-              canRemoveMachine={canRemoveMachine}
+              onSelectMachine={onSelectMachine}
+              onSelectProject={onSelectProject}
+              onToggle={handleSidebarToggle}
+              projects={projects}
+              selectedMachineId={selectedMachineId}
+              selectedProjectName={selectedProjectName}
             />
           </motion.div>
         </AnimatePresence>
@@ -160,12 +160,12 @@ export function AppShell({
         {/* Panel 2: Session List - Fixed width */}
         <div className="h-full flex-shrink-0" style={{ width: 320 }}>
           <SessionListPanel
-            sessions={sessions}
-            selectedSessionId={selectedSessionId}
-            onSelectSession={onSelectSession}
-            onNewSession={onNewSession}
-            onKillSession={onKillSession}
             onArchiveSession={onArchiveSession}
+            onKillSession={onKillSession}
+            onNewSession={onNewSession}
+            onSelectSession={onSelectSession}
+            selectedSessionId={selectedSessionId}
+            sessions={sessions}
           />
         </div>
 

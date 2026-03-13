@@ -1,53 +1,52 @@
-import { platform } from 'os';
-import { LaunchdService } from './launchd.js';
-import { SystemdService } from './systemd.js';
+import { platform } from "os";
+import { LaunchdService } from "./launchd.js";
+import { SystemdService } from "./systemd.js";
 
 export interface ServiceStatus {
-  installed: boolean;
-  running: boolean;
-  enabled: boolean;
-  pid?: number;
   configPath?: string;
+  enabled: boolean;
+  installed: boolean;
+  pid?: number;
+  running: boolean;
 }
 
 export interface ServiceInstallOptions {
-  startNow?: boolean;
   enableAtBoot?: boolean;
+  startNow?: boolean;
 }
 
 export interface ServiceResult {
-  success: boolean;
-  error?: string;
   configPath?: string;
+  error?: string;
+  success: boolean;
 }
 
 export interface ServiceManager {
-  /** Platform identifier */
-  platform: 'macos' | 'linux';
-
-  /** Service identifier */
-  serviceName: string;
-
-  /** Get current service status */
-  status(): Promise<ServiceStatus>;
+  /** Get log file paths */
+  getLogPaths(): { stdout: string; stderr: string };
 
   /** Install service configuration */
   install(options?: ServiceInstallOptions): Promise<ServiceResult>;
-
-  /** Uninstall service configuration */
-  uninstall(): Promise<ServiceResult>;
-
-  /** Start the service */
-  start(): Promise<ServiceResult>;
-
-  /** Stop the service */
-  stop(): Promise<ServiceResult>;
+  /** Platform identifier */
+  platform: "macos" | "linux";
 
   /** Restart the service */
   restart(): Promise<ServiceResult>;
 
-  /** Get log file paths */
-  getLogPaths(): { stdout: string; stderr: string };
+  /** Service identifier */
+  serviceName: string;
+
+  /** Start the service */
+  start(): Promise<ServiceResult>;
+
+  /** Get current service status */
+  status(): Promise<ServiceStatus>;
+
+  /** Stop the service */
+  stop(): Promise<ServiceResult>;
+
+  /** Uninstall service configuration */
+  uninstall(): Promise<ServiceResult>;
 }
 
 /**
@@ -57,11 +56,13 @@ export function createServiceManager(): ServiceManager {
   const os = platform();
 
   switch (os) {
-    case 'darwin':
+    case "darwin":
       return new LaunchdService();
-    case 'linux':
+    case "linux":
       return new SystemdService();
     default:
-      throw new Error(`Unsupported platform: ${os}. Only macOS and Linux are supported.`);
+      throw new Error(
+        `Unsupported platform: ${os}. Only macOS and Linux are supported.`
+      );
   }
 }

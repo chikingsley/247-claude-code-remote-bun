@@ -1,12 +1,12 @@
-import { execSync } from 'child_process';
+import { execSync } from "child_process";
 
 /**
  * Get the most recent git tag
  */
 export function getLastTag(): string | null {
   try {
-    const tag = execSync('git describe --tags --abbrev=0 2>/dev/null', {
-      encoding: 'utf-8',
+    const tag = execSync("git describe --tags --abbrev=0 2>/dev/null", {
+      encoding: "utf-8",
     }).trim();
     return tag || null;
   } catch {
@@ -23,14 +23,14 @@ export function getCommitsSince(tag: string | null): Array<{
   subject: string;
   body: string;
 }> {
-  const range = tag ? `${tag}..HEAD` : 'HEAD';
-  const separator = '---COMMIT_SEP---';
-  const fieldSep = '---FIELD_SEP---';
+  const range = tag ? `${tag}..HEAD` : "HEAD";
+  const separator = "---COMMIT_SEP---";
+  const fieldSep = "---FIELD_SEP---";
 
   try {
     const output = execSync(
       `git log ${range} --format="%H${fieldSep}%s${fieldSep}%b${separator}"`,
-      { encoding: 'utf-8' }
+      { encoding: "utf-8" }
     );
 
     return output
@@ -39,9 +39,9 @@ export function getCommitsSince(tag: string | null): Array<{
       .map((commit) => {
         const [hash, subject, body] = commit.split(fieldSep);
         return {
-          hash: hash?.trim().substring(0, 7) || '',
-          subject: subject?.trim() || '',
-          body: body?.trim() || '',
+          hash: hash?.trim().substring(0, 7) || "",
+          subject: subject?.trim() || "",
+          body: body?.trim() || "",
         };
       })
       .filter((c) => c.hash && c.subject);
@@ -55,7 +55,7 @@ export function getCommitsSince(tag: string | null): Array<{
  */
 export function hasUncommittedChanges(): boolean {
   try {
-    const status = execSync('git status --porcelain', { encoding: 'utf-8' });
+    const status = execSync("git status --porcelain", { encoding: "utf-8" });
     return status.trim().length > 0;
   } catch {
     return false;
@@ -67,9 +67,9 @@ export function hasUncommittedChanges(): boolean {
  */
 export function getCurrentBranch(): string {
   try {
-    return execSync('git branch --show-current', { encoding: 'utf-8' }).trim();
+    return execSync("git branch --show-current", { encoding: "utf-8" }).trim();
   } catch {
-    return 'unknown';
+    return "unknown";
   }
 }
 
@@ -78,7 +78,7 @@ export function getCurrentBranch(): string {
  */
 export function canPushToRemote(): boolean {
   try {
-    execSync('git remote get-url origin', { encoding: 'utf-8' });
+    execSync("git remote get-url origin", { encoding: "utf-8" });
     return true;
   } catch {
     return false;
@@ -90,7 +90,7 @@ export function canPushToRemote(): boolean {
  */
 export function stageFiles(files: string[]): void {
   for (const file of files) {
-    execSync(`git add "${file}"`, { encoding: 'utf-8' });
+    execSync(`git add "${file}"`, { encoding: "utf-8" });
   }
 }
 
@@ -99,19 +99,19 @@ export function stageFiles(files: string[]): void {
  */
 export function createCommit(message: string): void {
   // Use heredoc-style to handle multi-line messages
-  execSync(`git commit -m "${message}"`, { encoding: 'utf-8' });
+  execSync(`git commit -m "${message}"`, { encoding: "utf-8" });
 }
 
 /**
  * Create a git tag
  */
 export function createTag(version: string): void {
-  execSync(`git tag v${version}`, { encoding: 'utf-8' });
+  execSync(`git tag v${version}`, { encoding: "utf-8" });
 }
 
 /**
  * Push commits and tags to remote
  */
 export function pushToRemote(): void {
-  execSync('git push && git push --tags', { encoding: 'utf-8' });
+  execSync("git push && git push --tags", { encoding: "utf-8" });
 }

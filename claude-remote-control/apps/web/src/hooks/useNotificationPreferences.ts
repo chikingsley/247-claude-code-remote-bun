@@ -1,12 +1,18 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
-const STORAGE_KEY_SOUND = '247-notification-sound-enabled';
-const STORAGE_KEY_PUSH = '247-notification-push-enabled';
-const STORAGE_KEY_SOUND_CHOICE = '247-notification-sound-choice';
+const STORAGE_KEY_SOUND = "247-notification-sound-enabled";
+const STORAGE_KEY_PUSH = "247-notification-push-enabled";
+const STORAGE_KEY_SOUND_CHOICE = "247-notification-sound-choice";
 
-export type NotificationSoundId = 'default' | 'chime' | 'pop' | 'bell' | 'ding' | 'soft';
+export type NotificationSoundId =
+  | "default"
+  | "chime"
+  | "pop"
+  | "bell"
+  | "ding"
+  | "soft";
 
 export interface NotificationSound {
   id: NotificationSoundId;
@@ -15,12 +21,12 @@ export interface NotificationSound {
 }
 
 export const NOTIFICATION_SOUNDS: NotificationSound[] = [
-  { id: 'chime', name: 'Chime', path: '/sounds/chime.mp3' },
-  { id: 'pop', name: 'Pop', path: '/sounds/pop.mp3' },
-  { id: 'bell', name: 'Bell', path: '/sounds/bell.mp3' },
-  { id: 'ding', name: 'Ding', path: '/sounds/ding.mp3' },
-  { id: 'soft', name: 'Soft', path: '/sounds/soft.mp3' },
-  { id: 'default', name: 'Default', path: '/sounds/default.mp3' },
+  { id: "chime", name: "Chime", path: "/sounds/chime.mp3" },
+  { id: "pop", name: "Pop", path: "/sounds/pop.mp3" },
+  { id: "bell", name: "Bell", path: "/sounds/bell.mp3" },
+  { id: "ding", name: "Ding", path: "/sounds/ding.mp3" },
+  { id: "soft", name: "Soft", path: "/sounds/soft.mp3" },
+  { id: "default", name: "Default", path: "/sounds/default.mp3" },
 ];
 
 /**
@@ -31,20 +37,23 @@ export const NOTIFICATION_SOUNDS: NotificationSound[] = [
 export function useNotificationPreferences() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(true);
-  const [selectedSound, setSelectedSoundState] = useState<NotificationSoundId>('chime');
+  const [selectedSound, setSelectedSoundState] =
+    useState<NotificationSoundId>("chime");
 
   // Load persisted state on mount
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") {
+      return;
+    }
 
     const storedSound = localStorage.getItem(STORAGE_KEY_SOUND);
     if (storedSound !== null) {
-      setSoundEnabled(storedSound === 'true');
+      setSoundEnabled(storedSound === "true");
     }
 
     const storedPush = localStorage.getItem(STORAGE_KEY_PUSH);
     if (storedPush !== null) {
-      setPushEnabled(storedPush === 'true');
+      setPushEnabled(storedPush === "true");
     }
 
     const storedSoundChoice = localStorage.getItem(STORAGE_KEY_SOUND_CHOICE);

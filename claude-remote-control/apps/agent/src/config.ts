@@ -1,37 +1,37 @@
-import { readFileSync, existsSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readFileSync } from "fs";
+import { resolve } from "path";
 
 export interface AgentConfig {
-  machine: {
-    id: string;
-    name: string;
-  };
   agent?: {
     port?: number;
     url?: string;
-  };
-  projects: {
-    basePath: string;
-    whitelist: string[];
   };
   dashboard?: {
     apiUrl?: string;
     apiKey?: string;
   };
+  machine: {
+    id: string;
+    name: string;
+  };
+  projects: {
+    basePath: string;
+    whitelist: string[];
+  };
 }
 
 let cachedConfig: AgentConfig | null = null;
 
-const CONFIG_DIR = resolve(process.env.HOME || '~', '.247');
+const CONFIG_DIR = resolve(process.env.HOME || "~", ".247");
 
 /**
  * Get config file path based on profile name
  */
 function getConfigPath(profileName?: string): string {
   if (profileName) {
-    return resolve(CONFIG_DIR, 'profiles', `${profileName}.json`);
+    return resolve(CONFIG_DIR, "profiles", `${profileName}.json`);
   }
-  return resolve(CONFIG_DIR, 'config.json');
+  return resolve(CONFIG_DIR, "config.json");
 }
 
 /**
@@ -48,9 +48,9 @@ export function loadConfig(): AgentConfig {
 
   if (existsSync(configPath)) {
     try {
-      const content = readFileSync(configPath, 'utf-8');
+      const content = readFileSync(configPath, "utf-8");
       cachedConfig = JSON.parse(content) as AgentConfig;
-      const label = profileName ? `profile '${profileName}'` : 'default';
+      const label = profileName ? `profile '${profileName}'` : "default";
       console.log(`Loaded ${label} config from: ${configPath}`);
       return cachedConfig;
     } catch (err) {
@@ -63,9 +63,11 @@ export function loadConfig(): AgentConfig {
     const defaultPath = getConfigPath();
     if (existsSync(defaultPath)) {
       try {
-        const content = readFileSync(defaultPath, 'utf-8');
+        const content = readFileSync(defaultPath, "utf-8");
         cachedConfig = JSON.parse(content) as AgentConfig;
-        console.log(`Profile '${profileName}' not found, using default: ${defaultPath}`);
+        console.log(
+          `Profile '${profileName}' not found, using default: ${defaultPath}`
+        );
         return cachedConfig;
       } catch (err) {
         console.error(`Failed to load config from ${defaultPath}:`, err);
@@ -74,7 +76,8 @@ export function loadConfig(): AgentConfig {
   }
 
   throw new Error(
-    `No configuration found at ${configPath}\n` + `Run '247 init' to create configuration.`
+    `No configuration found at ${configPath}\n` +
+      `Run '247 init' to create configuration.`
   );
 }
 

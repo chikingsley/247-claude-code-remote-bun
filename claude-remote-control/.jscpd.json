@@ -9,7 +9,7 @@
     "**/tests/**",
     "**/*.test.ts",
     "**/*.d.ts",
-    "**/pnpm-lock.yaml"
+    "**/bun.lock"
   ],
   "format": ["typescript", "tsx", "javascript"],
   "minLines": 6,

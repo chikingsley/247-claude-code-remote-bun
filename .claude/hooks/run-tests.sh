@@ -12,7 +12,7 @@ cd claude-remote-control || exit 0
 
 # Run the tests
 echo "Running tests before stopping..."
-pnpm test 2>&1
+bun run test 2>&1
 
 TEST_EXIT_CODE=$?
 

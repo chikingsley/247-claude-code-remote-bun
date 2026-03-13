@@ -1,70 +1,75 @@
 import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  copyFileSync,
   chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
   unlinkSync,
-} from 'fs';
-import { join, dirname } from 'path';
-import { homedir } from 'os';
-import { fileURLToPath } from 'url';
+  writeFileSync,
+} from "fs";
+import { homedir } from "os";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Paths
-const CLAUDE_SETTINGS_PATH = join(homedir(), '.claude', 'settings.json');
-const CODEX_CONFIG_PATH = join(homedir(), '.codex', 'config.toml');
-const HOOKS_DIR = join(homedir(), '.247', 'hooks');
-const HOOK_SCRIPT_NAME = 'notify-247.sh';
+const CLAUDE_SETTINGS_PATH = join(homedir(), ".claude", "settings.json");
+const CODEX_CONFIG_PATH = join(homedir(), ".codex", "config.toml");
+const HOOKS_DIR = join(homedir(), ".247", "hooks");
+const HOOK_SCRIPT_NAME = "notify-247.sh";
 const HOOK_SCRIPT_PATH = join(HOOKS_DIR, HOOK_SCRIPT_NAME);
 const CODEX_NOTIFY_LINE = `notify = ["bash", "~/.247/hooks/${HOOK_SCRIPT_NAME}"]`;
 const CODEX_NOTIFY_REGEX = /^\s*notify\s*=\s*\[[^\]]*\]\s*$/m;
 
 // Hook configuration for Claude Code settings.json
-const HOOK_MATCHER = '*';
+const HOOK_MATCHER = "*";
 const HOOK_COMMAND = `bash ${HOOK_SCRIPT_PATH}`;
 // All hook types we need to register
-const HOOK_TYPES = ['Stop', 'PermissionRequest', 'Notification'] as const;
+const HOOK_TYPES = ["Stop", "PermissionRequest", "Notification"] as const;
 
 export interface HookStatus {
   installed: boolean;
-  version: string | null;
-  path: string;
-  settingsConfigured: boolean;
   needsUpdate: boolean;
   packagedVersion: string;
+  path: string;
+  settingsConfigured: boolean;
+  version: string | null;
 }
 
 export interface InstallResult {
-  success: boolean;
   error?: string;
   installedVersion?: string;
+  success: boolean;
 }
 
 export interface UninstallResult {
-  success: boolean;
   error?: string;
+  success: boolean;
 }
 
 export interface CodexNotifyStatus {
-  configPath: string;
   configExists: boolean;
+  configPath: string;
   notifyConfigured: boolean;
   notifyLine?: string;
 }
 
 export interface CodexInstallResult {
-  success: boolean;
-  status: 'installed' | 'updated' | 'already-configured' | 'missing-config' | 'conflict';
   error?: string;
+  status:
+    | "installed"
+    | "updated"
+    | "already-configured"
+    | "missing-config"
+    | "conflict";
+  success: boolean;
 }
 
 export interface CodexUninstallResult {
-  success: boolean;
-  status: 'removed' | 'not-configured' | 'missing-config' | 'conflict';
   error?: string;
+  status: "removed" | "not-configured" | "missing-config" | "conflict";
+  success: boolean;
 }
 
 /**
@@ -73,19 +78,18 @@ export interface CodexUninstallResult {
  */
 function getPackagedHookPath(): string {
   // CLI root is 2 levels up from lib/ (dist/lib -> dist -> cli root)
-  const cliRoot = join(__dirname, '..', '..');
+  const cliRoot = join(__dirname, "..", "..");
 
-  // Check if running from source (monorepo) or installed (npm global)
-  const monorepoRoot = join(cliRoot, '..', '..');
-  const isDev = existsSync(join(monorepoRoot, 'pnpm-workspace.yaml'));
+  // Check if running from source (monorepo) or installed (bun global)
+  const monorepoRoot = join(cliRoot, "..", "..");
+  const isDev = existsSync(join(monorepoRoot, "bun.lock"));
 
   if (isDev) {
     // Development: hook is in packages/hooks
-    return join(monorepoRoot, 'packages', 'hooks', HOOK_SCRIPT_NAME);
-  } else {
-    // Production: hook is bundled in cli/hooks
-    return join(cliRoot, 'hooks', HOOK_SCRIPT_NAME);
+    return join(monorepoRoot, "packages", "hooks", HOOK_SCRIPT_NAME);
   }
+  // Production: hook is bundled in cli/hooks
+  return join(cliRoot, "hooks", HOOK_SCRIPT_NAME);
 }
 
 /**
@@ -94,8 +98,10 @@ function getPackagedHookPath(): string {
  */
 function extractVersion(scriptPath: string): string | null {
   try {
-    if (!existsSync(scriptPath)) return null;
-    const content = readFileSync(scriptPath, 'utf-8');
+    if (!existsSync(scriptPath)) {
+      return null;
+    }
+    const content = readFileSync(scriptPath, "utf-8");
     const match = content.match(/^# VERSION:\s*(\d+\.\d+\.\d+)/m);
     return match ? match[1] : null;
   } catch {
@@ -119,16 +125,16 @@ export function getPackagedHookVersion(): string {
   // Fall back to reading from package.json if not found in script
   if (!version) {
     try {
-      const cliRoot = join(__dirname, '..', '..');
-      const pkgPath = join(cliRoot, 'package.json');
+      const cliRoot = join(__dirname, "..", "..");
+      const pkgPath = join(cliRoot, "package.json");
       if (existsSync(pkgPath)) {
-        const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-        return pkg.version || '0.0.0';
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+        return pkg.version || "0.0.0";
       }
     } catch {
       // Ignore
     }
-    return '0.0.0';
+    return "0.0.0";
   }
   return version;
 }
@@ -138,16 +144,22 @@ export function getPackagedHookVersion(): string {
  */
 function isHookInSettings(): boolean {
   try {
-    if (!existsSync(CLAUDE_SETTINGS_PATH)) return false;
-    const content = readFileSync(CLAUDE_SETTINGS_PATH, 'utf-8');
+    if (!existsSync(CLAUDE_SETTINGS_PATH)) {
+      return false;
+    }
+    const content = readFileSync(CLAUDE_SETTINGS_PATH, "utf-8");
     const settings = JSON.parse(content);
 
-    if (!settings.hooks) return false;
+    if (!settings.hooks) {
+      return false;
+    }
 
     // Check if our hook is registered for all required types
     return HOOK_TYPES.every((hookType) => {
       const hookArray = settings.hooks[hookType];
-      if (!Array.isArray(hookArray)) return false;
+      if (!Array.isArray(hookArray)) {
+        return false;
+      }
       return hookArray.some(
         (entry: { matcher?: string; hooks?: Array<{ command?: string }> }) =>
           entry.matcher === HOOK_MATCHER &&
@@ -173,16 +185,24 @@ export function needsUpdate(): boolean {
   const installedVersion = getHookVersion();
   const packagedVersion = getPackagedHookVersion();
 
-  if (!installedVersion) return true;
-  if (!packagedVersion) return false;
+  if (!installedVersion) {
+    return true;
+  }
+  if (!packagedVersion) {
+    return false;
+  }
 
   // Simple semver comparison
-  const installed = installedVersion.split('.').map(Number);
-  const packaged = packagedVersion.split('.').map(Number);
+  const installed = installedVersion.split(".").map(Number);
+  const packaged = packagedVersion.split(".").map(Number);
 
   for (let i = 0; i < 3; i++) {
-    if (packaged[i] > installed[i]) return true;
-    if (packaged[i] < installed[i]) return false;
+    if (packaged[i] > installed[i]) {
+      return true;
+    }
+    if (packaged[i] < installed[i]) {
+      return false;
+    }
   }
 
   return false;
@@ -213,7 +233,7 @@ export function getHooksStatus(): HookStatus {
 function readClaudeSettings(): Record<string, unknown> {
   try {
     if (existsSync(CLAUDE_SETTINGS_PATH)) {
-      const content = readFileSync(CLAUDE_SETTINGS_PATH, 'utf-8');
+      const content = readFileSync(CLAUDE_SETTINGS_PATH, "utf-8");
       return JSON.parse(content);
     }
   } catch {
@@ -246,7 +266,10 @@ export function installHook(): InstallResult {
     // 2. Copy hook script
     const packagedPath = getPackagedHookPath();
     if (!existsSync(packagedPath)) {
-      return { success: false, error: `Packaged hook not found at ${packagedPath}` };
+      return {
+        success: false,
+        error: `Packaged hook not found at ${packagedPath}`,
+      };
     }
 
     copyFileSync(packagedPath, HOOK_SCRIPT_PATH);
@@ -277,7 +300,10 @@ export function installHook(): InstallResult {
         }>
       ).filter(
         (entry) =>
-          !(entry.matcher === HOOK_MATCHER && entry.hooks?.some((h) => h.command?.includes('247')))
+          !(
+            entry.matcher === HOOK_MATCHER &&
+            entry.hooks?.some((h) => h.command?.includes("247"))
+          )
       );
 
       // Add our hook
@@ -285,7 +311,7 @@ export function installHook(): InstallResult {
         matcher: HOOK_MATCHER,
         hooks: [
           {
-            type: 'command',
+            type: "command",
             command: HOOK_COMMAND,
           },
         ],
@@ -304,7 +330,7 @@ export function installHook(): InstallResult {
 /**
  * Uninstall the hook: remove from settings and optionally delete script.
  */
-export function uninstallHook(removeScript: boolean = true): UninstallResult {
+export function uninstallHook(removeScript = true): UninstallResult {
   try {
     // 1. Remove from Claude Code settings
     if (existsSync(CLAUDE_SETTINGS_PATH)) {
@@ -325,7 +351,7 @@ export function uninstallHook(removeScript: boolean = true): UninstallResult {
               (entry) =>
                 !(
                   entry.matcher === HOOK_MATCHER &&
-                  entry.hooks?.some((h) => h.command?.includes('247'))
+                  entry.hooks?.some((h) => h.command?.includes("247"))
                 )
             );
 
@@ -363,8 +389,10 @@ function getCodexNotifyLine(config: string): string | null {
 
 function readCodexConfig(): string | null {
   try {
-    if (!existsSync(CODEX_CONFIG_PATH)) return null;
-    return readFileSync(CODEX_CONFIG_PATH, 'utf-8');
+    if (!existsSync(CODEX_CONFIG_PATH)) {
+      return null;
+    }
+    return readFileSync(CODEX_CONFIG_PATH, "utf-8");
   } catch {
     return null;
   }
@@ -389,7 +417,8 @@ export function getCodexNotifyStatus(): CodexNotifyStatus {
   }
 
   const notifyLine = getCodexNotifyLine(config);
-  const notifyConfigured = !!notifyLine && notifyLine.includes(HOOK_SCRIPT_NAME);
+  const notifyConfigured =
+    !!notifyLine && notifyLine.includes(HOOK_SCRIPT_NAME);
 
   return {
     configPath: CODEX_CONFIG_PATH,
@@ -399,36 +428,45 @@ export function getCodexNotifyStatus(): CodexNotifyStatus {
   };
 }
 
-export function installCodexNotify(options: { force?: boolean } = {}): CodexInstallResult {
+export function installCodexNotify(
+  options: { force?: boolean } = {}
+): CodexInstallResult {
   try {
     const config = readCodexConfig();
     if (!config) {
-      return { success: false, status: 'missing-config' };
+      return { success: false, status: "missing-config" };
     }
 
     const notifyLine = getCodexNotifyLine(config);
     if (notifyLine && notifyLine.includes(HOOK_SCRIPT_NAME)) {
-      return { success: true, status: 'already-configured' };
+      return { success: true, status: "already-configured" };
     }
 
     if (notifyLine && !options.force) {
-      return { success: false, status: 'conflict' };
+      return { success: false, status: "conflict" };
     }
 
     let updatedConfig = config.trimEnd();
     if (notifyLine) {
-      updatedConfig = updatedConfig.replace(CODEX_NOTIFY_REGEX, CODEX_NOTIFY_LINE);
+      updatedConfig = updatedConfig.replace(
+        CODEX_NOTIFY_REGEX,
+        CODEX_NOTIFY_LINE
+      );
       writeCodexConfig(`${updatedConfig}\n`);
-      return { success: true, status: 'updated' };
+      return { success: true, status: "updated" };
     }
 
-    const separator = updatedConfig.length > 0 ? '\n\n' : '';
+    const separator = updatedConfig.length > 0 ? "\n\n" : "";
     updatedConfig = `${updatedConfig}${separator}# 247 notifications\n${CODEX_NOTIFY_LINE}\n`;
     writeCodexConfig(updatedConfig);
 
-    return { success: true, status: 'installed' };
+    return { success: true, status: "installed" };
   } catch (err) {
-    return { success: false, status: 'conflict', error: (err as Error).message };
+    return {
+      success: false,
+      status: "conflict",
+      error: (err as Error).message,
+    };
   }
 }
 
@@ -436,23 +474,29 @@ export function uninstallCodexNotify(): CodexUninstallResult {
   try {
     const config = readCodexConfig();
     if (!config) {
-      return { success: true, status: 'missing-config' };
+      return { success: true, status: "missing-config" };
     }
 
     const notifyLine = getCodexNotifyLine(config);
     if (!notifyLine) {
-      return { success: true, status: 'not-configured' };
+      return { success: true, status: "not-configured" };
     }
 
     if (!notifyLine.includes(HOOK_SCRIPT_NAME)) {
-      return { success: false, status: 'conflict' };
+      return { success: false, status: "conflict" };
     }
 
-    let updatedConfig = config.replace(CODEX_NOTIFY_REGEX, '').replace(/\n{3,}/g, '\n\n');
+    let updatedConfig = config
+      .replace(CODEX_NOTIFY_REGEX, "")
+      .replace(/\n{3,}/g, "\n\n");
     updatedConfig = updatedConfig.trimEnd();
-    writeCodexConfig(updatedConfig.length ? `${updatedConfig}\n` : '');
-    return { success: true, status: 'removed' };
+    writeCodexConfig(updatedConfig.length ? `${updatedConfig}\n` : "");
+    return { success: true, status: "removed" };
   } catch (err) {
-    return { success: false, status: 'conflict', error: (err as Error).message };
+    return {
+      success: false,
+      status: "conflict",
+      error: (err as Error).message,
+    };
   }
 }

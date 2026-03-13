@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { SessionPollingProvider } from '@/contexts/SessionPollingContext';
-import { useEffect, type ReactNode } from 'react';
+import { type ReactNode, useEffect } from "react";
+import { SessionPollingProvider } from "@/contexts/SessionPollingContext";
 
 /**
  * Clear the PWA app badge when the app is opened or becomes visible.
@@ -10,7 +10,7 @@ import { useEffect, type ReactNode } from 'react';
 function useClearAppBadge() {
   useEffect(() => {
     const clearBadge = () => {
-      if ('clearAppBadge' in navigator) {
+      if ("clearAppBadge" in navigator) {
         navigator.clearAppBadge().catch(() => {
           // Ignore errors - badge API may not be available in all contexts
         });
@@ -22,14 +22,14 @@ function useClearAppBadge() {
 
     // Clear badge when app becomes visible (user switches back to the app)
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === "visible") {
         clearBadge();
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 }

@@ -1,31 +1,32 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 interface UseInstallPromptReturn {
+  /** Dismiss the install prompt (won't show again this session) */
+  dismiss: () => void;
+  /** Whether the user has dismissed the install prompt */
+  isDismissed: boolean;
   /** Whether the app can be installed (install prompt is available) */
   isInstallable: boolean;
   /** Whether the app is already installed (running in standalone mode) */
   isInstalled: boolean;
   /** Whether running on iOS (requires manual install instructions) */
   isIOS: boolean;
-  /** Whether the user has dismissed the install prompt */
-  isDismissed: boolean;
   /** Trigger the native install prompt */
   promptInstall: () => Promise<boolean>;
-  /** Dismiss the install prompt (won't show again this session) */
-  dismiss: () => void;
 }
 
-const DISMISS_KEY = '247-install-dismissed';
+const DISMISS_KEY = "247-install-dismissed";
 
 export function useInstallPrompt(): UseInstallPromptReturn {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -34,17 +35,18 @@ export function useInstallPrompt(): UseInstallPromptReturn {
   useEffect(() => {
     // Check if already installed (standalone mode)
     const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia("(display-mode: standalone)").matches ||
       // @ts-expect-error - iOS Safari specific
       window.navigator.standalone === true;
     setIsInstalled(isStandalone);
 
     // Check if iOS
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
+    const iOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) && !("MSStream" in window);
     setIsIOS(iOS);
 
     // Check if dismissed this session
-    const dismissed = sessionStorage.getItem(DISMISS_KEY) === 'true';
+    const dismissed = sessionStorage.getItem(DISMISS_KEY) === "true";
     setIsDismissed(dismissed);
 
     // On iOS, we can show install instructions even without beforeinstallprompt
@@ -66,12 +68,15 @@ export function useInstallPrompt(): UseInstallPromptReturn {
       setDeferredPrompt(null);
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
@@ -84,7 +89,7 @@ export function useInstallPrompt(): UseInstallPromptReturn {
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
 
-      if (outcome === 'accepted') {
+      if (outcome === "accepted") {
         setIsInstallable(false);
         setDeferredPrompt(null);
         return true;
@@ -98,7 +103,7 @@ export function useInstallPrompt(): UseInstallPromptReturn {
 
   const dismiss = useCallback(() => {
     setIsDismissed(true);
-    sessionStorage.setItem(DISMISS_KEY, 'true');
+    sessionStorage.setItem(DISMISS_KEY, "true");
   }, []);
 
   return {

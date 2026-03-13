@@ -10,7 +10,7 @@ fi
 cd claude-remote-control || exit 0
 
 echo "Checking for dead code..."
-pnpm deadcode 2>&1
+bun run deadcode 2>&1
 
 DEADCODE_EXIT=$?
 

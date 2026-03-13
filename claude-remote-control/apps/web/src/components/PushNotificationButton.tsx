@@ -1,9 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Bell, BellOff, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { Bell, BellOff, Loader2 } from "lucide-react";
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +11,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from "@/components/ui/alert-dialog";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { cn } from "@/lib/utils";
 
 interface PushNotificationButtonProps {
   className?: string;
@@ -24,7 +24,8 @@ export function PushNotificationButton({
   className,
   isMobile = false,
 }: PushNotificationButtonProps) {
-  const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
+  const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } =
+    usePushNotifications();
   const [showDialog, setShowDialog] = useState(false);
 
   // Don't render at all if push notifications aren't supported
@@ -33,7 +34,9 @@ export function PushNotificationButton({
   }
 
   const handleClick = () => {
-    if (isLoading) return;
+    if (isLoading) {
+      return;
+    }
     setShowDialog(true);
   };
 
@@ -46,30 +49,32 @@ export function PushNotificationButton({
     }
   };
 
-  const iconClass = isMobile ? 'h-5 w-5' : 'h-4 w-4';
+  const iconClass = isMobile ? "h-5 w-5" : "h-4 w-4";
   const isDisabled = isLoading;
 
   const getTitle = () => {
-    if (isSubscribed) return 'Disable notifications';
-    return 'Enable notifications';
+    if (isSubscribed) {
+      return "Disable notifications";
+    }
+    return "Enable notifications";
   };
 
   return (
     <>
       <button
-        onClick={handleClick}
-        disabled={isDisabled}
         className={cn(
-          'rounded-lg text-white/40 transition-colors hover:bg-white/5 hover:text-white',
-          'touch-manipulation disabled:cursor-not-allowed disabled:opacity-50',
-          isMobile ? 'min-h-[44px] min-w-[44px] p-2.5' : 'p-2',
-          isSubscribed && 'text-orange-400 hover:text-orange-300',
+          "rounded-lg text-white/40 transition-colors hover:bg-white/5 hover:text-white",
+          "touch-manipulation disabled:cursor-not-allowed disabled:opacity-50",
+          isMobile ? "min-h-[44px] min-w-[44px] p-2.5" : "p-2",
+          isSubscribed && "text-orange-400 hover:text-orange-300",
           className
         )}
+        disabled={isDisabled}
+        onClick={handleClick}
         title={getTitle()}
       >
         {isLoading ? (
-          <Loader2 className={cn(iconClass, 'animate-spin')} />
+          <Loader2 className={cn(iconClass, "animate-spin")} />
         ) : isSubscribed ? (
           <Bell className={iconClass} />
         ) : (
@@ -77,16 +82,18 @@ export function PushNotificationButton({
         )}
       </button>
 
-      <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
+      <AlertDialog onOpenChange={setShowDialog} open={showDialog}>
         <AlertDialogContent className="border-white/10 bg-[#12121a]">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
-              {isSubscribed ? 'Désactiver les notifications' : 'Activer les notifications'}
+              {isSubscribed
+                ? "Désactiver les notifications"
+                : "Activer les notifications"}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-white/60">
               {isSubscribed
-                ? 'Tu ne recevras plus de notifications push quand une session Claude a besoin de ton attention.'
-                : 'Tu recevras une notification push quand une session Claude a besoin de ton attention (permission requise, input attendu, etc.).'}
+                ? "Tu ne recevras plus de notifications push quand une session Claude a besoin de ton attention."
+                : "Tu recevras une notification push quand une session Claude a besoin de ton attention (permission requise, input attendu, etc.)."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -94,14 +101,14 @@ export function PushNotificationButton({
               Annuler
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirm}
               className={cn(
                 isSubscribed
-                  ? 'bg-red-500 text-white hover:bg-red-600'
-                  : 'bg-orange-500 text-white hover:bg-orange-600'
+                  ? "bg-red-500 text-white hover:bg-red-600"
+                  : "bg-orange-500 text-white hover:bg-orange-600"
               )}
+              onClick={handleConfirm}
             >
-              {isSubscribed ? 'Désactiver' : 'Activer'}
+              {isSubscribed ? "Désactiver" : "Activer"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

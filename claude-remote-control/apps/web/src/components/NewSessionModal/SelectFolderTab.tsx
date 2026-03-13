@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { ProjectDropdown } from './ProjectDropdown';
+import { ProjectDropdown } from "./ProjectDropdown";
 
 interface SelectFolderTabProps {
   folders: string[];
-  selectedProject: string;
-  onSelectProject: (project: string) => void;
   loadingFolders: boolean;
+  onSelectProject: (project: string) => void;
+  selectedProject: string;
 }
 
 export function SelectFolderTab({
@@ -18,14 +18,17 @@ export function SelectFolderTab({
   return (
     <div className="space-y-5">
       <div>
-        <span id="project-selector-label" className="mb-3 block text-sm font-medium text-white/60">
+        <span
+          className="mb-3 block font-medium text-sm text-white/60"
+          id="project-selector-label"
+        >
           Select Project
         </span>
         <ProjectDropdown
           folders={folders}
-          selectedProject={selectedProject}
-          onSelectProject={onSelectProject}
           loading={loadingFolders}
+          onSelectProject={onSelectProject}
+          selectedProject={selectedProject}
         />
       </div>
     </div>

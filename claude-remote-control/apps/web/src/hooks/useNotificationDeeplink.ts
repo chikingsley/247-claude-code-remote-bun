@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { deeplinkLogger } from '@/lib/logger';
+import { useCallback, useEffect } from "react";
+import { deeplinkLogger } from "@/lib/logger";
+import { useRouter, useSearchParams } from "@/lib/router";
 
 /**
  * Hook to handle notification deep links on iOS PWA
@@ -20,18 +20,20 @@ export function useNotificationDeeplink() {
   // Clear app badge when app gains focus
   useEffect(() => {
     const handleFocus = () => {
-      if ('clearAppBadge' in navigator) {
-        (navigator as Navigator & { clearAppBadge: () => Promise<void> }).clearAppBadge();
+      if ("clearAppBadge" in navigator) {
+        (
+          navigator as Navigator & { clearAppBadge: () => Promise<void> }
+        ).clearAppBadge();
       }
     };
 
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener("focus", handleFocus);
     // Also clear on initial load if app is already focused
     if (document.hasFocus()) {
       handleFocus();
     }
 
-    return () => window.removeEventListener('focus', handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   // Handle navigation to deeplink URL
@@ -48,7 +50,7 @@ export function useNotificationDeeplink() {
         const targetPath = urlObj.pathname + urlObj.search;
 
         if (currentPath === targetPath) {
-          deeplinkLogger.info('Already on target URL, skipping');
+          deeplinkLogger.info("Already on target URL, skipping");
           return;
         }
 
@@ -65,7 +67,7 @@ export function useNotificationDeeplink() {
 
   useEffect(() => {
     // Skip if service worker not supported
-    if (!('serviceWorker' in navigator)) {
+    if (!("serviceWorker" in navigator)) {
       return;
     }
 
@@ -73,7 +75,7 @@ export function useNotificationDeeplink() {
     const handleMessage = (event: MessageEvent) => {
       const { type, url } = event.data || {};
 
-      if (type === 'NOTIFICATION_CLICK' || type === 'NOTIFICATION_DEEPLINK') {
+      if (type === "NOTIFICATION_CLICK" || type === "NOTIFICATION_DEEPLINK") {
         deeplinkLogger.info(`Received ${type} message: ${url}`);
         if (url) {
           handleDeeplink(url);
@@ -81,18 +83,20 @@ export function useNotificationDeeplink() {
       }
     };
 
-    navigator.serviceWorker.addEventListener('message', handleMessage);
+    navigator.serviceWorker.addEventListener("message", handleMessage);
 
     // Check for pending deeplink on mount (iOS fallback)
     const checkPendingDeeplink = async () => {
       try {
         const registration = await navigator.serviceWorker.ready;
         if (registration.active) {
-          deeplinkLogger.info('Checking for pending deeplink...');
-          registration.active.postMessage({ type: 'CHECK_NOTIFICATION_DEEPLINK' });
+          deeplinkLogger.info("Checking for pending deeplink...");
+          registration.active.postMessage({
+            type: "CHECK_NOTIFICATION_DEEPLINK",
+          });
         }
       } catch (e) {
-        deeplinkLogger.error('Failed to check pending deeplink', e);
+        deeplinkLogger.error("Failed to check pending deeplink", e);
       }
     };
 
@@ -100,7 +104,7 @@ export function useNotificationDeeplink() {
     const timeoutId = setTimeout(checkPendingDeeplink, 500);
 
     return () => {
-      navigator.serviceWorker.removeEventListener('message', handleMessage);
+      navigator.serviceWorker.removeEventListener("message", handleMessage);
       clearTimeout(timeoutId);
     };
   }, [handleDeeplink]);
@@ -108,29 +112,31 @@ export function useNotificationDeeplink() {
   // Clear app badge when window gains focus
   useEffect(() => {
     const handleFocus = () => {
-      if ('clearAppBadge' in navigator) {
-        (navigator as Navigator & { clearAppBadge: () => Promise<void> }).clearAppBadge();
+      if ("clearAppBadge" in navigator) {
+        (
+          navigator as Navigator & { clearAppBadge: () => Promise<void> }
+        ).clearAppBadge();
       }
     };
 
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener("focus", handleFocus);
 
     // Also clear on mount if already focused
     if (document.hasFocus()) {
       handleFocus();
     }
 
-    return () => window.removeEventListener('focus', handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   // Also handle URL params if we have machine/session in the URL
   // This handles the case where the deeplink worked via openWindow
   useEffect(() => {
-    const machine = searchParams.get('machine');
-    const session = searchParams.get('session');
+    const machine = searchParams.get("machine");
+    const session = searchParams.get("session");
 
     if (machine && session) {
-      deeplinkLogger.info('URL contains session params', { machine, session });
+      deeplinkLogger.info("URL contains session params", { machine, session });
       // The main app component should handle this - just log it
     }
   }, [searchParams]);

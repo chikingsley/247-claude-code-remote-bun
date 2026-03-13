@@ -1,73 +1,77 @@
-'use client';
+"use client";
 
+import type { WSSessionsMessageFromAgent } from "247-shared";
 import {
   createContext,
+  type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
-  useCallback,
-  type ReactNode,
-} from 'react';
-import { SessionInfo, SessionWithMachine } from '@/lib/types';
-import { buildWebSocketUrl, buildApiUrl } from '@/lib/utils';
-import { requestNotificationPermission } from '@/lib/notifications';
-import { wsLogger, pollingLogger, archivedLogger } from '@/lib/logger';
-import type { WSSessionsMessageFromAgent } from '247-shared';
+} from "react";
+import { archivedLogger, pollingLogger, wsLogger } from "@/lib/logger";
+import { requestNotificationPermission } from "@/lib/notifications";
+import type { SessionInfo, SessionWithMachine } from "@/lib/types";
+import { buildApiUrl, buildWebSocketUrl } from "@/lib/utils";
 
 export interface Machine {
-  id: string;
-  name: string;
-  status: string;
   config?: {
     projects: string[];
     agentUrl?: string;
   };
+  id: string;
+  name: string;
+  status: string;
 }
 
 interface MachineSessionData {
+  agentUrl: string;
+  error: string | null;
+  lastFetch: number;
   machineId: string;
   machineName: string;
-  agentUrl: string;
   sessions: SessionInfo[];
-  lastFetch: number;
-  error: string | null;
   wsConnected: boolean;
 }
 
 interface SessionPollingContextValue {
-  sessionsByMachine: Map<string, MachineSessionData>;
-  machines: Machine[];
-  getSessionsForMachine: (machineId: string) => SessionInfo[];
   getAllSessions: () => SessionWithMachine[];
   getArchivedSessions: () => SessionWithMachine[];
-  getSession: (machineId: string, sessionName: string) => SessionInfo | null;
-  refreshMachine: (machineId: string) => Promise<void>;
-  setMachines: (machines: Machine[]) => void;
-  isLoading: (machineId: string) => boolean;
   getError: (machineId: string) => string | null;
+  getSession: (machineId: string, sessionName: string) => SessionInfo | null;
+  getSessionsForMachine: (machineId: string) => SessionInfo[];
+  isLoading: (machineId: string) => boolean;
   isWsConnected: (machineId: string) => boolean;
+  machines: Machine[];
+  refreshMachine: (machineId: string) => Promise<void>;
+  sessionsByMachine: Map<string, MachineSessionData>;
+  setMachines: (machines: Machine[]) => void;
   /**
    * Register a callback for when a session changes to needs_attention.
    * Used for sound notifications.
    */
-  setOnNeedsAttention: (callback: ((sessionName: string) => void) | undefined) => void;
+  setOnNeedsAttention: (
+    callback: ((sessionName: string) => void) | undefined
+  ) => void;
 }
 
-const SessionPollingContext = createContext<SessionPollingContextValue | null>(null);
+const SessionPollingContext = createContext<SessionPollingContextValue | null>(
+  null
+);
 
-const FALLBACK_POLLING_INTERVAL = 30000; // Fallback HTTP poll every 30s (when WS connected)
+const FALLBACK_POLLING_INTERVAL = 30_000; // Fallback HTTP poll every 30s (when WS connected)
 const FETCH_TIMEOUT = 5000;
 const WS_RECONNECT_BASE_DELAY = 1000;
-const WS_RECONNECT_MAX_DELAY = 30000;
+const WS_RECONNECT_MAX_DELAY = 30_000;
 const MAX_SESSIONS_PER_MACHINE = 50; // Limit sessions per machine (FIFO rotation)
 const MAX_ARCHIVED_PER_MACHINE = 100; // Limit archived sessions per machine
 const MAX_CONCURRENT_RECONNECTIONS = 3; // Limit concurrent WebSocket reconnections
 
 interface ArchivedSessionData {
+  agentUrl: string;
   machineId: string;
   machineName: string;
-  agentUrl: string;
   sessions: SessionInfo[];
 }
 
@@ -75,12 +79,21 @@ interface ArchivedSessionData {
  * Limits sessions array to maxCount using FIFO rotation.
  * Keeps the most recent sessions based on lastStatusChange or creation order.
  */
-function limitSessions(sessions: SessionInfo[], maxCount: number): SessionInfo[] {
-  if (sessions.length <= maxCount) return sessions;
+function limitSessions(
+  sessions: SessionInfo[],
+  maxCount: number
+): SessionInfo[] {
+  if (sessions.length <= maxCount) {
+    return sessions;
+  }
   // Sort by lastStatusChange descending (most recent first), keep newest
   const sorted = [...sessions].sort((a, b) => {
-    const aTime = a.lastStatusChange ? new Date(a.lastStatusChange).getTime() : 0;
-    const bTime = b.lastStatusChange ? new Date(b.lastStatusChange).getTime() : 0;
+    const aTime = a.lastStatusChange
+      ? new Date(a.lastStatusChange).getTime()
+      : 0;
+    const bTime = b.lastStatusChange
+      ? new Date(b.lastStatusChange).getTime()
+      : 0;
     return bTime - aTime;
   });
   return sorted.slice(0, maxCount);
@@ -88,20 +101,24 @@ function limitSessions(sessions: SessionInfo[], maxCount: number): SessionInfo[]
 
 export function SessionPollingProvider({ children }: { children: ReactNode }) {
   const [machines, setMachinesState] = useState<Machine[]>([]);
-  const [sessionsByMachine, setSessionsByMachine] = useState<Map<string, MachineSessionData>>(
-    new Map()
+  const [sessionsByMachine, setSessionsByMachine] = useState<
+    Map<string, MachineSessionData>
+  >(new Map());
+  const [archivedByMachine, setArchivedByMachine] = useState<
+    Map<string, ArchivedSessionData>
+  >(new Map());
+  const [loadingMachines, setLoadingMachines] = useState<Set<string>>(
+    new Set()
   );
-  const [archivedByMachine, setArchivedByMachine] = useState<Map<string, ArchivedSessionData>>(
-    new Map()
-  );
-  const [loadingMachines, setLoadingMachines] = useState<Set<string>>(new Set());
 
   const wsConnectionsRef = useRef<Map<string, WebSocket>>(new Map());
   const wsConnectedRef = useRef<Set<string>>(new Set()); // Track connected machines via ref for polling
   const wsReconnectDelaysRef = useRef<Map<string, number>>(new Map());
   const wsReconnectTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const activeReconnectionsRef = useRef<Set<string>>(new Set()); // Track machines currently reconnecting
-  const onNeedsAttentionRef = useRef<((sessionName: string) => void) | undefined>(undefined);
+  const onNeedsAttentionRef = useRef<
+    ((sessionName: string) => void) | undefined
+  >(undefined);
 
   const setOnNeedsAttention = useCallback(
     (callback: ((sessionName: string) => void) | undefined) => {
@@ -131,7 +148,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
   const fetchSessionsForMachine = useCallback(
     async (machine: Machine): Promise<MachineSessionData> => {
-      const agentUrl = machine.config?.agentUrl || 'localhost:4678';
+      const agentUrl = machine.config?.agentUrl || "localhost:4678";
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
@@ -140,11 +157,13 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
       const isWsConnected = wsConnectedRef.current.has(machine.id);
 
       try {
-        const response = await fetch(buildApiUrl(agentUrl, '/api/sessions'), {
+        const response = await fetch(buildApiUrl(agentUrl, "/api/sessions"), {
           signal: controller.signal,
         });
 
-        if (!response.ok) throw new Error('Failed to fetch sessions');
+        if (!response.ok) {
+          throw new Error("Failed to fetch sessions");
+        }
 
         const sessions: SessionInfo[] = await response.json();
 
@@ -159,9 +178,9 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
         };
       } catch (err) {
         const errorMsg =
-          (err as Error).name === 'AbortError'
-            ? 'Agent not responding'
-            : 'Could not connect to agent';
+          (err as Error).name === "AbortError"
+            ? "Agent not responding"
+            : "Could not connect to agent";
 
         return {
           machineId: machine.id,
@@ -180,26 +199,36 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   );
 
   // Remove a session from WebSocket
-  const removeSession = useCallback((machineId: string, sessionName: string) => {
-    setSessionsByMachine((prev) => {
-      const next = new Map(prev);
-      const existingData = next.get(machineId);
+  const removeSession = useCallback(
+    (machineId: string, sessionName: string) => {
+      setSessionsByMachine((prev) => {
+        const next = new Map(prev);
+        const existingData = next.get(machineId);
 
-      if (existingData) {
-        next.set(machineId, {
-          ...existingData,
-          sessions: existingData.sessions.filter((s) => s.name !== sessionName),
-          lastFetch: Date.now(),
-        });
-      }
+        if (existingData) {
+          next.set(machineId, {
+            ...existingData,
+            sessions: existingData.sessions.filter(
+              (s) => s.name !== sessionName
+            ),
+            lastFetch: Date.now(),
+          });
+        }
 
-      return next;
-    });
-  }, []);
+        return next;
+      });
+    },
+    []
+  );
 
   // Archive a session (move from active to archived)
   const archiveSession = useCallback(
-    (machineId: string, machineName: string, agentUrl: string, session: SessionInfo) => {
+    (
+      machineId: string,
+      machineName: string,
+      agentUrl: string,
+      session: SessionInfo
+    ) => {
       // Remove from active sessions
       setSessionsByMachine((prev) => {
         const next = new Map(prev);
@@ -208,7 +237,9 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
         if (existingData) {
           next.set(machineId, {
             ...existingData,
-            sessions: existingData.sessions.filter((s) => s.name !== session.name),
+            sessions: existingData.sessions.filter(
+              (s) => s.name !== session.name
+            ),
             lastFetch: Date.now(),
           });
         }
@@ -223,7 +254,9 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
         if (existingData) {
           // Add to existing archived list (avoid duplicates)
-          const alreadyExists = existingData.sessions.some((s) => s.name === session.name);
+          const alreadyExists = existingData.sessions.some(
+            (s) => s.name === session.name
+          );
           if (!alreadyExists) {
             const newSessions = [session, ...existingData.sessions];
             next.set(machineId, {
@@ -247,37 +280,47 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   );
 
   // Fetch archived sessions for a machine
-  const fetchArchivedSessions = useCallback(async (machine: Machine): Promise<void> => {
-    const agentUrl = machine.config?.agentUrl || 'localhost:4678';
+  const fetchArchivedSessions = useCallback(
+    async (machine: Machine): Promise<void> => {
+      const agentUrl = machine.config?.agentUrl || "localhost:4678";
 
-    try {
-      const response = await fetch(buildApiUrl(agentUrl, '/api/sessions/archived'));
-      if (!response.ok) return;
+      try {
+        const response = await fetch(
+          buildApiUrl(agentUrl, "/api/sessions/archived")
+        );
+        if (!response.ok) {
+          return;
+        }
 
-      const sessions: SessionInfo[] = await response.json();
+        const sessions: SessionInfo[] = await response.json();
 
-      setArchivedByMachine((prev) => {
-        const next = new Map(prev);
-        next.set(machine.id, {
-          machineId: machine.id,
-          machineName: machine.name,
-          agentUrl,
-          sessions: limitSessions(sessions, MAX_ARCHIVED_PER_MACHINE),
+        setArchivedByMachine((prev) => {
+          const next = new Map(prev);
+          next.set(machine.id, {
+            machineId: machine.id,
+            machineName: machine.name,
+            agentUrl,
+            sessions: limitSessions(sessions, MAX_ARCHIVED_PER_MACHINE),
+          });
+          return next;
         });
-        return next;
-      });
-    } catch (err) {
-      archivedLogger.error('Failed to fetch archived sessions', err);
-    }
-  }, []);
+      } catch (err) {
+        archivedLogger.error("Failed to fetch archived sessions", err);
+      }
+    },
+    []
+  );
 
   // Connect WebSocket for a machine
   const connectWebSocket = useCallback(
     (machine: Machine) => {
-      const agentUrl = machine.config?.agentUrl || 'localhost:4678';
+      const agentUrl = machine.config?.agentUrl || "localhost:4678";
       // Include app version in WebSocket URL for auto-update detection
-      const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || '0.0.0';
-      const wsUrl = buildWebSocketUrl(agentUrl, `/sessions?v=${encodeURIComponent(appVersion)}`);
+      const appVersion = process.env.PUBLIC_APP_VERSION || "0.0.0";
+      const wsUrl = buildWebSocketUrl(
+        agentUrl,
+        `/sessions?v=${encodeURIComponent(appVersion)}`
+      );
 
       // Close existing connection if any
       const existingWs = wsConnectionsRef.current.get(machine.id);
@@ -301,7 +344,11 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
             const next = new Map(prev);
             const existingData = next.get(machine.id);
             if (existingData) {
-              next.set(machine.id, { ...existingData, wsConnected: true, error: null });
+              next.set(machine.id, {
+                ...existingData,
+                wsConnected: true,
+                error: null,
+              });
             } else {
               next.set(machine.id, {
                 machineId: machine.id,
@@ -322,15 +369,20 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
             const msg: WSSessionsMessageFromAgent = JSON.parse(event.data);
 
             switch (msg.type) {
-              case 'sessions-list':
-                wsLogger.info(`Received sessions-list: ${msg.sessions.length} sessions`);
+              case "sessions-list":
+                wsLogger.info(
+                  `Received sessions-list: ${msg.sessions.length} sessions`
+                );
                 setSessionsByMachine((prev) => {
                   const next = new Map(prev);
                   next.set(machine.id, {
                     machineId: machine.id,
                     machineName: machine.name,
                     agentUrl,
-                    sessions: limitSessions(msg.sessions, MAX_SESSIONS_PER_MACHINE),
+                    sessions: limitSessions(
+                      msg.sessions,
+                      MAX_SESSIONS_PER_MACHINE
+                    ),
                     lastFetch: Date.now(),
                     error: null,
                     wsConnected: true,
@@ -339,27 +391,31 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                 });
                 break;
 
-              case 'session-removed':
+              case "session-removed":
                 wsLogger.info(`Session removed: ${msg.sessionName}`);
                 removeSession(machine.id, msg.sessionName);
                 break;
 
-              case 'session-archived':
+              case "session-archived":
                 wsLogger.info(`Session archived: ${msg.sessionName}`);
                 archiveSession(machine.id, machine.name, agentUrl, msg.session);
                 break;
 
-              case 'version-info':
+              case "version-info":
                 wsLogger.info(`Agent version: ${msg.agentVersion}`);
                 break;
 
-              case 'update-pending':
-                wsLogger.info(`Agent updating to ${msg.targetVersion}: ${msg.message}`);
+              case "update-pending":
+                wsLogger.info(
+                  `Agent updating to ${msg.targetVersion}: ${msg.message}`
+                );
                 // Agent will restart, WebSocket will reconnect automatically
                 break;
 
-              case 'status-update':
-                wsLogger.info(`Status update: ${msg.session.name} -> ${msg.session.status}`);
+              case "status-update":
+                wsLogger.info(
+                  `Status update: ${msg.session.name} -> ${msg.session.status}`
+                );
                 setSessionsByMachine((prev) => {
                   const next = new Map(prev);
                   const existingData = next.get(machine.id);
@@ -368,7 +424,8 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                       (s) => s.name === msg.session.name
                     );
                     if (sessionIndex !== -1) {
-                      const previousStatus = existingData.sessions[sessionIndex].status;
+                      const previousStatus =
+                        existingData.sessions[sessionIndex].status;
                       const updatedSessions = [...existingData.sessions];
                       updatedSessions[sessionIndex] = {
                         ...updatedSessions[sessionIndex],
@@ -377,12 +434,15 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                         statusSource: msg.session.statusSource,
                         lastStatusChange: msg.session.lastStatusChange,
                       };
-                      next.set(machine.id, { ...existingData, sessions: updatedSessions });
+                      next.set(machine.id, {
+                        ...existingData,
+                        sessions: updatedSessions,
+                      });
 
                       // Trigger callback when status changes TO needs_attention
                       if (
-                        msg.session.status === 'needs_attention' &&
-                        previousStatus !== 'needs_attention'
+                        msg.session.status === "needs_attention" &&
+                        previousStatus !== "needs_attention"
                       ) {
                         onNeedsAttentionRef.current?.(msg.session.name);
                       }
@@ -393,7 +453,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
                 break;
             }
           } catch (err) {
-            wsLogger.error('Failed to parse message', err);
+            wsLogger.error("Failed to parse message", err);
           }
         };
 
@@ -417,7 +477,8 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
           // Schedule reconnection with exponential backoff
           // Limit concurrent reconnections to prevent resource exhaustion
           const currentDelay =
-            wsReconnectDelaysRef.current.get(machine.id) || WS_RECONNECT_BASE_DELAY;
+            wsReconnectDelaysRef.current.get(machine.id) ||
+            WS_RECONNECT_BASE_DELAY;
           const nextDelay = Math.min(currentDelay * 2, WS_RECONNECT_MAX_DELAY);
           wsReconnectDelaysRef.current.set(machine.id, nextDelay);
 
@@ -428,9 +489,12 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
               ? currentDelay + concurrentCount * 1000 // Stagger reconnections
               : currentDelay;
 
-          wsLogger.info(`Reconnecting to ${machine.name} in ${effectiveDelay}ms`, {
-            concurrentCount,
-          });
+          wsLogger.info(
+            `Reconnecting to ${machine.name} in ${effectiveDelay}ms`,
+            {
+              concurrentCount,
+            }
+          );
 
           activeReconnectionsRef.current.add(machine.id);
 
@@ -438,7 +502,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
             activeReconnectionsRef.current.delete(machine.id);
             // Only reconnect if machine is still online
             const currentMachine = machines.find((m) => m.id === machine.id);
-            if (currentMachine?.status === 'online') {
+            if (currentMachine?.status === "online") {
               connectWebSocket(currentMachine);
             }
           }, effectiveDelay);
@@ -458,7 +522,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
   // Manage WebSocket connections based on online machines
   useEffect(() => {
-    const onlineMachines = machines.filter((m) => m.status === 'online');
+    const onlineMachines = machines.filter((m) => m.status === "online");
 
     // Connect to new online machines
     for (const machine of onlineMachines) {
@@ -470,7 +534,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
     // Close connections for offline machines
     for (const [machineId, ws] of wsConnectionsRef.current) {
       const machine = machines.find((m) => m.id === machineId);
-      if (!machine || machine.status !== 'online') {
+      if (!machine || machine.status !== "online") {
         ws.close();
         wsConnectionsRef.current.delete(machineId);
 
@@ -501,7 +565,7 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
   // Fetch archived sessions when machines change
   useEffect(() => {
-    const onlineMachines = machines.filter((m) => m.status === 'online');
+    const onlineMachines = machines.filter((m) => m.status === "online");
     for (const machine of onlineMachines) {
       // Fetch archived sessions if not already loaded
       if (!archivedByMachine.has(machine.id)) {
@@ -512,9 +576,11 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
   // Fallback HTTP polling (less frequent when WS is working)
   const pollAllMachines = useCallback(async () => {
-    const onlineMachines = machines.filter((m) => m.status === 'online');
+    const onlineMachines = machines.filter((m) => m.status === "online");
 
-    if (onlineMachines.length === 0) return;
+    if (onlineMachines.length === 0) {
+      return;
+    }
 
     pollingLogger.info(`HTTP polling ${onlineMachines.length} machines`);
 
@@ -534,7 +600,9 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   const refreshMachine = useCallback(
     async (machineId: string) => {
       const machine = machines.find((m) => m.id === machineId);
-      if (!machine || machine.status !== 'online') return;
+      if (!machine || machine.status !== "online") {
+        return;
+      }
 
       setLoadingMachines((prev) => new Set(prev).add(machineId));
 
@@ -557,7 +625,9 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
 
   // Fallback polling interval
   useEffect(() => {
-    if (machines.length === 0) return;
+    if (machines.length === 0) {
+      return;
+    }
 
     pollAllMachines();
     const interval = setInterval(pollAllMachines, FALLBACK_POLLING_INTERVAL);
@@ -600,7 +670,9 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   const getSession = useCallback(
     (machineId: string, sessionName: string): SessionInfo | null => {
       const data = sessionsByMachine.get(machineId);
-      if (!data) return null;
+      if (!data) {
+        return null;
+      }
       return data.sessions.find((s) => s.name === sessionName) || null;
     },
     [sessionsByMachine]
@@ -609,25 +681,34 @@ export function SessionPollingProvider({ children }: { children: ReactNode }) {
   const value: SessionPollingContextValue = {
     sessionsByMachine,
     machines,
-    getSessionsForMachine: (machineId: string) => sessionsByMachine.get(machineId)?.sessions || [],
+    getSessionsForMachine: (machineId: string) =>
+      sessionsByMachine.get(machineId)?.sessions || [],
     getAllSessions,
     getArchivedSessions,
     getSession,
     refreshMachine,
     setMachines: setMachinesState,
     isLoading: (machineId: string) => loadingMachines.has(machineId),
-    getError: (machineId: string) => sessionsByMachine.get(machineId)?.error || null,
-    isWsConnected: (machineId: string) => sessionsByMachine.get(machineId)?.wsConnected ?? false,
+    getError: (machineId: string) =>
+      sessionsByMachine.get(machineId)?.error || null,
+    isWsConnected: (machineId: string) =>
+      sessionsByMachine.get(machineId)?.wsConnected ?? false,
     setOnNeedsAttention,
   };
 
-  return <SessionPollingContext.Provider value={value}>{children}</SessionPollingContext.Provider>;
+  return (
+    <SessionPollingContext.Provider value={value}>
+      {children}
+    </SessionPollingContext.Provider>
+  );
 }
 
 export function useSessionPolling() {
   const context = useContext(SessionPollingContext);
   if (!context) {
-    throw new Error('useSessionPolling must be used within SessionPollingProvider');
+    throw new Error(
+      "useSessionPolling must be used within SessionPollingProvider"
+    );
   }
   return context;
 }

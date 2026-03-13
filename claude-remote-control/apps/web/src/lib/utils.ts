@@ -1,5 +1,5 @@
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -10,7 +10,7 @@ export function cn(...inputs: ClassValue[]) {
  * Returns just the host:port/path portion
  */
 export function stripProtocol(url: string): string {
-  return url.replace(/^(https?|wss?):\/\//, '');
+  return url.replace(/^(https?|wss?):\/\//, "");
 }
 
 /**
@@ -19,8 +19,9 @@ export function stripProtocol(url: string): string {
  */
 export function buildWebSocketUrl(agentUrl: string, path: string): string {
   const cleanUrl = stripProtocol(agentUrl);
-  const isLocalhost = cleanUrl.includes('localhost') || cleanUrl.startsWith('127.0.0.1');
-  const wsProtocol = isLocalhost ? 'ws' : 'wss';
+  const isLocalhost =
+    cleanUrl.includes("localhost") || cleanUrl.startsWith("127.0.0.1");
+  const wsProtocol = isLocalhost ? "ws" : "wss";
   return `${wsProtocol}://${cleanUrl}${path}`;
 }
 
@@ -30,7 +31,8 @@ export function buildWebSocketUrl(agentUrl: string, path: string): string {
  */
 export function buildApiUrl(agentUrl: string, path: string): string {
   const cleanUrl = stripProtocol(agentUrl);
-  const isLocalhost = cleanUrl.includes('localhost') || cleanUrl.startsWith('127.0.0.1');
-  const protocol = isLocalhost ? 'http' : 'https';
+  const isLocalhost =
+    cleanUrl.includes("localhost") || cleanUrl.startsWith("127.0.0.1");
+  const protocol = isLocalhost ? "http" : "https";
   return `${protocol}://${cleanUrl}${path}`;
 }

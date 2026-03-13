@@ -1,23 +1,23 @@
-import { Command } from 'commander';
-import chalk from 'chalk';
-import { loadConfig, configExists } from '../lib/config.js';
-import { getAgentPaths } from '../lib/paths.js';
-import { isAgentRunning, getAgentHealth } from '../lib/process.js';
+import chalk from "chalk";
+import { Command } from "commander";
+import { configExists, loadConfig } from "../lib/config.js";
+import { getAgentPaths } from "../lib/paths.js";
+import { getAgentHealth, isAgentRunning } from "../lib/process.js";
 
-export const statusCommand = new Command('status')
-  .description('Show agent status')
+export const statusCommand = new Command("status")
+  .description("Show agent status")
   .action(async () => {
-    console.log(chalk.bold('\n247 Agent Status\n'));
+    console.log(chalk.bold("\n247 Agent Status\n"));
 
     // Configuration
     if (!configExists()) {
-      console.log(chalk.red('Not configured. Run: 247 init\n'));
+      console.log(chalk.red("Not configured. Run: 247 init\n"));
       return;
     }
 
     const config = loadConfig();
     if (!config) {
-      console.log(chalk.red('Failed to load configuration.\n'));
+      console.log(chalk.red("Failed to load configuration.\n"));
       return;
     }
 
@@ -25,8 +25,12 @@ export const statusCommand = new Command('status')
 
     // Process status
     const processStatus = isAgentRunning();
-    const statusIcon = processStatus.running ? chalk.green('●') : chalk.red('●');
-    const statusText = processStatus.running ? chalk.green('Running') : chalk.red('Stopped');
+    const statusIcon = processStatus.running
+      ? chalk.green("●")
+      : chalk.red("●");
+    const statusText = processStatus.running
+      ? chalk.green("Running")
+      : chalk.red("Stopped");
 
     console.log(`${statusIcon} Process: ${statusText}`);
     if (processStatus.pid) {
@@ -39,14 +43,16 @@ export const statusCommand = new Command('status')
       if (health.healthy) {
         console.log(`  Sessions: ${health.sessions}`);
       } else {
-        console.log(chalk.yellow(`  Warning: Agent not responding (${health.error})`));
+        console.log(
+          chalk.yellow(`  Warning: Agent not responding (${health.error})`)
+        );
       }
     }
 
     console.log();
 
     // Configuration info
-    console.log(chalk.dim('Configuration:'));
+    console.log(chalk.dim("Configuration:"));
     console.log(`  Machine: ${config.machine.name}`);
     console.log(`  Port: ${config.agent.port}`);
     console.log(`  Projects: ${config.projects.basePath}`);

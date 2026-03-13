@@ -19,23 +19,16 @@ check_dependency() {
     fi
 }
 
-check_dependency "node" "Install Node.js 20+ from https://nodejs.org"
-check_dependency "pnpm" "Install pnpm with: npm install -g pnpm"
+check_dependency "bun" "Install Bun from https://bun.sh"
 check_dependency "tmux" "Install tmux with: brew install tmux (macOS) or apt install tmux (Linux)"
 
-# Check Node.js version
-NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-if [ "$NODE_VERSION" -lt 20 ]; then
-    echo "Error: Node.js 20+ is required. Current version: $(node -v)"
-    exit 1
-fi
 
 echo "Installing dependencies..."
 cd "$PROJECT_ROOT"
-pnpm install
+bun install
 
 echo "Building packages..."
-pnpm build
+bun run build
 
 # Create data directory
 DATA_DIR="$HOME/.247/data"
@@ -63,10 +56,10 @@ echo ""
 echo "Setup complete!"
 echo ""
 echo "To start the agent in development mode:"
-echo "  cd $PROJECT_ROOT && pnpm dev:agent"
+echo "  cd $PROJECT_ROOT && bun run dev:agent"
 echo ""
 echo "To start the agent in production mode:"
-echo "  cd $PROJECT_ROOT/apps/agent && node dist/index.js"
+echo "  cd $PROJECT_ROOT/apps/agent && bun dist/index.js"
 echo ""
 echo "To expose via Tailscale Funnel (recommended):"
 echo "  tailscale funnel --bg --https=4678 localhost:4678"

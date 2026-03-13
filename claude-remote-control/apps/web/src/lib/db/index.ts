@@ -1,30 +1,80 @@
-import { neon, type NeonQueryFunction } from '@neondatabase/serverless';
-import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import * as schema from './schema';
+import { Database } from "bun:sqlite";
+import { existsSync, mkdirSync } from "fs";
+import { dirname, join, resolve } from "path";
+import { CREATE_TABLES_SQL, SCHEMA_VERSION } from "./schema";
 
-// Lazy initialization to avoid errors during build when env vars aren't available
-let _sql: NeonQueryFunction<false, false> | null = null;
-let _db: NeonHttpDatabase<typeof schema> | null = null;
+// Database file location: ~/.247/data/web.db
+const DATA_DIR = resolve(process.env.HOME || "~", ".247", "data");
+const DB_PATH = join(DATA_DIR, "web.db");
 
-function getSQL() {
-  if (!_sql) {
-    _sql = neon(process.env.DATABASE_URL!);
+// Singleton database instance
+let db: Database | null = null;
+
+/**
+ * Get or create the database instance (lazy init)
+ */
+export function getDb(): Database {
+  if (!db) {
+    db = initDatabase();
   }
-  return _sql;
+  return db;
 }
 
-export function getDb() {
-  if (!_db) {
-    _db = drizzle(getSQL(), { schema });
+/**
+ * Initialize the database
+ */
+function initDatabase(dbPath?: string): Database {
+  const path = dbPath ?? DB_PATH;
+
+  // Create data directory if it doesn't exist
+  const dataDir = dirname(path);
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true });
   }
-  return _db;
+
+  const database = new Database(path, { strict: true });
+
+  // Enable WAL mode for better concurrent performance
+  database.run("PRAGMA journal_mode = WAL");
+
+  // Run migrations
+  runMigrations(database);
+
+  return database;
 }
 
-// For backwards compatibility - will throw at runtime if env vars missing
-export const db = new Proxy({} as NeonHttpDatabase<typeof schema>, {
-  get(_target, prop) {
-    return getDb()[prop as keyof NeonHttpDatabase<typeof schema>];
-  },
-});
+/**
+ * Run database migrations
+ */
+function runMigrations(database: Database): void {
+  // Check if schema_version table exists
+  const tableExists = database
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'"
+    )
+    .get();
 
-export * from './schema';
+  if (!tableExists) {
+    database.exec(CREATE_TABLES_SQL);
+    database
+      .prepare("INSERT INTO schema_version (version, applied_at) VALUES (?, ?)")
+      .run(SCHEMA_VERSION, Date.now());
+    return;
+  }
+
+  const row = database
+    .prepare("SELECT version FROM schema_version ORDER BY version DESC LIMIT 1")
+    .get() as { version: number } | undefined;
+
+  if ((row?.version ?? 0) < SCHEMA_VERSION) {
+    database.exec(CREATE_TABLES_SQL);
+    database
+      .prepare(
+        "INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)"
+      )
+      .run(SCHEMA_VERSION, Date.now());
+  }
+}
+
+export type { DbAgentConnection, DbPushSubscription } from "./schema";
+export { SELECT_CONNECTION } from "./schema";

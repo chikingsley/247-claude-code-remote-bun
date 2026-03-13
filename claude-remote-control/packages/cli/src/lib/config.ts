@@ -1,43 +1,50 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
-import { join } from 'path';
-import { randomUUID } from 'crypto';
-import { getAgentPaths, ensureDirectories } from './paths.js';
+import { randomUUID } from "crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "fs";
+import { join } from "path";
+import { ensureDirectories, getAgentPaths } from "./paths.js";
 
 export interface AgentConfig {
-  machine: {
-    id: string;
-    name: string;
-  };
   agent: {
     port: number;
-  };
-  projects: {
-    basePath: string;
-    whitelist: string[];
   };
   editor?: {
     enabled: boolean;
     portRange: { start: number; end: number };
     idleTimeout: number;
   };
+  machine: {
+    id: string;
+    name: string;
+  };
+  projects: {
+    basePath: string;
+    whitelist: string[];
+  };
 }
 
 const DEFAULT_CONFIG: AgentConfig = {
   machine: {
-    id: '',
-    name: '',
+    id: "",
+    name: "",
   },
   agent: {
     port: 4678,
   },
   projects: {
-    basePath: '~/Dev',
+    basePath: "~/Dev",
     whitelist: [],
   },
   editor: {
     enabled: false,
     portRange: { start: 4680, end: 4699 },
-    idleTimeout: 1800000,
+    idleTimeout: 1_800_000,
   },
 };
 
@@ -46,7 +53,7 @@ const DEFAULT_CONFIG: AgentConfig = {
  */
 export function getProfilesDir(): string {
   const paths = getAgentPaths();
-  return join(paths.configDir, 'profiles');
+  return join(paths.configDir, "profiles");
 }
 
 /**
@@ -56,7 +63,7 @@ export function getProfilesDir(): string {
 export function getProfilePath(profileName?: string | null): string {
   const paths = getAgentPaths();
 
-  if (!profileName || profileName === 'default') {
+  if (!profileName || profileName === "default") {
     return paths.configPath;
   }
 
@@ -74,15 +81,15 @@ export function listProfiles(): string[] {
 
   // Add default profile if it exists
   if (existsSync(paths.configPath)) {
-    profiles.push('default');
+    profiles.push("default");
   }
 
   // Add named profiles
   if (existsSync(profilesDir)) {
     const files = readdirSync(profilesDir);
     for (const file of files) {
-      if (file.endsWith('.json')) {
-        profiles.push(file.replace('.json', ''));
+      if (file.endsWith(".json")) {
+        profiles.push(file.replace(".json", ""));
       }
     }
   }
@@ -102,8 +109,8 @@ export function profileExists(profileName?: string | null): boolean {
  * Delete a profile
  */
 export function deleteProfile(profileName: string): boolean {
-  if (!profileName || profileName === 'default') {
-    throw new Error('Cannot delete default profile');
+  if (!profileName || profileName === "default") {
+    throw new Error("Cannot delete default profile");
   }
 
   const configPath = getProfilePath(profileName);
@@ -127,12 +134,12 @@ export function loadConfig(profileName?: string | null): AgentConfig | null {
   }
 
   try {
-    const content = readFileSync(configPath, 'utf-8');
+    const content = readFileSync(configPath, "utf-8");
     const config = JSON.parse(content) as AgentConfig;
 
     // Apply environment overrides
     if (process.env.AGENT_247_PORT) {
-      config.agent.port = parseInt(process.env.AGENT_247_PORT, 10);
+      config.agent.port = Number.parseInt(process.env.AGENT_247_PORT, 10);
     }
     if (process.env.AGENT_247_PROJECTS) {
       config.projects.basePath = process.env.AGENT_247_PROJECTS;
@@ -150,12 +157,15 @@ export function loadConfig(profileName?: string | null): AgentConfig | null {
  * @param config - Configuration to save
  * @param profileName - Profile name to save to, or undefined for default
  */
-export function saveConfig(config: AgentConfig, profileName?: string | null): void {
+export function saveConfig(
+  config: AgentConfig,
+  profileName?: string | null
+): void {
   const configPath = getProfilePath(profileName);
   ensureDirectories();
 
   // Ensure profiles directory exists for named profiles
-  if (profileName && profileName !== 'default') {
+  if (profileName && profileName !== "default") {
     const profilesDir = getProfilesDir();
     if (!existsSync(profilesDir)) {
       mkdirSync(profilesDir, { recursive: true });
@@ -163,7 +173,7 @@ export function saveConfig(config: AgentConfig, profileName?: string | null): vo
   }
 
   const content = JSON.stringify(config, null, 2);
-  writeFileSync(configPath, content, 'utf-8');
+  writeFileSync(configPath, content, "utf-8");
 }
 
 /**

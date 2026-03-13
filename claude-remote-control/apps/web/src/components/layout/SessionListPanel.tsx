@@ -1,42 +1,46 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Archive, Trash2, Clock, X } from 'lucide-react';
-import { format, isToday, isYesterday, startOfDay } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { variants, stagger, interactive } from '@/lib/animations';
-import { StatusDot, StatusBadge, type SessionStatus } from '@/components/ui/status-indicator';
+import { format, isToday, isYesterday, startOfDay } from "date-fns";
+import { AnimatePresence, motion } from "framer-motion";
+import { Archive, Clock, Plus, Search, Trash2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  type SessionStatus,
+  StatusBadge,
+  StatusDot,
+} from "@/components/ui/status-indicator";
+import { interactive, stagger, variants } from "@/lib/animations";
+import { cn } from "@/lib/utils";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════════════════
 
 export interface SessionListItem {
+  cost?: number;
+  createdAt: Date;
   id: string;
+  machineId?: string;
+  model?: string;
   name: string;
   project: string;
   status: SessionStatus;
   updatedAt: Date;
-  createdAt: Date;
-  model?: string;
-  cost?: number;
-  machineId?: string;
 }
 
 interface DateGroup {
-  label: string;
   date: Date;
+  label: string;
   sessions: SessionListItem[];
 }
 
 interface SessionListPanelProps {
-  sessions?: SessionListItem[];
-  selectedSessionId?: string | null;
-  onSelectSession?: (session: SessionListItem) => void;
-  onNewSession?: () => void;
-  onKillSession?: (session: SessionListItem) => void;
   onArchiveSession?: (session: SessionListItem) => void;
+  onKillSession?: (session: SessionListItem) => void;
+  onNewSession?: () => void;
+  onSelectSession?: (session: SessionListItem) => void;
+  selectedSessionId?: string | null;
+  sessions?: SessionListItem[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -51,11 +55,11 @@ function groupSessionsByDate(sessions: SessionListItem[]): DateGroup[] {
     let label: string;
 
     if (isToday(date)) {
-      label = 'Today';
+      label = "Today";
     } else if (isYesterday(date)) {
-      label = 'Yesterday';
+      label = "Yesterday";
     } else {
-      label = format(date, 'MMM d');
+      label = format(date, "MMM d");
     }
 
     if (!groups.has(label)) {
@@ -68,16 +72,18 @@ function groupSessionsByDate(sessions: SessionListItem[]): DateGroup[] {
     .map(([label, sessions]) => ({
       label,
       date: sessions[0].updatedAt,
-      sessions: sessions.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
+      sessions: sessions.sort(
+        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+      ),
     }))
     .sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
 function formatTime(date: Date): string {
   if (isToday(date)) {
-    return format(date, 'h:mm a');
+    return format(date, "h:mm a");
   }
-  return format(date, 'MMM d, h:mm a');
+  return format(date, "MMM d, h:mm a");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -85,35 +91,39 @@ function formatTime(date: Date): string {
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface SearchInputProps {
-  value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  value: string;
 }
 
-function SearchInput({ value, onChange, placeholder = 'Search...' }: SearchInputProps) {
+function SearchInput({
+  value,
+  onChange,
+  placeholder = "Search...",
+}: SearchInputProps) {
   return (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-white/30" />
       <input
-        type="text"
-        value={value}
+        className={cn(
+          "w-full rounded-lg py-2 pr-8 pl-9 text-sm",
+          "border border-white/10 bg-white/5",
+          "text-white placeholder:text-white/30",
+          "focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
+          "transition-all duration-150"
+        )}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={cn(
-          'w-full rounded-lg py-2 pl-9 pr-8 text-sm',
-          'border border-white/10 bg-white/5',
-          'text-white placeholder:text-white/30',
-          'focus:border-primary/50 focus:ring-primary/20 focus:outline-none focus:ring-2',
-          'transition-all duration-150'
-        )}
+        type="text"
+        value={value}
       />
       {value && (
         <button
-          onClick={() => onChange('')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 hover:bg-white/10"
           aria-label="Clear search"
+          className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1.5 hover:bg-white/10"
+          onClick={() => onChange("")}
         >
-          <X className="h-3 w-3 text-white/40" aria-hidden="true" />
+          <X aria-hidden="true" className="h-3 w-3 text-white/40" />
         </button>
       )}
     </div>
@@ -125,50 +135,60 @@ function SearchInput({ value, onChange, placeholder = 'Search...' }: SearchInput
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface SessionCardProps {
-  session: SessionListItem;
-  selected?: boolean;
+  onArchive?: () => void;
   onClick?: () => void;
   onKill?: () => void;
-  onArchive?: () => void;
+  selected?: boolean;
+  session: SessionListItem;
 }
 
-function SessionCard({ session, selected, onClick, onKill, onArchive }: SessionCardProps) {
+function SessionCard({
+  session,
+  selected,
+  onClick,
+  onKill,
+  onArchive,
+}: SessionCardProps) {
   const [showActions, setShowActions] = useState(false);
 
   return (
     <motion.button
-      variants={variants.fadeInUp}
+      className={cn(
+        "w-full rounded-lg p-3 text-left",
+        "transition-all duration-150",
+        "hover:bg-surface-1/50 hover:shadow-thin active:scale-[0.99]",
+        "group relative",
+        selected && "bg-surface-1/50 shadow-thin ring-1 ring-primary/30"
+      )}
       onClick={onClick}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
-      className={cn(
-        'w-full rounded-lg p-3 text-left',
-        'transition-all duration-150',
-        'hover:bg-surface-1/50 hover:shadow-thin active:scale-[0.99]',
-        'group relative',
-        selected && 'ring-primary/30 bg-surface-1/50 shadow-thin ring-1'
-      )}
+      variants={variants.fadeInUp}
       {...interactive.subtle}
     >
       <div className="flex items-start gap-3">
         {/* Status indicator */}
         <div className="pt-1">
           <StatusDot status={session.status} />
-          <span className="sr-only">Status: {session.status.replace('_', ' ')}</span>
+          <span className="sr-only">
+            Status: {session.status.replace("_", " ")}
+          </span>
         </div>
 
         {/* Content */}
         <div className="min-w-0 flex-1">
           {/* Name and badge */}
           <div className="mb-0.5 flex items-center gap-2">
-            <span className="truncate font-medium text-white/90">{session.name}</span>
-            {session.status === 'needs_attention' && (
-              <StatusBadge status={session.status} size="sm" showDot={false} />
+            <span className="truncate font-medium text-white/90">
+              {session.name}
+            </span>
+            {session.status === "needs_attention" && (
+              <StatusBadge showDot={false} size="sm" status={session.status} />
             )}
           </div>
 
           {/* Meta info */}
-          <div className="flex items-center gap-2 text-xs text-white/40">
+          <div className="flex items-center gap-2 text-white/40 text-xs">
             <span className="truncate">{session.project}</span>
             <span className="text-white/20">•</span>
             <Clock className="h-3 w-3" />
@@ -179,7 +199,9 @@ function SessionCard({ session, selected, onClick, onKill, onArchive }: SessionC
           {session.cost !== undefined && (
             <div className="mt-1.5 flex items-center gap-2 text-xs">
               <span className="text-white/30">{session.model}</span>
-              <span className="text-emerald-400/70">${session.cost.toFixed(2)}</span>
+              <span className="text-emerald-400/70">
+                ${session.cost.toFixed(2)}
+              </span>
             </div>
           )}
         </div>
@@ -188,31 +210,31 @@ function SessionCard({ session, selected, onClick, onKill, onArchive }: SessionC
         <AnimatePresence>
           {showActions && (onKill || onArchive) && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.1 }}
               className="flex items-center gap-1"
+              exit={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               onClick={(e) => e.stopPropagation()}
+              transition={{ duration: 0.1 }}
             >
               {onArchive && (
                 <button
-                  onClick={onArchive}
-                  className="rounded-md p-2 text-white/40 hover:bg-white/10 hover:text-white/70"
-                  title="Archive session"
                   aria-label={`Archive session ${session.name}`}
+                  className="rounded-md p-2 text-white/40 hover:bg-white/10 hover:text-white/70"
+                  onClick={onArchive}
+                  title="Archive session"
                 >
-                  <Archive className="h-3.5 w-3.5" aria-hidden="true" />
+                  <Archive aria-hidden="true" className="h-3.5 w-3.5" />
                 </button>
               )}
               {onKill && (
                 <button
-                  onClick={onKill}
-                  className="rounded-md p-2 text-white/40 hover:bg-red-500/20 hover:text-red-400"
-                  title="Kill session"
                   aria-label={`Kill session ${session.name}`}
+                  className="rounded-md p-2 text-white/40 hover:bg-red-500/20 hover:text-red-400"
+                  onClick={onKill}
+                  title="Kill session"
                 >
-                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
                 </button>
               )}
             </motion.div>
@@ -229,13 +251,19 @@ function SessionCard({ session, selected, onClick, onKill, onArchive }: SessionC
 
 interface DateGroupProps {
   group: DateGroup;
-  selectedId?: string | null;
-  onSelect?: (session: SessionListItem) => void;
-  onKill?: (session: SessionListItem) => void;
   onArchive?: (session: SessionListItem) => void;
+  onKill?: (session: SessionListItem) => void;
+  onSelect?: (session: SessionListItem) => void;
+  selectedId?: string | null;
 }
 
-function DateGroupSection({ group, selectedId, onSelect, onKill, onArchive }: DateGroupProps) {
+function DateGroupSection({
+  group,
+  selectedId,
+  onSelect,
+  onKill,
+  onArchive,
+}: DateGroupProps) {
   return (
     <div className="mb-2">
       {/* Date header */}
@@ -243,19 +271,19 @@ function DateGroupSection({ group, selectedId, onSelect, onKill, onArchive }: Da
 
       {/* Sessions */}
       <motion.div
-        variants={stagger.fast}
-        initial="initial"
         animate="animate"
         className="space-y-1 px-2"
+        initial="initial"
+        variants={stagger.fast}
       >
         {group.sessions.map((session) => (
           <SessionCard
             key={session.id}
-            session={session}
-            selected={selectedId === session.id}
+            onArchive={onArchive ? () => onArchive(session) : undefined}
             onClick={() => onSelect?.(session)}
             onKill={onKill ? () => onKill(session) : undefined}
-            onArchive={onArchive ? () => onArchive(session) : undefined}
+            selected={selectedId === session.id}
+            session={session}
           />
         ))}
       </motion.div>
@@ -275,35 +303,46 @@ export function SessionListPanel({
   onKillSession,
   onArchiveSession,
 }: SessionListPanelProps) {
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
   // Filter sessions by search
   const filteredSessions = useMemo(() => {
-    if (!search.trim()) return sessions;
+    if (!search.trim()) {
+      return sessions;
+    }
     const query = search.toLowerCase();
     return sessions.filter(
-      (s) => s.name.toLowerCase().includes(query) || s.project.toLowerCase().includes(query)
+      (s) =>
+        s.name.toLowerCase().includes(query) ||
+        s.project.toLowerCase().includes(query)
     );
   }, [search, sessions]);
 
   // Group by date
-  const groupedSessions = useMemo(() => groupSessionsByDate(filteredSessions), [filteredSessions]);
+  const groupedSessions = useMemo(
+    () => groupSessionsByDate(filteredSessions),
+    [filteredSessions]
+  );
 
   return (
     <div className="panel flex h-full w-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/5 p-4">
+      <div className="flex items-center justify-between border-white/5 border-b p-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-white/90">Sessions</h2>
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-medium text-white/50">
+          <h2 className="font-semibold text-sm text-white/90">Sessions</h2>
+          <span className="rounded bg-white/10 px-1.5 py-0.5 font-medium text-white/50 text-xs">
             {sessions.length}
           </span>
         </div>
       </div>
 
       {/* Search */}
-      <div className="border-b border-white/5 p-3">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search sessions..." />
+      <div className="border-white/5 border-b p-3">
+        <SearchInput
+          onChange={setSearch}
+          placeholder="Search sessions..."
+          value={search}
+        />
       </div>
 
       {/* Sessions List */}
@@ -312,18 +351,18 @@ export function SessionListPanel({
           <div className="flex h-full flex-col items-center justify-center text-white/30">
             <Search className="mb-2 h-8 w-8" />
             <p className="text-sm">
-              {sessions.length === 0 ? 'No sessions yet' : 'No sessions found'}
+              {sessions.length === 0 ? "No sessions yet" : "No sessions found"}
             </p>
           </div>
         ) : (
           groupedSessions.map((group) => (
             <DateGroupSection
-              key={group.label}
               group={group}
-              selectedId={selectedSessionId}
-              onSelect={onSelectSession}
-              onKill={onKillSession}
+              key={group.label}
               onArchive={onArchiveSession}
+              onKill={onKillSession}
+              onSelect={onSelectSession}
+              selectedId={selectedSessionId}
             />
           ))
         )}
@@ -331,17 +370,17 @@ export function SessionListPanel({
 
       {/* New Session Button */}
       {onNewSession && (
-        <div className="border-t border-white/5 p-3">
+        <div className="border-white/5 border-t p-3">
           <button
-            onClick={onNewSession}
             className={cn(
-              'flex w-full items-center justify-center gap-2',
-              'rounded-lg px-4 py-2.5 text-sm font-medium',
-              'bg-primary text-white',
-              'hover:bg-primary/90 active:scale-[0.98]',
-              'transition-all duration-150',
-              'shadow-primary/20 shadow-lg'
+              "flex w-full items-center justify-center gap-2",
+              "rounded-lg px-4 py-2.5 font-medium text-sm",
+              "bg-primary text-white",
+              "hover:bg-primary/90 active:scale-[0.98]",
+              "transition-all duration-150",
+              "shadow-lg shadow-primary/20"
             )}
+            onClick={onNewSession}
           >
             <Plus className="h-4 w-4" />
             New Session

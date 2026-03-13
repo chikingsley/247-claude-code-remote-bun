@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
-export { useTerminalConnection } from './useTerminalConnection';
-export { useTerminalSearch } from './useTerminalSearch';
+export { useTerminalConnection } from "./useTerminalConnection";
+export { useTerminalSearch } from "./useTerminalSearch";

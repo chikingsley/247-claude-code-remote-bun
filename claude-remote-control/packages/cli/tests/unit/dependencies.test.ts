@@ -1,7 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -12,21 +11,21 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * When the agent is bundled into the CLI (via scripts/bundle.sh), only the
  * compiled JS is copied - not node_modules. Therefore, the CLI's package.json
  * must include all agent runtime dependencies so they get installed when
- * users run `npm install -g 247-cli`.
+ * users run `bun install -g 247-cli`.
  */
-describe('CLI dependencies', () => {
-  it('should include all agent runtime dependencies', () => {
-    const cliPkgPath = join(__dirname, '../../package.json');
-    const agentPkgPath = join(__dirname, '../../../../apps/agent/package.json');
+describe("CLI dependencies", () => {
+  it("should include all agent runtime dependencies", () => {
+    const cliPkgPath = join(__dirname, "../../package.json");
+    const agentPkgPath = join(__dirname, "../../../../apps/agent/package.json");
 
-    const cliPkg = JSON.parse(readFileSync(cliPkgPath, 'utf-8'));
-    const agentPkg = JSON.parse(readFileSync(agentPkgPath, 'utf-8'));
+    const cliPkg = JSON.parse(readFileSync(cliPkgPath, "utf-8"));
+    const agentPkg = JSON.parse(readFileSync(agentPkgPath, "utf-8"));
 
     const cliDeps = cliPkg.dependencies || {};
     const agentDeps = agentPkg.dependencies || {};
 
     // These are workspace packages that are handled separately by the bundle script
-    const workspacePackages = ['247-shared'];
+    const workspacePackages = ["247-shared"];
 
     const missingDeps: string[] = [];
 
@@ -43,8 +42,8 @@ describe('CLI dependencies', () => {
 
     expect(
       missingDeps,
-      `CLI package.json is missing agent dependencies: ${missingDeps.join(', ')}. ` +
-        `Add these to packages/cli/package.json to fix the bundled agent.`
+      `CLI package.json is missing agent dependencies: ${missingDeps.join(", ")}. ` +
+        "Add these to packages/cli/package.json to fix the bundled agent."
     ).toEqual([]);
   });
 });

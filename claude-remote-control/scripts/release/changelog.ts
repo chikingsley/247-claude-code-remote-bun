@@ -1,12 +1,14 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { ConventionalCommit } from './version.js';
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import type { ConventionalCommit } from "./version.js";
 
-const CHANGELOG_PATH = 'CHANGELOG.md';
+const CHANGELOG_PATH = "CHANGELOG.md";
 
 /**
  * Group commits by type for changelog
  */
-function groupCommitsByType(commits: ConventionalCommit[]): Record<string, ConventionalCommit[]> {
+function groupCommitsByType(
+  commits: ConventionalCommit[]
+): Record<string, ConventionalCommit[]> {
   const groups: Record<string, ConventionalCommit[]> = {};
 
   for (const commit of commits) {
@@ -25,16 +27,16 @@ function groupCommitsByType(commits: ConventionalCommit[]): Record<string, Conve
  */
 function getTypeDisplayName(type: string): string {
   const displayNames: Record<string, string> = {
-    feat: 'Features',
-    fix: 'Bug Fixes',
-    perf: 'Performance',
-    refactor: 'Refactoring',
-    docs: 'Documentation',
-    style: 'Styling',
-    test: 'Tests',
-    ci: 'CI/CD',
-    build: 'Build',
-    chore: 'Chores',
+    feat: "Features",
+    fix: "Bug Fixes",
+    perf: "Performance",
+    refactor: "Refactoring",
+    docs: "Documentation",
+    style: "Styling",
+    test: "Tests",
+    ci: "CI/CD",
+    build: "Build",
+    chore: "Chores",
   };
   return displayNames[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
@@ -42,7 +44,18 @@ function getTypeDisplayName(type: string): string {
 /**
  * Order of types in changelog (most important first)
  */
-const TYPE_ORDER = ['feat', 'fix', 'perf', 'refactor', 'docs', 'style', 'test', 'ci', 'build', 'chore'];
+const TYPE_ORDER = [
+  "feat",
+  "fix",
+  "perf",
+  "refactor",
+  "docs",
+  "style",
+  "test",
+  "ci",
+  "build",
+  "chore",
+];
 
 /**
  * Generate a changelog entry for a version
@@ -51,7 +64,7 @@ export function generateChangelogEntry(
   version: string,
   commits: ConventionalCommit[]
 ): string {
-  const date = new Date().toISOString().split('T')[0];
+  const date = new Date().toISOString().split("T")[0];
   const grouped = groupCommitsByType(commits);
 
   let entry = `## [${version}] - ${date}\n\n`;
@@ -59,25 +72,27 @@ export function generateChangelogEntry(
   // Check for breaking changes first
   const breakingCommits = commits.filter((c) => c.breaking);
   if (breakingCommits.length > 0) {
-    entry += `### Breaking Changes\n\n`;
+    entry += "### Breaking Changes\n\n";
     for (const commit of breakingCommits) {
-      const scope = commit.scope ? `**${commit.scope}**: ` : '';
+      const scope = commit.scope ? `**${commit.scope}**: ` : "";
       entry += `- ${scope}${commit.subject} (${commit.hash})\n`;
     }
-    entry += '\n';
+    entry += "\n";
   }
 
   // Add commits by type
   for (const type of TYPE_ORDER) {
     const typeCommits = grouped[type];
-    if (!typeCommits || typeCommits.length === 0) continue;
+    if (!typeCommits || typeCommits.length === 0) {
+      continue;
+    }
 
     entry += `### ${getTypeDisplayName(type)}\n\n`;
     for (const commit of typeCommits) {
-      const scope = commit.scope ? `**${commit.scope}**: ` : '';
+      const scope = commit.scope ? `**${commit.scope}**: ` : "";
       entry += `- ${scope}${commit.subject} (${commit.hash})\n`;
     }
-    entry += '\n';
+    entry += "\n";
   }
 
   return entry;
@@ -90,14 +105,18 @@ export function updateChangelog(entry: string): void {
   let content: string;
 
   if (existsSync(CHANGELOG_PATH)) {
-    const existing = readFileSync(CHANGELOG_PATH, 'utf-8');
+    const existing = readFileSync(CHANGELOG_PATH, "utf-8");
 
     // Find where to insert (after the header)
-    const headerEnd = existing.indexOf('\n## ');
+    const headerEnd = existing.indexOf("\n## ");
     if (headerEnd !== -1) {
-      content = existing.slice(0, headerEnd) + '\n' + entry + existing.slice(headerEnd + 1);
+      content =
+        existing.slice(0, headerEnd) +
+        "\n" +
+        entry +
+        existing.slice(headerEnd + 1);
     } else {
-      content = existing + '\n' + entry;
+      content = existing + "\n" + entry;
     }
   } else {
     content = `# Changelog
@@ -110,5 +129,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ${entry}`;
   }
 
-  writeFileSync(CHANGELOG_PATH, content, 'utf-8');
+  writeFileSync(CHANGELOG_PATH, content, "utf-8");
 }

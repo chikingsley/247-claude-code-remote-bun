@@ -8,11 +8,11 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Install dependencies
 cd "$PROJECT_ROOT"
-pnpm install
+bun install
 
 # Build agent
 cd "$PROJECT_ROOT/apps/agent"
-pnpm build
+bun run build
 
 # Create launchd plist for auto-start
 PLIST_PATH="$HOME/Library/LaunchAgents/com.quivr.247.plist"
@@ -26,7 +26,7 @@ cat > "$PLIST_PATH" << EOF
     <string>com.quivr.247</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/homebrew/bin/node</string>
+        <string>/usr/bin/env bun</string>
         <string>$PROJECT_ROOT/apps/agent/dist/index.js</string>
     </array>
     <key>WorkingDirectory</key>

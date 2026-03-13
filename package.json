@@ -1,0 +1,12 @@
+{
+  "dependencies": {},
+  "devDependencies": {
+    "@biomejs/biome": "2.4.0",
+    "ultracite": "7.2.3"
+  },
+  "scripts": {
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "analyze:convos": "node scripts/analyze-convo-patterns.mjs"
+  }
+}

@@ -1,12 +1,12 @@
-import { getDatabase } from './index.js';
-import type { DbSession, UpsertSessionInput } from './schema.js';
+import { getDatabase } from "./index.js";
+import type { DbSession, UpsertSessionInput } from "./schema.js";
 
 /**
  * Get a session by name
  */
 export function getSession(name: string): DbSession | null {
   const db = getDatabase();
-  const row = db.prepare('SELECT * FROM sessions WHERE name = ?').get(name) as
+  const row = db.prepare("SELECT * FROM sessions WHERE name = ?").get(name) as
     | DbSession
     | undefined;
   return row ?? null;
@@ -18,7 +18,9 @@ export function getSession(name: string): DbSession | null {
 export function getAllSessions(): DbSession[] {
   const db = getDatabase();
   return db
-    .prepare('SELECT * FROM sessions WHERE archived_at IS NULL ORDER BY last_activity DESC')
+    .prepare(
+      "SELECT * FROM sessions WHERE archived_at IS NULL ORDER BY last_activity DESC"
+    )
     .all() as DbSession[];
 }
 
@@ -28,22 +30,30 @@ export function getAllSessions(): DbSession[] {
 export function getArchivedSessions(): DbSession[] {
   const db = getDatabase();
   return db
-    .prepare('SELECT * FROM sessions WHERE archived_at IS NOT NULL ORDER BY archived_at DESC')
+    .prepare(
+      "SELECT * FROM sessions WHERE archived_at IS NOT NULL ORDER BY archived_at DESC"
+    )
     .all() as DbSession[];
 }
 
 /**
  * Upsert a session (insert or update)
  */
-export function upsertSession(name: string, input: UpsertSessionInput): DbSession {
+export function upsertSession(
+  name: string,
+  input: UpsertSessionInput
+): DbSession {
   const db = getDatabase();
   const now = Date.now();
 
   const existing = getSession(name);
 
   // Determine if status is changing
-  const statusChanging = input.status !== undefined && input.status !== existing?.status;
-  const lastStatusChange = statusChanging ? now : (existing?.last_status_change ?? null);
+  const statusChanging =
+    input.status !== undefined && input.status !== existing?.status;
+  const lastStatusChange = statusChanging
+    ? now
+    : (existing?.last_status_change ?? null);
 
   const stmt = db.prepare(`
     INSERT INTO sessions (
@@ -68,7 +78,7 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
 
   stmt.run({
     name,
-    project: input.project ?? existing?.project ?? 'unknown',
+    project: input.project ?? existing?.project ?? "unknown",
     lastEvent: input.lastEvent ?? null,
     lastActivity: input.lastActivity ?? now,
     createdAt: existing?.created_at ?? now,
@@ -87,7 +97,7 @@ export function upsertSession(name: string, input: UpsertSessionInput): DbSessio
  */
 export function deleteSession(name: string): boolean {
   const db = getDatabase();
-  const result = db.prepare('DELETE FROM sessions WHERE name = ?').run(name);
+  const result = db.prepare("DELETE FROM sessions WHERE name = ?").run(name);
   return result.changes > 0;
 }
 

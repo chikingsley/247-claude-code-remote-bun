@@ -1,27 +1,35 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook } from '@testing-library/react';
-import { toast } from 'sonner';
-import { useInAppNotifications } from '@/hooks/useInAppNotifications';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
+import { renderHook } from "@testing-library/react";
+import { toast } from "sonner";
+import { useInAppNotifications } from "@/hooks/useInAppNotifications";
 
-vi.mock('sonner', () => ({
-  toast: vi.fn(),
+mock.module("sonner", () => ({
+  toast: mock(),
 }));
 
-describe('useInAppNotifications', () => {
+describe("useInAppNotifications", () => {
   let handler: ((event: MessageEvent) => void) | null = null;
-  let addEventListenerSpy: ReturnType<typeof vi.fn>;
-  let removeEventListenerSpy: ReturnType<typeof vi.fn>;
-  const toastMock = vi.mocked(toast);
+  let addEventListenerSpy: ReturnType<typeof mock>;
+  let removeEventListenerSpy: ReturnType<typeof mock>;
+  const toastMock = toast as unknown as ReturnType<typeof mock>;
 
   beforeEach(() => {
     handler = null;
-    addEventListenerSpy = vi.fn((_, cb) => {
+    addEventListenerSpy = mock((_, cb) => {
       handler = cb;
     });
-    removeEventListenerSpy = vi.fn();
+    removeEventListenerSpy = mock();
 
     toastMock.mockClear();
-    Object.defineProperty(navigator, 'serviceWorker', {
+    Object.defineProperty(navigator, "serviceWorker", {
       configurable: true,
       value: {
         addEventListener: addEventListenerSpy,
@@ -31,53 +39,53 @@ describe('useInAppNotifications', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    // Restore spies individually where needed
   });
 
-  it('shows a toast for a foreground push notification', () => {
+  it("shows a toast for a foreground push notification", () => {
     renderHook(() => useInAppNotifications());
 
     handler?.({
       data: {
-        type: 'PUSH_NOTIFICATION_FOREGROUND',
+        type: "PUSH_NOTIFICATION_FOREGROUND",
         payload: {
-          title: 'Claude - Project',
-          body: 'Attention needed',
-          data: { sessionName: 'proj--123' },
+          title: "Claude - Project",
+          body: "Attention needed",
+          data: { sessionName: "proj--123" },
         },
       },
     } as MessageEvent);
 
     expect(toastMock).toHaveBeenCalledTimes(1);
-    expect(toastMock).toHaveBeenCalledWith('Claude - Project', {
-      description: 'Attention needed',
+    expect(toastMock).toHaveBeenCalledWith("Claude - Project", {
+      description: "Attention needed",
       duration: 6000,
-      id: 'proj--123',
+      id: "proj--123",
     });
   });
 
-  it('dedupes repeated notifications in a short window', () => {
-    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
+  it("dedupes repeated notifications in a short window", () => {
+    const nowSpy = spyOn(Date, "now").mockReturnValue(1000);
     renderHook(() => useInAppNotifications());
 
     handler?.({
       data: {
-        type: 'PUSH_NOTIFICATION_FOREGROUND',
+        type: "PUSH_NOTIFICATION_FOREGROUND",
         payload: {
-          title: 'Claude - Project',
-          body: 'Attention needed',
-          data: { sessionName: 'proj--123' },
+          title: "Claude - Project",
+          body: "Attention needed",
+          data: { sessionName: "proj--123" },
         },
       },
     } as MessageEvent);
 
     handler?.({
       data: {
-        type: 'PUSH_NOTIFICATION_FOREGROUND',
+        type: "PUSH_NOTIFICATION_FOREGROUND",
         payload: {
-          title: 'Claude - Project',
-          body: 'Attention needed',
-          data: { sessionName: 'proj--123' },
+          title: "Claude - Project",
+          body: "Attention needed",
+          data: { sessionName: "proj--123" },
         },
       },
     } as MessageEvent);
@@ -86,24 +94,24 @@ describe('useInAppNotifications', () => {
     nowSpy.mockRestore();
   });
 
-  it('removes the service worker listener on unmount', () => {
+  it("removes the service worker listener on unmount", () => {
     const { unmount } = renderHook(() => useInAppNotifications());
     unmount();
-    expect(removeEventListenerSpy).toHaveBeenCalledWith('message', handler);
+    expect(removeEventListenerSpy).toHaveBeenCalledWith("message", handler);
   });
 
-  describe('onNotification callback', () => {
-    it('calls onNotification callback when notification is shown', () => {
-      const onNotification = vi.fn();
+  describe("onNotification callback", () => {
+    it("calls onNotification callback when notification is shown", () => {
+      const onNotification = mock();
       renderHook(() => useInAppNotifications({ onNotification }));
 
       handler?.({
         data: {
-          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          type: "PUSH_NOTIFICATION_FOREGROUND",
           payload: {
-            title: 'Claude - Project',
-            body: 'Attention needed',
-            data: { sessionName: 'proj--123' },
+            title: "Claude - Project",
+            body: "Attention needed",
+            data: { sessionName: "proj--123" },
           },
         },
       } as MessageEvent);
@@ -112,19 +120,19 @@ describe('useInAppNotifications', () => {
       expect(onNotification).toHaveBeenCalledTimes(1);
     });
 
-    it('does not call onNotification when notification is deduped', () => {
-      const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1000);
-      const onNotification = vi.fn();
+    it("does not call onNotification when notification is deduped", () => {
+      const nowSpy = spyOn(Date, "now").mockReturnValue(1000);
+      const onNotification = mock();
       renderHook(() => useInAppNotifications({ onNotification }));
 
       // First notification
       handler?.({
         data: {
-          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          type: "PUSH_NOTIFICATION_FOREGROUND",
           payload: {
-            title: 'Claude - Project',
-            body: 'Attention needed',
-            data: { sessionName: 'proj--123' },
+            title: "Claude - Project",
+            body: "Attention needed",
+            data: { sessionName: "proj--123" },
           },
         },
       } as MessageEvent);
@@ -132,11 +140,11 @@ describe('useInAppNotifications', () => {
       // Duplicate notification (should be deduped)
       handler?.({
         data: {
-          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          type: "PUSH_NOTIFICATION_FOREGROUND",
           payload: {
-            title: 'Claude - Project',
-            body: 'Attention needed',
-            data: { sessionName: 'proj--123' },
+            title: "Claude - Project",
+            body: "Attention needed",
+            data: { sessionName: "proj--123" },
           },
         },
       } as MessageEvent);
@@ -146,16 +154,16 @@ describe('useInAppNotifications', () => {
       nowSpy.mockRestore();
     });
 
-    it('works without onNotification callback', () => {
+    it("works without onNotification callback", () => {
       renderHook(() => useInAppNotifications());
 
       handler?.({
         data: {
-          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          type: "PUSH_NOTIFICATION_FOREGROUND",
           payload: {
-            title: 'Claude - Project',
-            body: 'Attention needed',
-            data: { sessionName: 'proj--123' },
+            title: "Claude - Project",
+            body: "Attention needed",
+            data: { sessionName: "proj--123" },
           },
         },
       } as MessageEvent);
@@ -163,9 +171,9 @@ describe('useInAppNotifications', () => {
       expect(toastMock).toHaveBeenCalledTimes(1);
     });
 
-    it('updates callback when options change', () => {
-      const onNotification1 = vi.fn();
-      const onNotification2 = vi.fn();
+    it("updates callback when options change", () => {
+      const onNotification1 = mock();
+      const onNotification2 = mock();
 
       const { rerender } = renderHook(
         ({ callback }) => useInAppNotifications({ onNotification: callback }),
@@ -175,11 +183,11 @@ describe('useInAppNotifications', () => {
       // Trigger with first callback
       handler?.({
         data: {
-          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          type: "PUSH_NOTIFICATION_FOREGROUND",
           payload: {
-            title: 'First',
-            body: 'First notification',
-            data: { sessionName: 'first' },
+            title: "First",
+            body: "First notification",
+            data: { sessionName: "first" },
           },
         },
       } as MessageEvent);
@@ -193,11 +201,11 @@ describe('useInAppNotifications', () => {
       // Trigger with second callback
       handler?.({
         data: {
-          type: 'PUSH_NOTIFICATION_FOREGROUND',
+          type: "PUSH_NOTIFICATION_FOREGROUND",
           payload: {
-            title: 'Second',
-            body: 'Second notification',
-            data: { sessionName: 'second' },
+            title: "Second",
+            body: "Second notification",
+            data: { sessionName: "second" },
           },
         },
       } as MessageEvent);

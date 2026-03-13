@@ -4,42 +4,42 @@
  * Creates isolated test environments for running real CLI commands
  * without affecting the user's actual configuration or system services.
  */
-import { mkdtempSync, rmSync, mkdirSync, existsSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { tmpdir, platform } from 'os';
-import { spawn, execSync } from 'child_process';
-import { resolve } from 'path';
+
+import { execSync, spawn } from "child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "fs";
+import { platform, tmpdir } from "os";
+import { join, resolve } from "path";
 
 export interface TestEnvironment {
-  /** Isolated home directory for this test */
-  home: string;
-  /** Path to the CLI entry point */
-  cliEntry: string;
   /** Clean up the test environment */
   cleanup: () => void;
-  /** Run CLI command and return output */
-  runCli: (args: string[], options?: RunCliOptions) => Promise<CliResult>;
+  /** Path to the CLI entry point */
+  cliEntry: string;
   /** Check if a file exists in the test home */
   fileExists: (relativePath: string) => boolean;
+  /** Isolated home directory for this test */
+  home: string;
   /** Read a file from test home */
   readFile: (relativePath: string) => string;
   /** Read and parse a JSON file from test home */
   readJson: <T = unknown>(relativePath: string) => T;
+  /** Run CLI command and return output */
+  runCli: (args: string[], options?: RunCliOptions) => Promise<CliResult>;
 }
 
 export interface RunCliOptions {
+  /** Environment variables to merge */
+  env?: Record<string, string>;
   /** Input to send to stdin (for interactive prompts) */
   input?: string;
   /** Timeout in milliseconds (default: 30000) */
   timeout?: number;
-  /** Environment variables to merge */
-  env?: Record<string, string>;
 }
 
 export interface CliResult {
-  stdout: string;
-  stderr: string;
   exitCode: number;
+  stderr: string;
+  stdout: string;
 }
 
 /**
@@ -48,22 +48,22 @@ export interface CliResult {
  */
 export function createTestEnvironment(): TestEnvironment {
   // Create temp directory for this test
-  const home = mkdtempSync(join(tmpdir(), '247-e2e-'));
+  const home = mkdtempSync(join(tmpdir(), "247-e2e-"));
 
   // Create expected directory structure for the platform
   const os = platform();
-  if (os === 'darwin') {
-    mkdirSync(join(home, 'Library', 'LaunchAgents'), { recursive: true });
-    mkdirSync(join(home, 'Library', 'Logs'), { recursive: true });
+  if (os === "darwin") {
+    mkdirSync(join(home, "Library", "LaunchAgents"), { recursive: true });
+    mkdirSync(join(home, "Library", "Logs"), { recursive: true });
   } else {
-    mkdirSync(join(home, '.config', 'systemd', 'user'), { recursive: true });
-    mkdirSync(join(home, '.local', 'log'), { recursive: true });
+    mkdirSync(join(home, ".config", "systemd", "user"), { recursive: true });
+    mkdirSync(join(home, ".local", "log"), { recursive: true });
   }
 
   // Path to CLI - relative to this test file
   // tests/e2e/helpers/test-env.ts -> packages/cli/dist/index.js
-  const cliRoot = resolve(__dirname, '..', '..', '..');
-  const cliEntry = join(cliRoot, 'dist', 'index.js');
+  const cliRoot = resolve(import.meta.dirname, "..", "..", "..");
+  const cliEntry = join(cliRoot, "dist", "index.js");
 
   const cleanup = () => {
     try {
@@ -73,31 +73,34 @@ export function createTestEnvironment(): TestEnvironment {
     }
   };
 
-  const runCli = async (args: string[], options: RunCliOptions = {}): Promise<CliResult> => {
+  const runCli = async (
+    args: string[],
+    options: RunCliOptions = {}
+  ): Promise<CliResult> => {
     return new Promise((resolve) => {
-      const timeout = options.timeout ?? 30000;
-      let stdout = '';
-      let stderr = '';
+      const timeout = options.timeout ?? 30_000;
+      let stdout = "";
+      let stderr = "";
 
-      const child = spawn('node', [cliEntry, ...args], {
+      const child = spawn("node", [cliEntry, ...args], {
         cwd: home,
         env: {
           ...process.env,
           AGENT_247_HOME: home,
           // Disable color output for easier parsing
-          FORCE_COLOR: '0',
-          NO_COLOR: '1',
+          FORCE_COLOR: "0",
+          NO_COLOR: "1",
           // Merge additional env vars
           ...options.env,
         },
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ["pipe", "pipe", "pipe"],
       });
 
-      child.stdout.on('data', (data) => {
+      child.stdout.on("data", (data) => {
         stdout += data.toString();
       });
 
-      child.stderr.on('data', (data) => {
+      child.stderr.on("data", (data) => {
         stderr += data.toString();
       });
 
@@ -108,16 +111,16 @@ export function createTestEnvironment(): TestEnvironment {
       }
 
       const timer = setTimeout(() => {
-        child.kill('SIGKILL');
+        child.kill("SIGKILL");
         resolve({ stdout, stderr, exitCode: -1 });
       }, timeout);
 
-      child.on('close', (code) => {
+      child.on("close", (code) => {
         clearTimeout(timer);
         resolve({ stdout, stderr, exitCode: code ?? 0 });
       });
 
-      child.on('error', (err) => {
+      child.on("error", (err) => {
         clearTimeout(timer);
         resolve({ stdout, stderr: stderr + err.message, exitCode: -1 });
       });
@@ -129,7 +132,7 @@ export function createTestEnvironment(): TestEnvironment {
   };
 
   const readFile = (relativePath: string): string => {
-    return readFileSync(join(home, relativePath), 'utf-8');
+    return readFileSync(join(home, relativePath), "utf-8");
   };
 
   const readJson = <T = unknown>(relativePath: string): T => {
@@ -152,7 +155,7 @@ export function createTestEnvironment(): TestEnvironment {
  */
 export function checkTmuxAvailable(): boolean {
   try {
-    execSync('tmux -V', { stdio: 'pipe' });
+    execSync("tmux -V", { stdio: "pipe" });
     return true;
   } catch {
     return false;
@@ -164,7 +167,7 @@ export function checkTmuxAvailable(): boolean {
  */
 export function checkNodeVersion(): boolean {
   const version = process.version;
-  const major = parseInt(version.slice(1).split('.')[0], 10);
+  const major = Number.parseInt(version.slice(1).split(".")[0], 10);
   return major >= 22;
 }
 
@@ -172,18 +175,18 @@ export function checkNodeVersion(): boolean {
  * Get a free port for testing
  */
 export async function getFreePort(): Promise<number> {
-  const net = await import('net');
+  const net = await import("net");
   return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.unref();
-    server.on('error', reject);
+    server.on("error", reject);
     server.listen(0, () => {
       const addr = server.address();
-      if (addr && typeof addr === 'object') {
+      if (addr && typeof addr === "object") {
         const port = addr.port;
         server.close(() => resolve(port));
       } else {
-        reject(new Error('Failed to get port'));
+        reject(new Error("Failed to get port"));
       }
     });
   });

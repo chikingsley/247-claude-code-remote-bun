@@ -1,51 +1,64 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { useKeybarVisibility } from '@/hooks/useKeybarVisibility';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import { act, renderHook } from "@testing-library/react";
+import { useKeybarVisibility } from "@/hooks/useKeybarVisibility";
 
-const STORAGE_KEY = '247-keybar-visible';
+const STORAGE_KEY = "247-keybar-visible";
 
-describe('useKeybarVisibility hook', () => {
+describe("useKeybarVisibility hook", () => {
   let mockStorage: Record<string, string> = {};
+  let getItemSpy: ReturnType<typeof spyOn>;
+  let setItemSpy: ReturnType<typeof spyOn>;
+  let removeItemSpy: ReturnType<typeof spyOn>;
+  let clearSpy: ReturnType<typeof spyOn>;
 
   beforeEach(() => {
     // Mock localStorage
     mockStorage = {};
-    vi.spyOn(window.localStorage, 'getItem').mockImplementation((key: string) => {
-      return mockStorage[key] || null;
-    });
-    vi.spyOn(window.localStorage, 'setItem').mockImplementation((key: string, value: string) => {
-      mockStorage[key] = value;
-    });
-    vi.spyOn(window.localStorage, 'removeItem').mockImplementation((key: string) => {
-      delete mockStorage[key];
-    });
-    vi.spyOn(window.localStorage, 'clear').mockImplementation(() => {
+    getItemSpy = spyOn(window.localStorage, "getItem").mockImplementation(
+      (key: string) => {
+        return mockStorage[key] || null;
+      }
+    );
+    setItemSpy = spyOn(window.localStorage, "setItem").mockImplementation(
+      (key: string, value: string) => {
+        mockStorage[key] = value;
+      }
+    );
+    removeItemSpy = spyOn(window.localStorage, "removeItem").mockImplementation(
+      (key: string) => {
+        delete mockStorage[key];
+      }
+    );
+    clearSpy = spyOn(window.localStorage, "clear").mockImplementation(() => {
       mockStorage = {};
     });
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    getItemSpy.mockRestore();
+    setItemSpy.mockRestore();
+    removeItemSpy.mockRestore();
+    clearSpy.mockRestore();
   });
 
-  describe('initial state', () => {
-    it('should default to hidden (false) when no stored value', () => {
+  describe("initial state", () => {
+    it("should default to hidden (false) when no stored value", () => {
       const { result } = renderHook(() => useKeybarVisibility());
       expect(result.current.isVisible).toBe(false);
     });
 
-    it('should start with false before effect runs', () => {
+    it("should start with false before effect runs", () => {
       // Even with stored value, initial render is false before useEffect
-      mockStorage[STORAGE_KEY] = 'true';
+      mockStorage[STORAGE_KEY] = "true";
       const { result } = renderHook(() => useKeybarVisibility());
       // The hook starts with useState(false), then useEffect updates it
       // We can't reliably test the "before effect" state in React 18
       // So we just verify the hook works
-      expect(typeof result.current.isVisible).toBe('boolean');
+      expect(typeof result.current.isVisible).toBe("boolean");
     });
 
     it('should load stored "true" value on mount', async () => {
-      mockStorage[STORAGE_KEY] = 'true';
+      mockStorage[STORAGE_KEY] = "true";
       const { result, rerender } = renderHook(() => useKeybarVisibility());
 
       // Trigger rerender to allow useEffect to complete
@@ -56,8 +69,8 @@ describe('useKeybarVisibility hook', () => {
     });
   });
 
-  describe('toggle function', () => {
-    it('should toggle from false to true', () => {
+  describe("toggle function", () => {
+    it("should toggle from false to true", () => {
       const { result } = renderHook(() => useKeybarVisibility());
 
       expect(result.current.isVisible).toBe(false);
@@ -67,10 +80,10 @@ describe('useKeybarVisibility hook', () => {
       });
 
       expect(result.current.isVisible).toBe(true);
-      expect(mockStorage[STORAGE_KEY]).toBe('true');
+      expect(mockStorage[STORAGE_KEY]).toBe("true");
     });
 
-    it('should toggle from true to false', () => {
+    it("should toggle from true to false", () => {
       const { result } = renderHook(() => useKeybarVisibility());
 
       // First toggle to true
@@ -84,12 +97,12 @@ describe('useKeybarVisibility hook', () => {
         result.current.toggle();
       });
       expect(result.current.isVisible).toBe(false);
-      expect(mockStorage[STORAGE_KEY]).toBe('false');
+      expect(mockStorage[STORAGE_KEY]).toBe("false");
     });
   });
 
-  describe('show function', () => {
-    it('should set visibility to true', () => {
+  describe("show function", () => {
+    it("should set visibility to true", () => {
       const { result } = renderHook(() => useKeybarVisibility());
 
       act(() => {
@@ -97,10 +110,10 @@ describe('useKeybarVisibility hook', () => {
       });
 
       expect(result.current.isVisible).toBe(true);
-      expect(mockStorage[STORAGE_KEY]).toBe('true');
+      expect(mockStorage[STORAGE_KEY]).toBe("true");
     });
 
-    it('should persist true when called multiple times', () => {
+    it("should persist true when called multiple times", () => {
       const { result } = renderHook(() => useKeybarVisibility());
 
       act(() => {
@@ -109,12 +122,12 @@ describe('useKeybarVisibility hook', () => {
       });
 
       expect(result.current.isVisible).toBe(true);
-      expect(mockStorage[STORAGE_KEY]).toBe('true');
+      expect(mockStorage[STORAGE_KEY]).toBe("true");
     });
   });
 
-  describe('hide function', () => {
-    it('should set visibility to false', () => {
+  describe("hide function", () => {
+    it("should set visibility to false", () => {
       const { result } = renderHook(() => useKeybarVisibility());
 
       // First show
@@ -129,61 +142,63 @@ describe('useKeybarVisibility hook', () => {
       });
 
       expect(result.current.isVisible).toBe(false);
-      expect(mockStorage[STORAGE_KEY]).toBe('false');
+      expect(mockStorage[STORAGE_KEY]).toBe("false");
     });
   });
 
-  describe('localStorage persistence', () => {
-    it('should persist visibility state across hook instances', () => {
+  describe("localStorage persistence", () => {
+    it("should persist visibility state across hook instances", () => {
       const { result: hook1 } = renderHook(() => useKeybarVisibility());
 
       act(() => {
         hook1.current.show();
       });
 
-      expect(mockStorage[STORAGE_KEY]).toBe('true');
+      expect(mockStorage[STORAGE_KEY]).toBe("true");
 
       // Create a new hook instance - should read from storage
-      mockStorage[STORAGE_KEY] = 'true';
-      const { result: hook2, rerender } = renderHook(() => useKeybarVisibility());
+      mockStorage[STORAGE_KEY] = "true";
+      const { result: hook2, rerender } = renderHook(() =>
+        useKeybarVisibility()
+      );
       rerender();
 
       expect(hook2.current.isVisible).toBe(true);
     });
 
-    it('should persist true value on toggle from false', () => {
+    it("should persist true value on toggle from false", () => {
       const { result } = renderHook(() => useKeybarVisibility());
 
       act(() => {
         result.current.toggle();
       });
 
-      expect(mockStorage[STORAGE_KEY]).toBe('true');
+      expect(mockStorage[STORAGE_KEY]).toBe("true");
     });
 
-    it('should persist true value on show', () => {
+    it("should persist true value on show", () => {
       const { result } = renderHook(() => useKeybarVisibility());
 
       act(() => {
         result.current.show();
       });
 
-      expect(mockStorage[STORAGE_KEY]).toBe('true');
+      expect(mockStorage[STORAGE_KEY]).toBe("true");
     });
 
-    it('should persist false value on hide', () => {
+    it("should persist false value on hide", () => {
       const { result } = renderHook(() => useKeybarVisibility());
 
       act(() => {
         result.current.hide();
       });
 
-      expect(mockStorage[STORAGE_KEY]).toBe('false');
+      expect(mockStorage[STORAGE_KEY]).toBe("false");
     });
   });
 
-  describe('function stability', () => {
-    it('should return stable function references', () => {
+  describe("function stability", () => {
+    it("should return stable function references", () => {
       const { result, rerender } = renderHook(() => useKeybarVisibility());
 
       const { toggle: toggle1, show: show1, hide: hide1 } = result.current;

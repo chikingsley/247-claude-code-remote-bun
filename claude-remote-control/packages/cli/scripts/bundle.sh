@@ -15,11 +15,11 @@ echo "Monorepo root: $MONOREPO_ROOT"
 # Build shared package first (agent depends on it)
 echo "Building shared package..."
 cd "$MONOREPO_ROOT"
-pnpm --filter 247-shared build
+bun run --filter 247-shared build
 
 # Build agent
 echo "Building agent..."
-pnpm --filter 247-agent build
+bun run --filter 247-agent build
 
 # Copy hooks package
 echo "Copying hooks..."
@@ -44,7 +44,7 @@ if [ -d "../../apps/agent/dist" ]; then
   cp -r ../../apps/agent/dist/* agent/dist/
 else
   echo "Warning: Agent dist not found at ../../apps/agent/dist"
-  echo "Make sure to build the agent first: pnpm --filter 247-agent build"
+  echo "Make sure to build the agent first: bun run --filter 247-agent build"
 fi
 
 # Copy shared package (agent depends on it at runtime)

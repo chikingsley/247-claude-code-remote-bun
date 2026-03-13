@@ -1,12 +1,12 @@
-import { execSync } from 'child_process';
-import { platform } from 'os';
-import * as net from 'net';
+import { execSync } from "child_process";
+import * as net from "net";
+import { platform } from "os";
 
 export interface PrerequisiteCheck {
-  name: string;
-  status: 'ok' | 'warn' | 'error';
   message: string;
+  name: string;
   required: boolean;
+  status: "ok" | "warn" | "error";
 }
 
 /**
@@ -14,55 +14,65 @@ export interface PrerequisiteCheck {
  */
 export function checkBun(): PrerequisiteCheck {
   try {
-    const output = execSync('bun --version', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
+    const output = execSync("bun --version", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
     });
     return {
-      name: 'Bun',
-      status: 'ok',
+      name: "Bun",
+      status: "ok",
       message: output.trim(),
       required: true,
     };
   } catch {
     return {
-      name: 'Bun',
-      status: 'error',
-      message: 'Not installed. See: https://bun.sh',
+      name: "Bun",
+      status: "error",
+      message: "Not installed. See: https://bun.sh",
       required: true,
     };
   }
 }
 
 /**
- * Check if Node.js version is sufficient
+ * Check the CLI runtime (Node.js or Bun)
  */
-export function checkNodeVersion(): PrerequisiteCheck {
+export function checkRuntime(): PrerequisiteCheck {
+  if (typeof Bun !== "undefined") {
+    return {
+      name: "Runtime",
+      status: "ok",
+      message: `Bun ${Bun.version}`,
+      required: true,
+    };
+  }
+
+  // Running under Node.js
   const version = process.version;
-  const major = parseInt(version.slice(1).split('.')[0], 10);
+  const major = Number.parseInt(version.slice(1).split(".")[0], 10);
 
   if (major >= 22) {
     return {
-      name: 'Node.js',
-      status: 'ok',
-      message: version,
+      name: "Runtime",
+      status: "ok",
+      message: `Node.js ${version}`,
       required: true,
     };
   }
 
   if (major >= 18) {
     return {
-      name: 'Node.js',
-      status: 'warn',
-      message: `${version} (recommended: >=22)`,
+      name: "Runtime",
+      status: "warn",
+      message: `Node.js ${version} (recommended: >=22 or use Bun)`,
       required: true,
     };
   }
 
   return {
-    name: 'Node.js',
-    status: 'error',
-    message: `${version} (required: >=22)`,
+    name: "Runtime",
+    status: "error",
+    message: `Node.js ${version} (required: >=18, recommended: Bun or Node >=22)`,
     required: true,
   };
 }
@@ -72,20 +82,24 @@ export function checkNodeVersion(): PrerequisiteCheck {
  */
 export function checkTmux(): PrerequisiteCheck {
   try {
-    const output = execSync('tmux -V', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const output = execSync("tmux -V", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
     return {
-      name: 'tmux',
-      status: 'ok',
+      name: "tmux",
+      status: "ok",
       message: output.trim(),
       required: true,
     };
   } catch {
     const os = platform();
-    const installCmd = os === 'darwin' ? 'brew install tmux' : 'sudo apt install tmux';
+    const installCmd =
+      os === "darwin" ? "brew install tmux" : "sudo apt install tmux";
 
     return {
-      name: 'tmux',
-      status: 'error',
+      name: "tmux",
+      status: "error",
       message: `Not installed. Run: ${installCmd}`,
       required: true,
     };
@@ -98,27 +112,27 @@ export function checkTmux(): PrerequisiteCheck {
 export function checkPlatform(): PrerequisiteCheck {
   const os = platform();
 
-  if (os === 'darwin') {
+  if (os === "darwin") {
     return {
-      name: 'Platform',
-      status: 'ok',
-      message: 'macOS',
+      name: "Platform",
+      status: "ok",
+      message: "macOS",
       required: true,
     };
   }
 
-  if (os === 'linux') {
+  if (os === "linux") {
     return {
-      name: 'Platform',
-      status: 'ok',
-      message: 'Linux',
+      name: "Platform",
+      status: "ok",
+      message: "Linux",
       required: true,
     };
   }
 
   return {
-    name: 'Platform',
-    status: 'error',
+    name: "Platform",
+    status: "error",
     message: `Unsupported: ${os}. Only macOS and Linux are supported.`,
     required: true,
   };
@@ -131,43 +145,50 @@ export async function checkPort(port: number): Promise<PrerequisiteCheck> {
   return new Promise((resolve) => {
     const server = net.createServer();
 
-    server.once('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
+    server.once("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
         resolve({
           name: `Port ${port}`,
-          status: 'error',
-          message: 'Port is already in use',
+          status: "error",
+          message: "Port is already in use",
           required: false,
         });
       } else {
         resolve({
           name: `Port ${port}`,
-          status: 'warn',
+          status: "warn",
           message: `Could not check: ${err.message}`,
           required: false,
         });
       }
     });
 
-    server.once('listening', () => {
+    server.once("listening", () => {
       server.close();
       resolve({
         name: `Port ${port}`,
-        status: 'ok',
-        message: 'Available',
+        status: "ok",
+        message: "Available",
         required: false,
       });
     });
 
-    server.listen(port, '127.0.0.1');
+    server.listen(port, "127.0.0.1");
   });
 }
 
 /**
  * Run all prerequisite checks
  */
-export async function checkAllPrerequisites(port?: number): Promise<PrerequisiteCheck[]> {
-  const checks: PrerequisiteCheck[] = [checkPlatform(), checkNodeVersion(), checkTmux(), checkBun()];
+export async function checkAllPrerequisites(
+  port?: number
+): Promise<PrerequisiteCheck[]> {
+  const checks: PrerequisiteCheck[] = [
+    checkPlatform(),
+    checkRuntime(),
+    checkTmux(),
+    checkBun(),
+  ];
 
   if (port) {
     checks.push(await checkPort(port));
@@ -180,8 +201,5 @@ export async function checkAllPrerequisites(port?: number): Promise<Prerequisite
  * Check if all required prerequisites are met
  */
 export function allRequiredMet(checks: PrerequisiteCheck[]): boolean {
-  return checks.filter((c) => c.required).every((c) => c.status !== 'error');
+  return checks.filter((c) => c.required).every((c) => c.status !== "error");
 }
-
-// Aliases for backwards compatibility
-export const checkNode = checkNodeVersion;

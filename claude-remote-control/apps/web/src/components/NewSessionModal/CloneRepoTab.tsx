@@ -1,13 +1,15 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Loader2, GitBranch, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AlertCircle, GitBranch, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface CloneRepoTabProps {
-  onClone: (url: string) => Promise<{ success: boolean; project?: string; error?: string }>;
-  loading: boolean;
   error: string | null;
+  loading: boolean;
+  onClone: (
+    url: string
+  ) => Promise<{ success: boolean; project?: string; error?: string }>;
 }
 
 // Validate git URL format (https:// or git@)
@@ -18,7 +20,7 @@ function isValidGitUrl(url: string): boolean {
 }
 
 export function CloneRepoTab({ onClone, loading, error }: CloneRepoTabProps) {
-  const [repoUrl, setRepoUrl] = useState('');
+  const [repoUrl, setRepoUrl] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleUrlChange = (value: string) => {
@@ -28,12 +30,12 @@ export function CloneRepoTab({ onClone, loading, error }: CloneRepoTabProps) {
 
   const handleClone = async () => {
     if (!repoUrl.trim()) {
-      setValidationError('Please enter a repository URL');
+      setValidationError("Please enter a repository URL");
       return;
     }
 
     if (!isValidGitUrl(repoUrl.trim())) {
-      setValidationError('Invalid URL format. Use https://... or git@...');
+      setValidationError("Invalid URL format. Use https://... or git@...");
       return;
     }
 
@@ -45,53 +47,55 @@ export function CloneRepoTab({ onClone, loading, error }: CloneRepoTabProps) {
   return (
     <div className="space-y-4">
       <div>
-        <span className="mb-3 block text-sm font-medium text-white/60">Clone Repository</span>
+        <span className="mb-3 block font-medium text-sm text-white/60">
+          Clone Repository
+        </span>
         <div className="relative">
-          <GitBranch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+          <GitBranch className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-white/30" />
           <input
-            type="text"
-            value={repoUrl}
+            className={cn(
+              "w-full rounded-xl py-3 pr-4 pl-10",
+              "border bg-white/5",
+              displayError
+                ? "border-red-500/50 focus:border-red-500/70"
+                : "border-white/10 focus:border-white/20",
+              "text-white placeholder:text-white/30",
+              "focus:outline-none",
+              "transition-colors",
+              loading && "opacity-50"
+            )}
+            disabled={loading}
             onChange={(e) => handleUrlChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !loading) {
+              if (e.key === "Enter" && !loading) {
                 handleClone();
               }
             }}
             placeholder="https://github.com/user/repo"
-            disabled={loading}
-            className={cn(
-              'w-full rounded-xl py-3 pl-10 pr-4',
-              'border bg-white/5',
-              displayError
-                ? 'border-red-500/50 focus:border-red-500/70'
-                : 'border-white/10 focus:border-white/20',
-              'text-white placeholder:text-white/30',
-              'focus:outline-none',
-              'transition-colors',
-              loading && 'opacity-50'
-            )}
+            type="text"
+            value={repoUrl}
           />
         </div>
       </div>
 
       {displayError && (
-        <div className="flex items-center gap-2 text-sm text-red-400">
+        <div className="flex items-center gap-2 text-red-400 text-sm">
           <AlertCircle className="h-4 w-4" />
           {displayError}
         </div>
       )}
 
       <button
-        onClick={handleClone}
-        disabled={loading || !repoUrl.trim()}
         className={cn(
-          'w-full rounded-xl px-4 py-3 font-medium',
-          'flex items-center justify-center gap-2',
-          'transition-all',
+          "w-full rounded-xl px-4 py-3 font-medium",
+          "flex items-center justify-center gap-2",
+          "transition-all",
           loading || !repoUrl.trim()
-            ? 'cursor-not-allowed bg-white/5 text-white/30'
-            : 'bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-400 hover:to-amber-400'
+            ? "cursor-not-allowed bg-white/5 text-white/30"
+            : "bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-400 hover:to-amber-400"
         )}
+        disabled={loading || !repoUrl.trim()}
+        onClick={handleClone}
       >
         {loading ? (
           <>
@@ -106,7 +110,7 @@ export function CloneRepoTab({ onClone, loading, error }: CloneRepoTabProps) {
         )}
       </button>
 
-      <p className="text-center text-xs text-white/30">
+      <p className="text-center text-white/30 text-xs">
         Supports GitHub, GitLab, Bitbucket, and other Git providers
       </p>
     </div>

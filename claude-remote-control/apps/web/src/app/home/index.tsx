@@ -1,51 +1,69 @@
-'use client';
+"use client";
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Zap, Loader2, ArrowDown } from 'lucide-react';
-import { SessionView } from '@/components/SessionView';
-import { NewSessionModal } from '@/components/NewSessionModal';
-import { AgentConnectionSettings } from '@/components/AgentConnectionSettings';
-import { UnifiedAgentManager } from '@/components/UnifiedAgentManager';
-import { EditAgentModal } from '@/components/EditAgentModal';
-import { MobileStatusStrip } from '@/components/mobile';
-import { InstallBanner } from '@/components/InstallBanner';
-import { SlideOverPanel } from '@/components/ui/SlideOverPanel';
-import { ConnectionGuide } from '@/components/ConnectionGuide';
-import { LoadingView } from './LoadingView';
-import { NoConnectionView } from './NoConnectionView';
-import { useHomeState } from './useHomeState';
-import { useIsMobile } from '@/hooks/useMediaQuery';
-import { useViewportHeight } from '@/hooks/useViewportHeight';
-import { usePullToRefresh } from '@/hooks/usePullToRefresh';
-import { useNotificationDeeplink } from '@/hooks/useNotificationDeeplink';
-import { useInAppNotifications } from '@/hooks/useInAppNotifications';
-import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
-import { useSoundNotifications } from '@/hooks/useSoundNotifications';
-import { useSessionActions } from '@/hooks/useSessionActions';
-import { NotificationSettingsPanel } from '@/components/NotificationSettingsPanel';
-import { useSessionPolling, type SessionWithMachine } from '@/contexts/SessionPollingContext';
+import { ArrowDown, Loader2, Zap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AgentConnectionSettings } from "@/components/AgentConnectionSettings";
+import { ConnectionGuide } from "@/components/ConnectionGuide";
+import { EditAgentModal } from "@/components/EditAgentModal";
+import { InstallBanner } from "@/components/InstallBanner";
 // New layout components
-import { AppShell } from '@/components/layout';
-import type { SidebarMachine, SidebarProject } from '@/components/layout/Sidebar';
-import type { SessionListItem } from '@/components/layout/SessionListPanel';
-import type { SessionStatus } from '@/components/ui/status-indicator';
+import { AppShell } from "@/components/layout";
+import type { SessionListItem } from "@/components/layout/SessionListPanel";
+import type {
+  SidebarMachine,
+  SidebarProject,
+} from "@/components/layout/Sidebar";
+import { MobileStatusStrip } from "@/components/mobile";
+import { NewSessionModal } from "@/components/NewSessionModal";
+import { NotificationSettingsPanel } from "@/components/NotificationSettingsPanel";
+import { SessionView } from "@/components/SessionView";
+import { UnifiedAgentManager } from "@/components/UnifiedAgentManager";
+import { SlideOverPanel } from "@/components/ui/SlideOverPanel";
+import type { SessionStatus } from "@/components/ui/status-indicator";
+import {
+  type SessionWithMachine,
+  useSessionPolling,
+} from "@/contexts/SessionPollingContext";
+import { useInAppNotifications } from "@/hooks/useInAppNotifications";
+import { useIsMobile } from "@/hooks/useMediaQuery";
+import { useNotificationDeeplink } from "@/hooks/useNotificationDeeplink";
+import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { useSessionActions } from "@/hooks/useSessionActions";
+import { useSoundNotifications } from "@/hooks/useSoundNotifications";
+import { useViewportHeight } from "@/hooks/useViewportHeight";
+import { LoadingView } from "./LoadingView";
+import { NoConnectionView } from "./NoConnectionView";
+import { useHomeState } from "./useHomeState";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Helper Functions
 // ═══════════════════════════════════════════════════════════════════════════
 
-function mapMachineType(method: string): SidebarMachine['type'] {
-  if (method === 'localhost' || method === 'local') return 'localhost';
-  if (method === 'tailscale') return 'tailscale';
-  if (method === 'fly') return 'fly';
-  return 'custom';
+function mapMachineType(method: string): SidebarMachine["type"] {
+  if (method === "localhost" || method === "local") {
+    return "localhost";
+  }
+  if (method === "tailscale") {
+    return "tailscale";
+  }
+  if (method === "fly") {
+    return "fly";
+  }
+  return "custom";
 }
 
 function mapSessionStatus(session: SessionWithMachine): SessionStatus {
-  if (session.status === 'working') return 'working';
-  if (session.status === 'needs_attention') return 'needs_attention';
-  if (session.status === 'init') return 'init';
-  return 'idle';
+  if (session.status === "working") {
+    return "working";
+  }
+  if (session.status === "needs_attention") {
+    return "needs_attention";
+  }
+  if (session.status === "init") {
+    return "init";
+  }
+  return "idle";
 }
 
 export function HomeContent() {
@@ -59,7 +77,9 @@ export function HomeContent() {
 
   // Notification preferences and sound
   const { soundEnabled, getSelectedSoundPath } = useNotificationPreferences();
-  const { playSound } = useSoundNotifications({ soundPath: getSelectedSoundPath() });
+  const { playSound } = useSoundNotifications({
+    soundPath: getSelectedSoundPath(),
+  });
 
   // Handle in-app notifications when app is in foreground (from push notifications)
   useInAppNotifications({
@@ -97,11 +117,16 @@ export function HomeContent() {
   } = useHomeState();
 
   // Shared session actions hook (used by both desktop SessionListPanel and mobile MobileStatusStrip)
-  const { killSession, archiveSession, acknowledgeSession } = useSessionActions(agentConnections);
+  const { killSession, archiveSession, acknowledgeSession } =
+    useSessionActions(agentConnections);
 
   // Get session count per agent for the header
-  const { sessionsByMachine, isWsConnected, refreshMachine, setOnNeedsAttention } =
-    useSessionPolling();
+  const {
+    sessionsByMachine,
+    isWsConnected,
+    refreshMachine,
+    setOnNeedsAttention,
+  } = useSessionPolling();
 
   // Register sound notification callback for needs_attention status changes
   useEffect(() => {
@@ -118,10 +143,13 @@ export function HomeContent() {
   // Slide-over panel states
   const [guideOpen, setGuideOpen] = useState(false);
   const [unifiedManagerOpen, setUnifiedManagerOpen] = useState(false);
-  const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
+  const [notificationSettingsOpen, setNotificationSettingsOpen] =
+    useState(false);
 
   // Edit machine modal state (for sidebar context menu)
-  const [editingMachine, setEditingMachine] = useState<SidebarMachine | null>(null);
+  const [editingMachine, setEditingMachine] = useState<SidebarMachine | null>(
+    null
+  );
 
   // Filter states for sidebar
   const [machineFilter, setMachineFilter] = useState<string | null>(null);
@@ -141,7 +169,11 @@ export function HomeContent() {
           id: conn.id,
           name: conn.name,
           type: mapMachineType(conn.method),
-          status: machineData?.error ? 'offline' : wsConnected ? 'online' : 'connecting',
+          status: machineData?.error
+            ? "offline"
+            : wsConnected
+              ? "online"
+              : "connecting",
           sessionCount: machineData?.sessions?.length ?? 0,
           color: conn.color,
         };
@@ -211,9 +243,12 @@ export function HomeContent() {
   }, []);
 
   // Handler for editing machine from sidebar
-  const handleEditMachineFromSidebar = useCallback((machine: SidebarMachine) => {
-    setEditingMachine(machine);
-  }, []);
+  const handleEditMachineFromSidebar = useCallback(
+    (machine: SidebarMachine) => {
+      setEditingMachine(machine);
+    },
+    []
+  );
 
   // Handler for removing machine from sidebar
   const handleRemoveMachineFromSidebar = useCallback(
@@ -232,7 +267,7 @@ export function HomeContent() {
   const handleSelectSessionFromList = useCallback(
     (item: SessionListItem) => {
       // Auto-acknowledge if needs_attention (replicate HomeSidebar behavior)
-      if (item.status === 'needs_attention' && item.machineId) {
+      if (item.status === "needs_attention" && item.machineId) {
         acknowledgeSession(item.machineId, item.name);
       }
       handleSelectSession(item.machineId!, item.name, item.project);
@@ -263,20 +298,26 @@ export function HomeContent() {
   );
 
   // Create agent status and session count maps for UnifiedAgentManager
-  const agentStatuses = new Map<string, 'online' | 'offline' | 'connecting'>();
+  const agentStatuses = new Map<string, "online" | "offline" | "connecting">();
   const sessionCountsMap = new Map<string, number>();
   agentConnections.forEach((conn) => {
     const machineData = sessionsByMachine.get(conn.id);
     const wsConnected = isWsConnected(conn.id);
     agentStatuses.set(
       conn.id,
-      machineData?.error ? 'offline' : wsConnected ? 'online' : 'connecting'
+      machineData?.error ? "offline" : wsConnected ? "online" : "connecting"
     );
     sessionCountsMap.set(conn.id, machineData?.sessions?.length ?? 0);
   });
 
   // Pull-to-refresh for mobile PWA
-  const { pullDistance, isRefreshing, isPulling, isThresholdReached, handlers } = usePullToRefresh({
+  const {
+    pullDistance,
+    isRefreshing,
+    isPulling,
+    isThresholdReached,
+    handlers,
+  } = usePullToRefresh({
     onRefresh: async () => {
       if (currentMachine) {
         await refreshMachine(currentMachine.id);
@@ -294,8 +335,8 @@ export function HomeContent() {
     return (
       <NoConnectionView
         modalOpen={connectionModalOpen}
-        onModalOpenChange={setConnectionModalOpen}
         onConnectionSaved={handleConnectionSaved}
+        onModalOpenChange={setConnectionModalOpen}
       />
     );
   }
@@ -312,44 +353,48 @@ export function HomeContent() {
 
   const modals = (
     <>
-      {/* Connection Settings Modal (legacy fallback) */}
+      {/* Connection Settings Modal */}
       <AgentConnectionSettings
-        open={connectionModalOpen}
+        hasConnection={!!agentConnection}
+        onDisconnect={handleConnectionCleared}
         onOpenChange={setConnectionModalOpen}
         onSave={handleConnectionSaved}
-        onDisconnect={handleConnectionCleared}
-        hasConnection={!!agentConnection}
+        open={connectionModalOpen}
       />
 
       {/* Unified Agent Manager */}
       <UnifiedAgentManager
-        open={unifiedManagerOpen}
-        onClose={() => setUnifiedManagerOpen(false)}
-        connectedAgents={agentConnections}
         agentStatuses={agentStatuses}
-        sessionCounts={sessionCountsMap}
-        onDisconnectAgent={handleConnectionRemoved}
+        connectedAgents={agentConnections}
+        onClose={() => setUnifiedManagerOpen(false)}
         onConnectNewAgent={handleConnectionSaved}
+        onDisconnectAgent={handleConnectionRemoved}
         onEditAgent={handleConnectionEdited}
+        open={unifiedManagerOpen}
+        sessionCounts={sessionCountsMap}
       />
 
       {/* New Session Modal */}
       <NewSessionModal
-        open={newSessionOpen}
-        onOpenChange={setNewSessionOpen}
         machines={machines}
+        onOpenChange={setNewSessionOpen}
         onStartSession={handleStartSession}
+        open={newSessionOpen}
       />
 
       {/* Guide Slide-Over Panel */}
-      <SlideOverPanel open={guideOpen} onClose={() => setGuideOpen(false)} title="Connection Guide">
+      <SlideOverPanel
+        onClose={() => setGuideOpen(false)}
+        open={guideOpen}
+        title="Connection Guide"
+      >
         <ConnectionGuide />
       </SlideOverPanel>
 
       {/* Notification Settings Slide-Over Panel */}
       <SlideOverPanel
-        open={notificationSettingsOpen}
         onClose={() => setNotificationSettingsOpen(false)}
+        open={notificationSettingsOpen}
         title="Notification Settings"
       >
         <NotificationSettingsPanel />
@@ -358,15 +403,15 @@ export function HomeContent() {
       {/* Edit Machine Modal - triggered from Sidebar */}
       {editingMachine && (
         <EditAgentModal
-          open={!!editingMachine}
-          onClose={() => setEditingMachine(null)}
+          agentColor={editingMachine.color}
           agentId={editingMachine.id}
           agentName={editingMachine.name}
-          agentColor={editingMachine.color}
+          onClose={() => setEditingMachine(null)}
           onSave={async (id, data) => {
             await handleConnectionEdited(id, data);
             setEditingMachine(null);
           }}
+          open={!!editingMachine}
         />
       )}
     </>
@@ -381,43 +426,43 @@ export function HomeContent() {
       <>
         <AppShell
           // Sidebar props
-          machines={sidebarMachines}
-          projects={sidebarProjects}
-          selectedMachineId={machineFilter}
-          onSelectMachine={handleSelectMachine}
-          onAddMachine={() => setUnifiedManagerOpen(true)}
-          selectedProjectName={projectFilter}
-          onSelectProject={handleSelectProject}
-          onEditMachine={handleEditMachineFromSidebar}
-          onRemoveMachine={handleRemoveMachineFromSidebar}
           canRemoveMachine={canRemoveMachine}
-          // Session list props
-          sessions={filteredSessionListItems}
-          selectedSessionId={selectedSessionId}
-          onSelectSession={handleSelectSessionFromList}
-          onNewSession={() => setNewSessionOpen(true)}
-          onKillSession={handleKillSessionFromList}
-          onArchiveSession={handleArchiveSessionFromList}
-          // Header props
           currentMachineName={currentMachine?.name}
           currentProjectName={selectedSession?.project}
           isFullscreen={isFullscreen}
-          onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+          machines={sidebarMachines}
+          onAddMachine={() => setUnifiedManagerOpen(true)}
+          onArchiveSession={handleArchiveSessionFromList}
+          onEditMachine={handleEditMachineFromSidebar}
+          onKillSession={handleKillSessionFromList}
+          onNewSession={() => setNewSessionOpen(true)}
+          // Session list props
           onOpenNotificationSettings={() => setNotificationSettingsOpen(true)}
+          onRemoveMachine={handleRemoveMachineFromSidebar}
+          onSelectMachine={handleSelectMachine}
+          onSelectProject={handleSelectProject}
+          onSelectSession={handleSelectSessionFromList}
+          onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
+          // Header props
+          projects={sidebarProjects}
+          selectedMachineId={machineFilter}
+          selectedProjectName={projectFilter}
+          selectedSessionId={selectedSessionId}
+          sessions={filteredSessionListItems}
         >
           {/* Main content */}
           {selectedSession ? (
             <SessionView
-              key={`${selectedSession.machineId}-${selectedSession.project}-${selectedSession.sessionName.endsWith('--new') ? 'new' : selectedSession.sessionName}`}
-              sessionName={selectedSession.sessionName}
-              project={selectedSession.project}
               agentUrl={getAgentUrl()}
-              sessionInfo={getSelectedSessionInfo()}
               environmentId={selectedSession.environmentId}
-              planningProjectId={selectedSession.planningProjectId}
+              isMobile={false}
+              key={`${selectedSession.machineId}-${selectedSession.project}-${selectedSession.sessionName.endsWith("--new") ? "new" : selectedSession.sessionName}`}
               onMenuClick={handleMenuClick}
               onSessionCreated={handleSessionCreated}
-              isMobile={false}
+              planningProjectId={selectedSession.planningProjectId}
+              project={selectedSession.project}
+              sessionInfo={getSelectedSessionInfo()}
+              sessionName={selectedSession.sessionName}
             />
           ) : (
             <div className="flex flex-1 items-center justify-center">
@@ -425,7 +470,9 @@ export function HomeContent() {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/10 bg-orange-500/5">
                   <Zap className="h-8 w-8 text-orange-500/30" />
                 </div>
-                <p className="text-sm text-white/40">Select a session or create a new one</p>
+                <p className="text-sm text-white/40">
+                  Select a session or create a new one
+                </p>
               </div>
             </div>
           )}
@@ -441,30 +488,30 @@ export function HomeContent() {
 
   return (
     <main
-      className="h-screen-safe flex flex-col overflow-hidden bg-[#0a0a10]"
-      onTouchStart={handlers.onTouchStart}
-      onTouchMove={handlers.onTouchMove}
+      className="flex h-screen-safe flex-col overflow-hidden bg-[#0a0a10]"
       onTouchEnd={handlers.onTouchEnd}
+      onTouchMove={handlers.onTouchMove}
+      onTouchStart={handlers.onTouchStart}
     >
       {/* Pull-to-refresh indicator */}
       {(isPulling || isRefreshing) && (
         <div
-          className="pointer-events-none fixed left-0 right-0 z-50 flex justify-center"
+          className="pointer-events-none fixed right-0 left-0 z-50 flex justify-center"
           style={{
             top: 0,
             transform: `translateY(${Math.min(pullDistance - 30, 50)}px)`,
             opacity: Math.min(pullDistance / 40, 1),
-            transition: isRefreshing ? 'none' : 'opacity 0.1s ease-out',
+            transition: isRefreshing ? "none" : "opacity 0.1s ease-out",
           }}
         >
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full ${
               isThresholdReached || isRefreshing
-                ? 'bg-orange-500/20 text-orange-400'
-                : 'bg-white/10 text-white/60'
+                ? "bg-orange-500/20 text-orange-400"
+                : "bg-white/10 text-white/60"
             }`}
             style={{
-              transition: 'background-color 0.15s, color 0.15s',
+              transition: "background-color 0.15s, color 0.15s",
             }}
           >
             {isRefreshing ? (
@@ -473,7 +520,9 @@ export function HomeContent() {
               <ArrowDown
                 className="h-5 w-5 transition-transform duration-150"
                 style={{
-                  transform: isThresholdReached ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transform: isThresholdReached
+                    ? "rotate(180deg)"
+                    : "rotate(0deg)",
                 }}
               />
             )}
@@ -483,38 +532,42 @@ export function HomeContent() {
 
       {/* Mobile Status Strip */}
       <MobileStatusStrip
-        sessions={allSessions}
         currentSession={selectedSession}
-        onSelectSession={handleSelectSession}
-        onNewSession={() => setNewSessionOpen(true)}
-        onConnectionSettingsClick={() => setUnifiedManagerOpen(true)}
-        onSessionKilled={handleSessionKilled}
-        // Session actions from shared hook
-        onKillSession={killSession}
-        onArchiveSession={archiveSession}
-        // Filtering
-        machines={sidebarMachines.map((m) => ({ id: m.id, name: m.name, color: m.color }))}
         machineFilter={machineFilter}
+        machines={sidebarMachines.map((m) => ({
+          id: m.id,
+          name: m.name,
+          color: m.color,
+        }))}
+        onArchiveSession={archiveSession}
+        onConnectionSettingsClick={() => setUnifiedManagerOpen(true)}
+        onKillSession={killSession}
+        // Session actions from shared hook
+        onNewSession={() => setNewSessionOpen(true)}
         onSelectMachine={(id) => setMachineFilter(id)}
-        projects={sidebarProjects.map((p) => p.name)}
-        projectFilter={projectFilter}
+        // Filtering
         onSelectProject={(name) => setProjectFilter(name)}
+        onSelectSession={handleSelectSession}
+        onSessionKilled={handleSessionKilled}
+        projectFilter={projectFilter}
+        projects={sidebarProjects.map((p) => p.name)}
+        sessions={allSessions}
       />
 
       {/* Main Content Area */}
       <div className="relative flex flex-1 flex-col overflow-hidden">
         {selectedSession ? (
           <SessionView
-            key={`${selectedSession.machineId}-${selectedSession.project}-${selectedSession.sessionName.endsWith('--new') ? 'new' : selectedSession.sessionName}`}
-            sessionName={selectedSession.sessionName}
-            project={selectedSession.project}
             agentUrl={getAgentUrl()}
-            sessionInfo={getSelectedSessionInfo()}
             environmentId={selectedSession.environmentId}
-            planningProjectId={selectedSession.planningProjectId}
+            isMobile={true}
+            key={`${selectedSession.machineId}-${selectedSession.project}-${selectedSession.sessionName.endsWith("--new") ? "new" : selectedSession.sessionName}`}
             onMenuClick={handleMenuClick}
             onSessionCreated={handleSessionCreated}
-            isMobile={true}
+            planningProjectId={selectedSession.planningProjectId}
+            project={selectedSession.project}
+            sessionInfo={getSelectedSessionInfo()}
+            sessionName={selectedSession.sessionName}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center">
@@ -522,7 +575,9 @@ export function HomeContent() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-500/10 bg-orange-500/5">
                 <Zap className="h-8 w-8 text-orange-500/30" />
               </div>
-              <p className="text-sm text-white/40">Select a session or create a new one</p>
+              <p className="text-sm text-white/40">
+                Select a session or create a new one
+              </p>
             </div>
           </div>
         )}

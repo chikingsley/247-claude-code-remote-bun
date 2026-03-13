@@ -1,41 +1,48 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import { execSync } from 'child_process';
+import { execSync } from "child_process";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 export interface InitScriptOptions {
-  sessionName: string;
-  projectName: string;
   customEnvVars?: Record<string, string>;
+  projectName: string;
+  sessionName: string;
   /** Shell to use for init script content (prompt, history config). Always 'bash' since bash sources the file. */
-  shell?: 'bash' | 'zsh';
+  shell?: "bash" | "zsh";
   /** Shell to exec into at the end for the interactive session. Defaults to detected user shell. */
-  targetShell?: 'bash' | 'zsh';
+  targetShell?: "bash" | "zsh";
 }
 
 /**
  * Detects the user's default shell from environment or /etc/passwd.
  * Falls back to bash if detection fails.
  */
-export function detectUserShell(): 'bash' | 'zsh' {
+export function detectUserShell(): "bash" | "zsh" {
   // First try environment variable
-  const envShell = process.env.SHELL || '';
-  if (envShell.includes('zsh')) return 'zsh';
-  if (envShell.includes('bash')) return 'bash';
+  const envShell = process.env.SHELL || "";
+  if (envShell.includes("zsh")) {
+    return "zsh";
+  }
+  if (envShell.includes("bash")) {
+    return "bash";
+  }
 
   // If SHELL is not set (e.g., running as a service), read from /etc/passwd
   try {
-    const user = process.env.USER || process.env.LOGNAME || os.userInfo().username;
+    const user =
+      process.env.USER || process.env.LOGNAME || os.userInfo().username;
     const result = execSync(`getent passwd ${user} | cut -d: -f7`, {
-      encoding: 'utf-8',
+      encoding: "utf-8",
       timeout: 1000,
     }).trim();
-    if (result.includes('zsh')) return 'zsh';
+    if (result.includes("zsh")) {
+      return "zsh";
+    }
   } catch {
     // Ignore errors, fall back to bash
   }
 
-  return 'bash';
+  return "bash";
 }
 
 /**
@@ -47,7 +54,7 @@ export function generateInitScript(options: InitScriptOptions): string {
     sessionName,
     projectName,
     customEnvVars = {},
-    shell = 'bash',
+    shell = "bash",
     targetShell = detectUserShell(),
   } = options;
 
@@ -57,20 +64,20 @@ export function generateInitScript(options: InitScriptOptions): string {
   // Build custom env var exports
   const customExports: string[] = [];
   for (const [key, value] of Object.entries(customEnvVars)) {
-    if (value && value.trim() !== '') {
+    if (value && value.trim() !== "") {
       customExports.push(`export ${key}="${escapeForBash(value)}"`);
     }
   }
 
   // Colors matching xterm theme (256-color codes)
   const colors = {
-    orange: '208', // #f97316 - accent
-    green: '114', // #4ade80
-    cyan: '80', // #22d3ee
-    muted: '245', // #52525b
-    magenta: '141', // #c084fc - git branch
-    red: '203', // #f87171 - error
-    white: '255', // #e4e4e7
+    orange: "208", // #f97316 - accent
+    green: "114", // #4ade80
+    cyan: "80", // #22d3ee
+    muted: "245", // #52525b
+    magenta: "141", // #c084fc - git branch
+    red: "203", // #f87171 - error
+    white: "255", // #e4e4e7
   };
 
   // tmux status bar config
@@ -159,7 +166,7 @@ _247_precmd() {
 precmd_functions+=(_247_precmd)`;
 
   const historyConfig =
-    shell === 'zsh'
+    shell === "zsh"
       ? `
 # History configuration (zsh)
 HISTSIZE=50000
@@ -459,7 +466,7 @@ printf "  \${C_MUTED}Tips:   \${C_RESET} \${C_DIM}Type\${C_RESET} \${C_ORANGE}cl
 printf "  \${C_MUTED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\${C_RESET}\\n"
 printf "\\n"`;
 
-  const promptConfig = shell === 'zsh' ? zshPromptConfig : bashPromptConfig;
+  const promptConfig = shell === "zsh" ? zshPromptConfig : bashPromptConfig;
 
   return `#!/bin/bash
 # 247 Terminal Init Script - Auto-generated
@@ -480,7 +487,7 @@ export TERM="xterm-256color"
 export COLORTERM="truecolor"
 export LANG="\${LANG:-en_US.UTF-8}"
 export LC_ALL="\${LC_ALL:-en_US.UTF-8}"
-${customExports.length > 0 ? customExports.join('\n') : ''}
+${customExports.length > 0 ? customExports.join("\n") : ""}
 
 # ═══════════════════════════════════════════════════════════════
 # SECTION 2: tmux Configuration
@@ -522,10 +529,10 @@ exec ${targetShell} -i
  */
 function escapeForBash(value: string): string {
   return value
-    .replace(/\\/g, '\\\\')
+    .replace(/\\/g, "\\\\")
     .replace(/"/g, '\\"')
-    .replace(/\$/g, '\\$')
-    .replace(/`/g, '\\`');
+    .replace(/\$/g, "\\$")
+    .replace(/`/g, "\\`");
 }
 
 /**

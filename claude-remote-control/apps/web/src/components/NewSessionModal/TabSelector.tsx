@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { cn } from '@/lib/utils';
-import { FolderOpen, GitBranch } from 'lucide-react';
+import { FolderOpen, GitBranch } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export type TabType = 'existing' | 'clone';
+export type TabType = "existing" | "clone";
 
 interface TabSelectorProps {
   activeTab: TabType;
@@ -12,8 +12,8 @@ interface TabSelectorProps {
 
 export function TabSelector({ activeTab, onTabChange }: TabSelectorProps) {
   const tabs = [
-    { id: 'existing' as const, label: 'Existing', icon: FolderOpen },
-    { id: 'clone' as const, label: 'Clone', icon: GitBranch },
+    { id: "existing" as const, label: "Existing", icon: FolderOpen },
+    { id: "clone" as const, label: "Clone", icon: GitBranch },
   ];
 
   return (
@@ -24,15 +24,15 @@ export function TabSelector({ activeTab, onTabChange }: TabSelectorProps) {
 
         return (
           <button
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 font-medium text-sm",
+              "transition-all",
+              isActive
+                ? "bg-white/10 text-white"
+                : "text-white/50 hover:bg-white/5 hover:text-white/70"
+            )}
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={cn(
-              'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium',
-              'transition-all',
-              isActive
-                ? 'bg-white/10 text-white'
-                : 'text-white/50 hover:bg-white/5 hover:text-white/70'
-            )}
           >
             <Icon className="h-4 w-4" />
             {tab.label}

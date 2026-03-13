@@ -1,37 +1,39 @@
 /**
- * Main server entry point - Express HTTP server with WebSocket support.
+ * Main server entry point — Bun.serve() with native WebSocket support.
  * Routes and handlers are split into separate modules for maintainability.
  */
 
-import express from 'express';
-import cors from 'cors';
-import { WebSocketServer } from 'ws';
-import { createServer as createHttpServer } from 'http';
-import { execSync } from 'child_process';
-import { initDatabase, closeDatabase } from './db/index.js';
-import * as sessionsDb from './db/sessions.js';
+import { execSync } from "child_process";
+import { closeDatabase, initDatabase } from "./db/index.js";
+import * as sessionsDb from "./db/sessions.js";
+import { handleCORS, json, matchRoute, type Route, route } from "./router.js";
 
 // Routes
 import {
-  createProjectRoutes,
-  createSessionRoutes,
-  createPairRoutes,
-  createHooksRoutes,
-} from './routes/index.js';
+  hooksRoutes,
+  pairRoutes,
+  projectRoutes,
+  sessionRoutes,
+} from "./routes/index.js";
 
 // WebSocket
-import { handleTerminalConnection, handleSessionsConnection } from './websocket-handlers.js';
+import {
+  prepareTerminalUpgrade,
+  type WSData,
+  websocketHandlers,
+} from "./websocket-handlers.js";
 
 // Utility to get active tmux sessions
 function getActiveTmuxSessions(): Set<string> {
   try {
-    const output = execSync('tmux list-sessions -F "#{session_name}" 2>/dev/null', {
-      encoding: 'utf-8',
-    });
+    const output = execSync(
+      'tmux list-sessions -F "#{session_name}" 2>/dev/null',
+      { encoding: "utf-8" }
+    );
     return new Set(
       output
         .trim()
-        .split('\n')
+        .split("\n")
         .filter((s: string) => s)
     );
   } catch {
@@ -39,14 +41,16 @@ function getActiveTmuxSessions(): Set<string> {
   }
 }
 
-export async function createServer() {
-  const app = express();
-  app.use(cors());
-  app.use(express.json());
+// Build route table once
+const routes: Route[] = [
+  route("GET", "/health", () => json({ status: "ok", timestamp: Date.now() })),
+  ...projectRoutes(),
+  ...sessionRoutes(),
+  ...pairRoutes(),
+  ...hooksRoutes(),
+];
 
-  const server = createHttpServer(app);
-  const wss = new WebSocketServer({ noServer: true });
-
+export function createServer(port = 0) {
   // Initialize SQLite database
   initDatabase();
 
@@ -58,53 +62,62 @@ export async function createServer() {
   const dbSessions = sessionsDb.getAllSessions();
   console.log(`[DB] Loaded ${dbSessions.length} sessions from database`);
 
-  // Health check endpoint for container orchestration
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: Date.now() });
-  });
+  const server = Bun.serve<WSData>({
+    port,
 
-  // Mount API routes
-  app.use('/api', createProjectRoutes());
-  app.use('/api/sessions', createSessionRoutes());
+    fetch(req, server) {
+      const url = new URL(req.url);
 
-  // Mount pairing routes (both at /pair and /api/pair for flexibility)
-  app.use('/pair', createPairRoutes());
-  app.use('/api/pair', createPairRoutes());
+      // CORS preflight
+      if (req.method === "OPTIONS") {
+        return handleCORS();
+      }
 
-  // Mount hooks routes for Claude Code hook notifications
-  app.use('/api/hooks', createHooksRoutes());
+      // WebSocket upgrade: /terminal
+      if (url.pathname === "/terminal") {
+        const data = prepareTerminalUpgrade(url);
+        if (!data) {
+          return new Response("Forbidden", { status: 403 });
+        }
+        const ok = server.upgrade(req, { data });
+        if (ok) {
+          return undefined;
+        }
+        return new Response("WebSocket upgrade failed", { status: 400 });
+      }
 
-  // Handle WebSocket upgrades
-  server.on('upgrade', async (req, socket, head) => {
-    const url = new URL(req.url!, `http://${req.headers.host}`);
+      // WebSocket upgrade: /sessions
+      if (url.pathname === "/sessions") {
+        const data: WSData = { type: "sessions", url };
+        const ok = server.upgrade(req, { data });
+        if (ok) {
+          return undefined;
+        }
+        return new Response("WebSocket upgrade failed", { status: 400 });
+      }
 
-    if (url.pathname === '/terminal') {
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        handleTerminalConnection(ws, url);
-      });
-      return;
-    }
+      // HTTP route matching
+      const match = matchRoute(routes, req, url);
+      if (match) {
+        return match.handler(req, url, match.params);
+      }
 
-    if (url.pathname === '/sessions') {
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        handleSessionsConnection(ws, url);
-      });
-      return;
-    }
+      return json({ error: "Not found" }, 404);
+    },
 
-    socket.destroy();
+    websocket: websocketHandlers,
   });
 
   // Graceful shutdown
   const shutdown = () => {
-    console.log('[Server] Shutting down...');
+    console.log("[Server] Shutting down...");
     closeDatabase();
-    server.close();
+    server.stop();
     process.exit(0);
   };
 
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 
   return server;
 }

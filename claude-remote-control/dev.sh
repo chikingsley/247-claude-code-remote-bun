@@ -10,11 +10,11 @@ tmux kill-session -t $SESSION 2>/dev/null
 
 # Create new session with web server
 tmux -f "$DIR/dev.tmux.conf" new-session -d -s $SESSION -n dev -c "$DIR"
-tmux send-keys -t $SESSION "pnpm dev:web" C-m
+tmux send-keys -t $SESSION "bun run dev:web" C-m
 
 # Split horizontally and start agent
 tmux split-window -h -t $SESSION -c "$DIR"
-tmux send-keys -t $SESSION "pnpm dev:agent" C-m
+tmux send-keys -t $SESSION "bun run dev:agent" C-m
 
 # Select first pane (web)
 tmux select-pane -t $SESSION:0.0

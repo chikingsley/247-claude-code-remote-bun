@@ -2,30 +2,30 @@
 // Database Row Types
 // ============================================================================
 
-export type DbSessionStatus = 'init' | 'working' | 'needs_attention' | 'idle';
+export type DbSessionStatus = "init" | "working" | "needs_attention" | "idle";
 // AttentionReason is now a pass-through from Claude Code's notification_type (string)
 export type DbAttentionReason = string;
-export type DbStatusSource = 'hook' | 'tmux';
+export type DbStatusSource = "hook" | "tmux";
 
 export interface DbSession {
+  archived_at: number | null;
+  attention_reason: DbAttentionReason | null;
+  created_at: number;
   id: number;
+  last_activity: number;
+  last_event: string | null;
+  last_status_change: number | null;
   name: string;
   project: string;
-  last_event: string | null;
-  last_activity: number;
-  archived_at: number | null;
-  created_at: number;
-  updated_at: number;
   // Status tracking (v17)
   status: DbSessionStatus | null;
   status_source: DbStatusSource | null;
-  attention_reason: DbAttentionReason | null;
-  last_status_change: number | null;
+  updated_at: number;
 }
 
 export interface DbSchemaVersion {
-  version: number;
   applied_at: number;
+  version: number;
 }
 
 // ============================================================================
@@ -33,13 +33,13 @@ export interface DbSchemaVersion {
 // ============================================================================
 
 export interface UpsertSessionInput {
-  project?: string;
-  lastEvent?: string | null;
+  attentionReason?: DbAttentionReason | null;
   lastActivity?: number;
+  lastEvent?: string | null;
+  project?: string;
   // Status tracking (v17)
   status?: DbSessionStatus | null;
   statusSource?: DbStatusSource | null;
-  attentionReason?: DbAttentionReason | null;
 }
 
 // ============================================================================

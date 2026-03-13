@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { Database } from 'bun:sqlite';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
+import { Database } from "bun:sqlite";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
 // Create a test database in a temp directory
 let testDbPath: string;
@@ -10,15 +9,15 @@ let db: Database;
 
 // Minimal session functions for testing (extracted from sessions.ts logic)
 interface DbSession {
+  attention_reason: string | null;
+  created_at: number;
+  environment_id: string | null;
+  last_activity: number;
+  last_event: string | null;
+  last_status_change: number;
   name: string;
   project: string;
   status: string;
-  attention_reason: string | null;
-  last_event: string | null;
-  last_activity: number;
-  last_status_change: number;
-  environment_id: string | null;
-  created_at: number;
   updated_at: number;
 }
 
@@ -40,7 +39,9 @@ function initTestDb(dbInstance: Database): void {
 }
 
 function getSession(dbInstance: Database, name: string): DbSession | null {
-  const row = dbInstance.prepare('SELECT * FROM sessions WHERE name = ?').get(name) as DbSession | undefined;
+  const row = dbInstance
+    .prepare("SELECT * FROM sessions WHERE name = ?")
+    .get(name) as DbSession | undefined;
   return row ?? null;
 }
 
@@ -87,7 +88,9 @@ function upsertSession(
     attentionReason: input.attentionReason ?? null,
     lastEvent: input.lastEvent ?? null,
     lastActivity: input.lastActivity,
-    lastStatusChange: statusChanged ? now : (existing?.last_status_change ?? now),
+    lastStatusChange: statusChanged
+      ? now
+      : (existing?.last_status_change ?? now),
     environmentId: input.environmentId ?? null,
     createdAt: existing?.created_at ?? now, // PRESERVE EXISTING createdAt
     updatedAt: now,
@@ -96,7 +99,7 @@ function upsertSession(
   return getSession(dbInstance, name)!;
 }
 
-describe('Sessions Database - createdAt Stability', () => {
+describe("Sessions Database - createdAt Stability", () => {
   beforeAll(() => {
     // Create temp directory for test database
     testDbPath = path.join(os.tmpdir(), `test-sessions-${Date.now()}.db`);
@@ -114,15 +117,15 @@ describe('Sessions Database - createdAt Stability', () => {
 
   beforeEach(() => {
     // Clear sessions table before each test
-    db.exec('DELETE FROM sessions');
+    db.exec("DELETE FROM sessions");
   });
 
-  it('sets createdAt on first insert', () => {
+  it("sets createdAt on first insert", () => {
     const before = Date.now();
 
-    const session = upsertSession(db, 'test--session-1', {
-      project: 'test',
-      status: 'working',
+    const session = upsertSession(db, "test--session-1", {
+      project: "test",
+      status: "working",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
@@ -133,11 +136,11 @@ describe('Sessions Database - createdAt Stability', () => {
     expect(session.created_at).toBeLessThanOrEqual(after);
   });
 
-  it('preserves createdAt across status updates', async () => {
+  it("preserves createdAt across status updates", async () => {
     // Create session
-    const session1 = upsertSession(db, 'test--session-1', {
-      project: 'test',
-      status: 'working',
+    const session1 = upsertSession(db, "test--session-1", {
+      project: "test",
+      status: "working",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
@@ -148,10 +151,10 @@ describe('Sessions Database - createdAt Stability', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     // Update status to needs_attention
-    const session2 = upsertSession(db, 'test--session-1', {
-      project: 'test',
-      status: 'needs_attention',
-      attentionReason: 'permission',
+    const session2 = upsertSession(db, "test--session-1", {
+      project: "test",
+      status: "needs_attention",
+      attentionReason: "permission",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
@@ -162,9 +165,9 @@ describe('Sessions Database - createdAt Stability', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     // Update status back to working
-    const session3 = upsertSession(db, 'test--session-1', {
-      project: 'test',
-      status: 'working',
+    const session3 = upsertSession(db, "test--session-1", {
+      project: "test",
+      status: "working",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
@@ -172,9 +175,9 @@ describe('Sessions Database - createdAt Stability', () => {
     expect(session3.created_at).toBe(originalCreatedAt);
 
     // Update to idle
-    const session4 = upsertSession(db, 'test--session-1', {
-      project: 'test',
-      status: 'idle',
+    const session4 = upsertSession(db, "test--session-1", {
+      project: "test",
+      status: "idle",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
@@ -182,11 +185,11 @@ describe('Sessions Database - createdAt Stability', () => {
     expect(session4.created_at).toBe(originalCreatedAt);
   });
 
-  it('preserves createdAt even after many updates', async () => {
+  it("preserves createdAt even after many updates", async () => {
     // Create session
-    const session = upsertSession(db, 'test--many-updates', {
-      project: 'test',
-      status: 'working',
+    const session = upsertSession(db, "test--many-updates", {
+      project: "test",
+      status: "working",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
@@ -195,21 +198,21 @@ describe('Sessions Database - createdAt Stability', () => {
 
     // Simulate many status updates over time
     const statuses = [
-      { status: 'needs_attention', reason: 'permission' },
-      { status: 'working', reason: undefined },
-      { status: 'needs_attention', reason: 'input' },
-      { status: 'working', reason: undefined },
-      { status: 'needs_attention', reason: 'plan_approval' },
-      { status: 'working', reason: undefined },
-      { status: 'needs_attention', reason: 'task_complete' },
-      { status: 'idle', reason: undefined },
+      { status: "needs_attention", reason: "permission" },
+      { status: "working", reason: undefined },
+      { status: "needs_attention", reason: "input" },
+      { status: "working", reason: undefined },
+      { status: "needs_attention", reason: "plan_approval" },
+      { status: "working", reason: undefined },
+      { status: "needs_attention", reason: "task_complete" },
+      { status: "idle", reason: undefined },
     ];
 
     for (const { status, reason } of statuses) {
       await new Promise((r) => setTimeout(r, 5));
 
-      const updated = upsertSession(db, 'test--many-updates', {
-        project: 'test',
+      const updated = upsertSession(db, "test--many-updates", {
+        project: "test",
         status,
         attentionReason: reason,
         lastActivity: Date.now(),
@@ -220,11 +223,11 @@ describe('Sessions Database - createdAt Stability', () => {
     }
   });
 
-  it('updatedAt changes on each update while createdAt stays same', async () => {
+  it("updatedAt changes on each update while createdAt stays same", async () => {
     // Create session
-    const session1 = upsertSession(db, 'test--timestamps', {
-      project: 'test',
-      status: 'working',
+    const session1 = upsertSession(db, "test--timestamps", {
+      project: "test",
+      status: "working",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
@@ -235,10 +238,10 @@ describe('Sessions Database - createdAt Stability', () => {
     await new Promise((r) => setTimeout(r, 10));
 
     // Update session
-    const session2 = upsertSession(db, 'test--timestamps', {
-      project: 'test',
-      status: 'needs_attention',
-      attentionReason: 'permission',
+    const session2 = upsertSession(db, "test--timestamps", {
+      project: "test",
+      status: "needs_attention",
+      attentionReason: "permission",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
@@ -249,19 +252,19 @@ describe('Sessions Database - createdAt Stability', () => {
     expect(session2.updated_at).toBeGreaterThan(originalUpdatedAt);
   });
 
-  it('different sessions have different createdAt', async () => {
-    const session1 = upsertSession(db, 'test--session-a', {
-      project: 'test',
-      status: 'working',
+  it("different sessions have different createdAt", async () => {
+    const session1 = upsertSession(db, "test--session-a", {
+      project: "test",
+      status: "working",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
 
     await new Promise((r) => setTimeout(r, 10));
 
-    const session2 = upsertSession(db, 'test--session-b', {
-      project: 'test',
-      status: 'working',
+    const session2 = upsertSession(db, "test--session-b", {
+      project: "test",
+      status: "working",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });
@@ -272,9 +275,9 @@ describe('Sessions Database - createdAt Stability', () => {
     // Update session 1 - its createdAt should NOT change
     await new Promise((r) => setTimeout(r, 10));
 
-    const session1Updated = upsertSession(db, 'test--session-a', {
-      project: 'test',
-      status: 'idle',
+    const session1Updated = upsertSession(db, "test--session-a", {
+      project: "test",
+      status: "idle",
       lastActivity: Date.now(),
       lastStatusChange: Date.now(),
     });

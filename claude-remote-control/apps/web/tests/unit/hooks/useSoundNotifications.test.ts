@@ -1,90 +1,109 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { useSoundNotifications } from '@/hooks/useSoundNotifications';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { useSoundNotifications } from "@/hooks/useSoundNotifications";
 
-describe('useSoundNotifications hook', () => {
+describe("useSoundNotifications hook", () => {
   let mockAudioInstance: {
-    play: ReturnType<typeof vi.fn>;
-    pause: ReturnType<typeof vi.fn>;
-    addEventListener: ReturnType<typeof vi.fn>;
-    removeEventListener: ReturnType<typeof vi.fn>;
+    play: ReturnType<typeof mock>;
+    pause: ReturnType<typeof mock>;
+    addEventListener: ReturnType<typeof mock>;
+    removeEventListener: ReturnType<typeof mock>;
     currentTime: number;
     preload: string;
     volume: number;
   };
 
   let eventListeners: Record<string, (() => void)[]>;
+  let addEventListenerSpy: ReturnType<typeof spyOn>;
+  let removeEventListenerSpy: ReturnType<typeof spyOn>;
+  let originalAudio: typeof globalThis.Audio;
 
   beforeEach(() => {
     eventListeners = {};
 
     mockAudioInstance = {
-      play: vi.fn().mockResolvedValue(undefined),
-      pause: vi.fn(),
-      addEventListener: vi.fn((event: string, callback: () => void) => {
+      play: mock(() => Promise.resolve(undefined)),
+      pause: mock(),
+      addEventListener: mock((event: string, callback: () => void) => {
         if (!eventListeners[event]) {
           eventListeners[event] = [];
         }
         eventListeners[event].push(callback);
       }),
-      removeEventListener: vi.fn(),
+      removeEventListener: mock(),
       currentTime: 0,
-      preload: '',
+      preload: "",
       volume: 1,
     };
 
     // Use a class-style mock for Audio constructor
+    originalAudio = globalThis.Audio;
     class MockAudio {
       constructor() {
         Object.assign(this, mockAudioInstance);
         return mockAudioInstance as unknown as MockAudio;
       }
     }
-    vi.stubGlobal('Audio', MockAudio);
+    (globalThis as Record<string, unknown>).Audio = MockAudio;
 
     // Mock document event listeners for user interaction tracking
-    vi.spyOn(document, 'addEventListener').mockImplementation(() => {});
-    vi.spyOn(document, 'removeEventListener').mockImplementation(() => {});
+    addEventListenerSpy = spyOn(
+      document,
+      "addEventListener"
+    ).mockImplementation(() => {});
+    removeEventListenerSpy = spyOn(
+      document,
+      "removeEventListener"
+    ).mockImplementation(() => {});
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
+    (globalThis as Record<string, unknown>).Audio = originalAudio;
+    addEventListenerSpy.mockRestore();
+    removeEventListenerSpy.mockRestore();
   });
 
-  describe('initialization', () => {
-    it('should create Audio element and set properties', () => {
+  describe("initialization", () => {
+    it("should create Audio element and set properties", () => {
       renderHook(() => useSoundNotifications());
 
       // Verify audio was configured (we can't easily check constructor args with class mock)
-      expect(mockAudioInstance.preload).toBe('auto');
+      expect(mockAudioInstance.preload).toBe("auto");
       expect(mockAudioInstance.volume).toBe(0.5);
     });
 
-    it('should set preload to auto', () => {
+    it("should set preload to auto", () => {
       renderHook(() => useSoundNotifications());
 
-      expect(mockAudioInstance.preload).toBe('auto');
+      expect(mockAudioInstance.preload).toBe("auto");
     });
 
-    it('should set volume to 0.5', () => {
+    it("should set volume to 0.5", () => {
       renderHook(() => useSoundNotifications());
 
       expect(mockAudioInstance.volume).toBe(0.5);
     });
 
-    it('should start with isLoaded as false', () => {
+    it("should start with isLoaded as false", () => {
       const { result } = renderHook(() => useSoundNotifications());
 
       expect(result.current.isLoaded).toBe(false);
     });
 
-    it('should set isLoaded to true when canplaythrough fires', async () => {
+    it("should set isLoaded to true when canplaythrough fires", async () => {
       const { result } = renderHook(() => useSoundNotifications());
 
       // Simulate canplaythrough event
       act(() => {
-        eventListeners['canplaythrough']?.forEach((cb) => cb());
+        eventListeners["canplaythrough"]?.forEach((cb) => cb());
       });
 
       await waitFor(() => {
@@ -93,11 +112,11 @@ describe('useSoundNotifications hook', () => {
     });
   });
 
-  describe('playSound function', () => {
-    it('should return false when audio is not loaded', async () => {
+  describe("playSound function", () => {
+    it("should return false when audio is not loaded", async () => {
       const { result } = renderHook(() => useSoundNotifications());
 
-      let played: boolean = false;
+      let played = false;
       await act(async () => {
         played = await result.current.playSound();
       });
@@ -106,19 +125,19 @@ describe('useSoundNotifications hook', () => {
       expect(mockAudioInstance.play).not.toHaveBeenCalled();
     });
 
-    it('should play sound when audio is loaded', async () => {
+    it("should play sound when audio is loaded", async () => {
       const { result } = renderHook(() => useSoundNotifications());
 
       // Simulate audio loaded
       act(() => {
-        eventListeners['canplaythrough']?.forEach((cb) => cb());
+        eventListeners["canplaythrough"]?.forEach((cb) => cb());
       });
 
       await waitFor(() => {
         expect(result.current.isLoaded).toBe(true);
       });
 
-      let played: boolean = false;
+      let played = false;
       await act(async () => {
         played = await result.current.playSound();
       });
@@ -127,12 +146,12 @@ describe('useSoundNotifications hook', () => {
       expect(mockAudioInstance.play).toHaveBeenCalled();
     });
 
-    it('should reset currentTime before playing', async () => {
+    it("should reset currentTime before playing", async () => {
       const { result } = renderHook(() => useSoundNotifications());
 
       // Simulate audio loaded
       act(() => {
-        eventListeners['canplaythrough']?.forEach((cb) => cb());
+        eventListeners["canplaythrough"]?.forEach((cb) => cb());
       });
 
       await waitFor(() => {
@@ -148,12 +167,12 @@ describe('useSoundNotifications hook', () => {
       expect(mockAudioInstance.currentTime).toBe(0);
     });
 
-    it('should return false when play fails', async () => {
+    it("should return false when play fails", async () => {
       const { result } = renderHook(() => useSoundNotifications());
 
       // Simulate audio loaded
       act(() => {
-        eventListeners['canplaythrough']?.forEach((cb) => cb());
+        eventListeners["canplaythrough"]?.forEach((cb) => cb());
       });
 
       await waitFor(() => {
@@ -161,9 +180,11 @@ describe('useSoundNotifications hook', () => {
       });
 
       // Make play fail (simulates autoplay block)
-      mockAudioInstance.play.mockRejectedValueOnce(new Error('Autoplay blocked'));
+      mockAudioInstance.play.mockRejectedValueOnce(
+        new Error("Autoplay blocked")
+      );
 
-      let played: boolean = false;
+      let played = false;
       await act(async () => {
         played = await result.current.playSound();
       });
@@ -172,13 +193,13 @@ describe('useSoundNotifications hook', () => {
     });
   });
 
-  describe('testSound function', () => {
-    it('should call playSound internally', async () => {
+  describe("testSound function", () => {
+    it("should call playSound internally", async () => {
       const { result } = renderHook(() => useSoundNotifications());
 
       // Simulate audio loaded
       act(() => {
-        eventListeners['canplaythrough']?.forEach((cb) => cb());
+        eventListeners["canplaythrough"]?.forEach((cb) => cb());
       });
 
       await waitFor(() => {
@@ -193,8 +214,8 @@ describe('useSoundNotifications hook', () => {
     });
   });
 
-  describe('function stability', () => {
-    it('should return stable playSound reference', () => {
+  describe("function stability", () => {
+    it("should return stable playSound reference", () => {
       const { result, rerender } = renderHook(() => useSoundNotifications());
 
       const playSound1 = result.current.playSound;
@@ -202,80 +223,87 @@ describe('useSoundNotifications hook', () => {
       const playSound2 = result.current.playSound;
 
       // After isLoaded changes, the function reference should be stable
-      expect(typeof playSound1).toBe('function');
-      expect(typeof playSound2).toBe('function');
+      expect(typeof playSound1).toBe("function");
+      expect(typeof playSound2).toBe("function");
     });
 
-    it('should return stable testSound reference', () => {
+    it("should return stable testSound reference", () => {
       const { result, rerender } = renderHook(() => useSoundNotifications());
 
       const testSound1 = result.current.testSound;
       rerender();
       const testSound2 = result.current.testSound;
 
-      expect(typeof testSound1).toBe('function');
-      expect(typeof testSound2).toBe('function');
+      expect(typeof testSound1).toBe("function");
+      expect(typeof testSound2).toBe("function");
     });
   });
 
-  describe('soundPath option', () => {
-    it('should use default sound path when no option provided', () => {
+  describe("soundPath option", () => {
+    it("should use default sound path when no option provided", () => {
       renderHook(() => useSoundNotifications());
       // The Audio constructor is called with the default path
       // This is verified by the mock being called
-      expect(mockAudioInstance.preload).toBe('auto');
+      expect(mockAudioInstance.preload).toBe("auto");
     });
 
-    it('should use custom sound path when provided', () => {
-      renderHook(() => useSoundNotifications({ soundPath: '/sounds/custom.mp3' }));
+    it("should use custom sound path when provided", () => {
+      renderHook(() =>
+        useSoundNotifications({ soundPath: "/sounds/custom.mp3" })
+      );
       // The hook should create Audio with the custom path
-      expect(mockAudioInstance.preload).toBe('auto');
+      expect(mockAudioInstance.preload).toBe("auto");
     });
 
-    it('should reload audio when soundPath changes', () => {
-      const { rerender } = renderHook(({ soundPath }) => useSoundNotifications({ soundPath }), {
-        initialProps: { soundPath: '/sounds/chime.mp3' },
-      });
+    it("should reload audio when soundPath changes", () => {
+      const { rerender } = renderHook(
+        ({ soundPath }) => useSoundNotifications({ soundPath }),
+        {
+          initialProps: { soundPath: "/sounds/chime.mp3" },
+        }
+      );
 
       // Change the sound path
-      rerender({ soundPath: '/sounds/bell.mp3' });
+      rerender({ soundPath: "/sounds/bell.mp3" });
 
       // The audio should be reloaded (verified by event listeners being set up again)
       expect(mockAudioInstance.addEventListener).toHaveBeenCalled();
     });
   });
 
-  describe('previewSound function', () => {
-    it('should create a new Audio instance for preview', async () => {
+  describe("previewSound function", () => {
+    it("should create a new Audio instance for preview", async () => {
       const { result } = renderHook(() => useSoundNotifications());
 
       await act(async () => {
-        await result.current.previewSound('/sounds/preview.mp3');
+        await result.current.previewSound("/sounds/preview.mp3");
       });
 
       // A new Audio instance should be created and played
       expect(mockAudioInstance.play).toHaveBeenCalled();
     });
 
-    it('should return true when preview plays successfully', async () => {
+    it("should return true when preview plays successfully", async () => {
       const { result } = renderHook(() => useSoundNotifications());
 
-      let played: boolean = false;
+      let played = false;
       await act(async () => {
-        played = await result.current.previewSound('/sounds/preview.mp3');
+        played = await result.current.previewSound("/sounds/preview.mp3");
       });
 
       expect(played).toBe(true);
     });
 
-    it('should return false when preview fails', async () => {
-      mockAudioInstance.play.mockRejectedValueOnce(new Error('Autoplay blocked'));
+    it("should return false when preview fails", async () => {
+      mockAudioInstance.play.mockRejectedValueOnce(
+        new Error("Autoplay blocked")
+      );
 
       const { result } = renderHook(() => useSoundNotifications());
 
-      let played: boolean = false;
+      let played = false;
       await act(async () => {
-        played = await result.current.previewSound('/sounds/preview.mp3');
+        played = await result.current.previewSound("/sounds/preview.mp3");
       });
 
       expect(played).toBe(false);

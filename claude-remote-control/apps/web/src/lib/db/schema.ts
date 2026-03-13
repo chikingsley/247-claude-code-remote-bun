@@ -1,69 +1,96 @@
-import { pgTable, text, timestamp, boolean, index, uniqueIndex } from 'drizzle-orm/pg-core';
+// ═══════════════════════════════════════════════════════════════════════════
+// Database schema for web app (bun:sqlite)
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Custom table for agent connections (in public schema)
-// Auth tables (user, session, account) are managed by Neon Auth in neon_auth schema
-export const agentConnection = pgTable(
-  'agent_connection',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id').notNull(), // References neon_auth.user.id
-    machineId: text('machine_id'), // Agent's machine UUID for push notifications lookup
-    url: text('url').notNull(),
-    name: text('name').notNull(),
-    method: text('method').notNull().default('tailscale'),
-    isCloud: boolean('is_cloud').default(false),
-    cloudAgentId: text('cloud_agent_id'),
-    color: text('color'), // Hex color code, e.g. '#f97316'
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at').defaultNow(),
-  },
-  (table) => [
-    index('idx_agent_connection_user').on(table.userId),
-    index('idx_agent_connection_machine').on(table.machineId),
-  ]
-);
+export const SCHEMA_VERSION = 1;
 
-export type AgentConnection = typeof agentConnection.$inferSelect;
-export type NewAgentConnection = typeof agentConnection.$inferInsert;
+export const CREATE_TABLES_SQL = `
+  CREATE TABLE IF NOT EXISTS schema_version (
+    version INTEGER PRIMARY KEY,
+    applied_at INTEGER NOT NULL
+  );
 
-// User settings table for storing encrypted API keys and preferences
-// Used for voice input (Groq API key) and other user-specific settings
-export const userSettings = pgTable(
-  'user_settings',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id').notNull(), // References neon_auth.user.id
-    key: text('key').notNull(), // Setting key (e.g., 'groq-api-key', 'voice-preferences')
-    value: text('value').notNull(), // Encrypted value for sensitive data
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at').defaultNow(),
-  },
-  (table) => [
-    index('idx_user_settings_user').on(table.userId),
-    uniqueIndex('idx_user_settings_user_key').on(table.userId, table.key),
-  ]
-);
+  CREATE TABLE IF NOT EXISTS agent_connection (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT 'local',
+    machine_id TEXT,
+    url TEXT NOT NULL,
+    name TEXT NOT NULL,
+    method TEXT NOT NULL DEFAULT 'tailscale',
+    is_cloud INTEGER NOT NULL DEFAULT 0,
+    cloud_agent_id TEXT,
+    color TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
 
-export type UserSetting = typeof userSettings.$inferSelect;
-export type NewUserSetting = typeof userSettings.$inferInsert;
+  CREATE INDEX IF NOT EXISTS idx_agent_connection_user ON agent_connection(user_id);
+  CREATE INDEX IF NOT EXISTS idx_agent_connection_machine ON agent_connection(machine_id);
 
-// Push notification subscriptions for PWA background notifications
-export const pushSubscription = pgTable(
-  'push_subscription',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id').notNull(), // References neon_auth.user.id
-    endpoint: text('endpoint').notNull(), // Push service endpoint URL
-    p256dh: text('p256dh').notNull(), // Public key for encryption
-    auth: text('auth').notNull(), // Auth secret
-    userAgent: text('user_agent'), // Browser/device info
-    createdAt: timestamp('created_at').defaultNow(),
-  },
-  (table) => [
-    index('idx_push_subscription_user').on(table.userId),
-    uniqueIndex('idx_push_subscription_endpoint').on(table.endpoint),
-  ]
-);
+  CREATE TABLE IF NOT EXISTS user_settings (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT 'local',
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
 
-export type PushSubscription = typeof pushSubscription.$inferSelect;
-export type NewPushSubscription = typeof pushSubscription.$inferInsert;
+  CREATE INDEX IF NOT EXISTS idx_user_settings_user ON user_settings(user_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_user_settings_user_key ON user_settings(user_id, key);
+
+  CREATE TABLE IF NOT EXISTS push_subscription (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT 'local',
+    endpoint TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    user_agent TEXT,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_push_subscription_user ON push_subscription(user_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_push_subscription_endpoint ON push_subscription(endpoint);
+`;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TypeScript interfaces (match DB column names)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface DbAgentConnection {
+  cloud_agent_id: string | null;
+  color: string | null;
+  created_at: number;
+  id: string;
+  is_cloud: number;
+  machine_id: string | null;
+  method: string;
+  name: string;
+  updated_at: number;
+  url: string;
+  user_id: string;
+}
+
+export interface DbPushSubscription {
+  auth: string;
+  created_at: number;
+  endpoint: string;
+  id: string;
+  p256dh: string;
+  user_agent: string | null;
+  user_id: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SQL fragments for SELECT with camelCase aliases (for API responses)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const SELECT_CONNECTION = `
+  SELECT id, url, name, method, color,
+    machine_id as machineId,
+    is_cloud as isCloud,
+    cloud_agent_id as cloudAgentId,
+    created_at as createdAt,
+    updated_at as updatedAt
+  FROM agent_connection
+`;

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   AlertDialog,
@@ -9,19 +9,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 interface ConfirmDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  description: string;
-  confirmText?: string;
   cancelText?: string;
-  variant?: 'default' | 'destructive';
-  onConfirm: () => void;
+  confirmText?: string;
+  description: string;
   isLoading?: boolean;
+  onConfirm: () => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  title: string;
+  variant?: "default" | "destructive";
 }
 
 export function ConfirmDialog({
@@ -29,39 +29,41 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
-  variant = 'default',
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  variant = "default",
   onConfirm,
   isLoading = false,
 }: ConfirmDialogProps) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog onOpenChange={onOpenChange} open={open}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>{cancelText}</AlertDialogCancel>
+          <AlertDialogCancel disabled={isLoading}>
+            {cancelText}
+          </AlertDialogCancel>
           <AlertDialogAction
+            className={cn(
+              variant === "destructive" &&
+                "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            )}
+            disabled={isLoading}
             onClick={(e) => {
               e.preventDefault();
               onConfirm();
             }}
-            disabled={isLoading}
-            className={cn(
-              variant === 'destructive' &&
-                'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-            )}
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
                 <svg
-                  className="animate-spin h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 animate-spin"
                   fill="none"
                   viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
                   <circle
                     className="opacity-25"
@@ -73,8 +75,8 @@ export function ConfirmDialog({
                   />
                   <path
                     className="opacity-75"
-                    fill="currentColor"
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    fill="currentColor"
                   />
                 </svg>
                 Processing...

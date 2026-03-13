@@ -3,7 +3,7 @@
  * Provides consistent, spring-based animations throughout the app
  */
 
-import type { Transition, Variants } from 'framer-motion';
+import type { Transition, Variants } from "framer-motion";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Spring Configurations
@@ -12,14 +12,14 @@ import type { Transition, Variants } from 'framer-motion';
 export const spring = {
   /** Gentle spring - for subtle movements */
   gentle: {
-    type: 'spring',
+    type: "spring",
     stiffness: 120,
     damping: 14,
   } as const,
 
   /** Snappy spring - for quick interactions */
   snappy: {
-    type: 'spring',
+    type: "spring",
     stiffness: 400,
     damping: 30,
   } as const,
@@ -40,7 +40,7 @@ export const variants = {
   /** Collapse height animation */
   collapse: {
     initial: { height: 0, opacity: 0 },
-    animate: { height: 'auto', opacity: 1 },
+    animate: { height: "auto", opacity: 1 },
     exit: { height: 0, opacity: 0 },
   } satisfies Variants,
 };

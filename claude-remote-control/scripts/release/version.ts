@@ -1,28 +1,28 @@
-export type BumpType = 'major' | 'minor' | 'patch' | 'none';
+export type BumpType = "major" | "minor" | "patch" | "none";
 
 export interface ConventionalCommit {
-  hash: string;
-  type: string;
-  scope?: string;
-  breaking: boolean;
-  subject: string;
   body: string;
+  breaking: boolean;
+  hash: string;
+  scope?: string;
+  subject: string;
+  type: string;
 }
 
 /**
  * Mapping of commit types to bump levels
  */
 const COMMIT_TYPE_BUMPS: Record<string, BumpType> = {
-  feat: 'minor',
-  fix: 'patch',
-  perf: 'patch',
-  refactor: 'patch',
-  chore: 'patch',
-  docs: 'patch',
-  style: 'patch',
-  test: 'patch',
-  ci: 'patch',
-  build: 'patch',
+  feat: "minor",
+  fix: "patch",
+  perf: "patch",
+  refactor: "patch",
+  chore: "patch",
+  docs: "patch",
+  style: "patch",
+  test: "patch",
+  ci: "patch",
+  build: "patch",
 };
 
 const BUMP_PRIORITY: Record<BumpType, number> = {
@@ -51,7 +51,8 @@ export function parseConventionalCommit(
   const [, type, scope, breakingMark, commitSubject] = match;
 
   // Check for breaking change in body or with ! mark
-  const hasBreakingInBody = body.includes('BREAKING CHANGE') || body.includes('BREAKING-CHANGE');
+  const hasBreakingInBody =
+    body.includes("BREAKING CHANGE") || body.includes("BREAKING-CHANGE");
   const breaking = !!breakingMark || hasBreakingInBody;
 
   return {
@@ -68,16 +69,16 @@ export function parseConventionalCommit(
  * Calculate the bump type based on commits
  */
 export function calculateBump(commits: ConventionalCommit[]): BumpType {
-  let highestBump: BumpType = 'none';
+  let highestBump: BumpType = "none";
 
   for (const commit of commits) {
     // Breaking changes always trigger major
     if (commit.breaking) {
-      return 'major';
+      return "major";
     }
 
     // Get bump for this commit type
-    const bump = COMMIT_TYPE_BUMPS[commit.type] || 'none';
+    const bump = COMMIT_TYPE_BUMPS[commit.type] || "none";
 
     // Keep track of highest bump
     if (BUMP_PRIORITY[bump] > BUMP_PRIORITY[highestBump]) {
@@ -91,15 +92,18 @@ export function calculateBump(commits: ConventionalCommit[]): BumpType {
 /**
  * Increment version based on bump type
  */
-export function incrementVersion(currentVersion: string, bump: BumpType): string {
-  const [major, minor, patch] = currentVersion.split('.').map(Number);
+export function incrementVersion(
+  currentVersion: string,
+  bump: BumpType
+): string {
+  const [major, minor, patch] = currentVersion.split(".").map(Number);
 
   switch (bump) {
-    case 'major':
+    case "major":
       return `${major + 1}.0.0`;
-    case 'minor':
+    case "minor":
       return `${major}.${minor + 1}.0`;
-    case 'patch':
+    case "patch":
       return `${major}.${minor}.${patch + 1}`;
     default:
       return currentVersion;

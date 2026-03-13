@@ -1,18 +1,24 @@
-'use client';
+"use client";
 
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, CornerDownLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  CornerDownLeft,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ANSI escape sequences for arrow keys
 const KEYS = {
-  UP: '\x1b[A',
-  DOWN: '\x1b[B',
-  LEFT: '\x1b[D',
-  RIGHT: '\x1b[C',
-  ENTER: '\r',
-  ESC: '\x1b',
-  SHIFT_TAB: '\x1b[Z',
-  CTRL_C: '\x03',
+  UP: "\x1b[A",
+  DOWN: "\x1b[B",
+  LEFT: "\x1b[D",
+  RIGHT: "\x1b[C",
+  ENTER: "\r",
+  ESC: "\x1b",
+  SHIFT_TAB: "\x1b[Z",
+  CTRL_C: "\x03",
 } as const;
 
 interface MobileKeybarProps {
@@ -22,32 +28,35 @@ interface MobileKeybarProps {
 }
 
 interface KeyButtonProps {
-  onClick: () => void;
   children: React.ReactNode;
-  label?: string;
   className?: string;
+  label?: string;
+  onClick: () => void;
 }
 
 function KeyButton({ onClick, children, label, className }: KeyButtonProps) {
   return (
     <button
-      onClick={onClick}
+      aria-label={label}
       className={cn(
-        'flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center',
-        'rounded-lg bg-white/5 text-white/70 transition-all',
-        'active:scale-95 active:bg-white/10 active:text-white',
-        'hover:bg-white/8',
-        'focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0d0d14]',
+        "flex min-h-[44px] min-w-[44px] touch-manipulation items-center justify-center",
+        "rounded-lg bg-white/5 text-white/70 transition-all",
+        "active:scale-95 active:bg-white/10 active:text-white",
+        "hover:bg-white/8",
+        "focus-visible:ring-2 focus-visible:ring-orange-500/50 focus-visible:ring-offset-1 focus-visible:ring-offset-[#0d0d14]",
         className
       )}
-      aria-label={label}
+      onClick={onClick}
     >
       {children}
     </button>
   );
 }
 
-export function MobileKeybar({ onKeyPress, visible = true }: MobileKeybarProps) {
+export function MobileKeybar({
+  onKeyPress,
+  visible = true,
+}: MobileKeybarProps) {
   // When hidden, completely remove from layout (h-0 + overflow-hidden)
   // This allows the terminal to expand and fill the space
   if (!visible) {
@@ -57,21 +66,21 @@ export function MobileKeybar({ onKeyPress, visible = true }: MobileKeybarProps) 
   return (
     <div
       className={cn(
-        'flex flex-col gap-1.5 border-t border-white/5 bg-[#0d0d14]/95 px-2 py-2 backdrop-blur-sm'
+        "flex flex-col gap-1.5 border-white/5 border-t bg-[#0d0d14]/95 px-2 py-2 backdrop-blur-sm"
       )}
     >
       {/* Row 1: Arrow Navigation */}
       <div className="flex items-center justify-end gap-1">
-        <KeyButton onClick={() => onKeyPress(KEYS.LEFT)} label="Left Arrow">
+        <KeyButton label="Left Arrow" onClick={() => onKeyPress(KEYS.LEFT)}>
           <ChevronLeft className="h-5 w-5" />
         </KeyButton>
-        <KeyButton onClick={() => onKeyPress(KEYS.UP)} label="Up Arrow">
+        <KeyButton label="Up Arrow" onClick={() => onKeyPress(KEYS.UP)}>
           <ChevronUp className="h-5 w-5" />
         </KeyButton>
-        <KeyButton onClick={() => onKeyPress(KEYS.DOWN)} label="Down Arrow">
+        <KeyButton label="Down Arrow" onClick={() => onKeyPress(KEYS.DOWN)}>
           <ChevronDown className="h-5 w-5" />
         </KeyButton>
-        <KeyButton onClick={() => onKeyPress(KEYS.RIGHT)} label="Right Arrow">
+        <KeyButton label="Right Arrow" onClick={() => onKeyPress(KEYS.RIGHT)}>
           <ChevronRight className="h-5 w-5" />
         </KeyButton>
       </div>
@@ -79,28 +88,36 @@ export function MobileKeybar({ onKeyPress, visible = true }: MobileKeybarProps) 
       {/* Row 2: Action keys */}
       <div className="flex items-center justify-between gap-1">
         <div className="flex gap-1">
-          <KeyButton onClick={() => onKeyPress(KEYS.ESC)} label="Escape" className="px-3">
-            <span className="text-xs font-medium">Esc</span>
+          <KeyButton
+            className="px-3"
+            label="Escape"
+            onClick={() => onKeyPress(KEYS.ESC)}
+          >
+            <span className="font-medium text-xs">Esc</span>
           </KeyButton>
-          <KeyButton onClick={() => onKeyPress(KEYS.SHIFT_TAB)} label="Shift+Tab" className="px-2">
-            <span className="text-xs font-medium">⇧Tab</span>
+          <KeyButton
+            className="px-2"
+            label="Shift+Tab"
+            onClick={() => onKeyPress(KEYS.SHIFT_TAB)}
+          >
+            <span className="font-medium text-xs">⇧Tab</span>
           </KeyButton>
         </div>
 
         <div className="flex gap-1">
           <KeyButton
-            onClick={() => onKeyPress(KEYS.ENTER)}
-            label="Enter"
             className="bg-orange-500/20 px-4 text-orange-400 hover:bg-orange-500/30 active:bg-orange-500/40"
+            label="Enter"
+            onClick={() => onKeyPress(KEYS.ENTER)}
           >
             <CornerDownLeft className="h-5 w-5" />
           </KeyButton>
           <KeyButton
-            onClick={() => onKeyPress(KEYS.CTRL_C)}
-            label="Ctrl+C (Interrupt)"
             className="px-3 text-red-400/70 hover:text-red-400 active:text-red-300"
+            label="Ctrl+C (Interrupt)"
+            onClick={() => onKeyPress(KEYS.CTRL_C)}
           >
-            <span className="text-xs font-medium">^C</span>
+            <span className="font-medium text-xs">^C</span>
           </KeyButton>
         </div>
       </div>

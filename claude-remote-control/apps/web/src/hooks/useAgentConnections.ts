@@ -1,31 +1,36 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 // Re-export the type with proper typing for method field
 // This matches StoredAgentConnection in AgentConnectionSettings.tsx
 export interface AgentConnection {
-  id: string;
-  url: string;
-  name: string;
-  method: 'localhost' | 'tailscale' | 'custom' | 'cloud';
-  createdAt: number;
-  isCloud?: boolean;
   cloudAgentId?: string;
   color?: string;
+  createdAt: number;
+  id: string;
+  isCloud?: boolean;
+  method: "localhost" | "tailscale" | "custom" | "cloud";
+  name: string;
+  url: string;
 }
 
 export interface UseAgentConnectionsReturn {
+  addConnection: (data: {
+    url: string;
+    name: string;
+    method?: string;
+    color?: string;
+  }) => Promise<AgentConnection>;
   connections: AgentConnection[];
-  loading: boolean;
   error: string | null;
-  addConnection: (data: { url: string; name: string; method?: string; color?: string }) => Promise<AgentConnection>;
+  loading: boolean;
+  refetch: () => Promise<void>;
   removeConnection: (id: string) => Promise<void>;
   updateConnection: (
     id: string,
     data: { url?: string; name?: string; method?: string; color?: string }
   ) => Promise<AgentConnection>;
-  refetch: () => Promise<void>;
 }
 
 export function useAgentConnections(): UseAgentConnectionsReturn {
@@ -36,14 +41,14 @@ export function useAgentConnections(): UseAgentConnectionsReturn {
   const fetchConnections = useCallback(async () => {
     try {
       setError(null);
-      const res = await fetch('/api/connections');
+      const res = await fetch("/api/connections");
       if (!res.ok) {
         if (res.status === 401) {
           // Not authenticated, middleware will handle redirect
           setLoading(false);
           return;
         }
-        throw new Error('Failed to fetch connections');
+        throw new Error("Failed to fetch connections");
       }
       const data = await res.json();
       // Convert DB format to AgentConnection format
@@ -52,15 +57,17 @@ export function useAgentConnections(): UseAgentConnectionsReturn {
           id: c.id as string,
           url: c.url as string,
           name: c.name as string,
-          method: c.method as AgentConnection['method'],
-          createdAt: c.createdAt ? new Date(c.createdAt as string).getTime() : Date.now(),
+          method: c.method as AgentConnection["method"],
+          createdAt: c.createdAt
+            ? new Date(c.createdAt as string).getTime()
+            : Date.now(),
           isCloud: c.isCloud as boolean | undefined,
           cloudAgentId: c.cloudAgentId as string | undefined,
           color: c.color as string | undefined,
         }))
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -76,14 +83,14 @@ export function useAgentConnections(): UseAgentConnectionsReturn {
     method?: string;
     color?: string;
   }): Promise<AgentConnection> => {
-    const res = await fetch('/api/connections', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/connections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
     if (!res.ok) {
-      throw new Error('Failed to create connection');
+      throw new Error("Failed to create connection");
     }
 
     const raw = await res.json();
@@ -91,7 +98,7 @@ export function useAgentConnections(): UseAgentConnectionsReturn {
       id: raw.id,
       url: raw.url,
       name: raw.name,
-      method: raw.method as AgentConnection['method'],
+      method: raw.method as AgentConnection["method"],
       createdAt: raw.createdAt ? new Date(raw.createdAt).getTime() : Date.now(),
       isCloud: raw.isCloud,
       cloudAgentId: raw.cloudAgentId,
@@ -102,10 +109,10 @@ export function useAgentConnections(): UseAgentConnectionsReturn {
   };
 
   const removeConnection = async (id: string): Promise<void> => {
-    const res = await fetch(`/api/connections/${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/connections/${id}`, { method: "DELETE" });
 
     if (!res.ok) {
-      throw new Error('Failed to delete connection');
+      throw new Error("Failed to delete connection");
     }
 
     setConnections((prev) => prev.filter((c) => c.id !== id));
@@ -116,13 +123,13 @@ export function useAgentConnections(): UseAgentConnectionsReturn {
     data: { url?: string; name?: string; method?: string; color?: string }
   ): Promise<AgentConnection> => {
     const res = await fetch(`/api/connections/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
     if (!res.ok) {
-      throw new Error('Failed to update connection');
+      throw new Error("Failed to update connection");
     }
 
     const raw = await res.json();
@@ -130,7 +137,7 @@ export function useAgentConnections(): UseAgentConnectionsReturn {
       id: raw.id,
       url: raw.url,
       name: raw.name,
-      method: raw.method as AgentConnection['method'],
+      method: raw.method as AgentConnection["method"],
       createdAt: raw.createdAt ? new Date(raw.createdAt).getTime() : Date.now(),
       isCloud: raw.isCloud,
       cloudAgentId: raw.cloudAgentId,

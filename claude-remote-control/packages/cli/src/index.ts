@@ -1,25 +1,27 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
-import { initCommand } from './commands/init.js';
-import { startCommand } from './commands/start.js';
-import { stopCommand } from './commands/stop.js';
-import { statusCommand } from './commands/status.js';
-import { logsCommand } from './commands/logs.js';
-import { serviceCommand } from './commands/service.js';
-import { updateCommand } from './commands/update.js';
-import { doctorCommand } from './commands/doctor.js';
-import { profileCommand } from './commands/profile.js';
-import { versionCommand } from './commands/version.js';
-import { hooksCommand } from './commands/hooks.js';
+import { Command } from "commander";
+import { doctorCommand } from "./commands/doctor.js";
+import { hooksCommand } from "./commands/hooks.js";
+import { initCommand } from "./commands/init.js";
+import { logsCommand } from "./commands/logs.js";
+import { profileCommand } from "./commands/profile.js";
+import { serviceCommand } from "./commands/service.js";
+import { startCommand } from "./commands/start.js";
+import { statusCommand } from "./commands/status.js";
+import { stopCommand } from "./commands/stop.js";
+import { updateCommand } from "./commands/update.js";
+import { versionCommand } from "./commands/version.js";
 
 const program = new Command();
 
 program
-  .name('247')
-  .description('247 - Access Claude Code from anywhere 24/7\nby The Vibe Company')
-  .version('2.44.2')
-  .option('-P, --profile <name>', 'Use a specific profile (dev, prod, etc.)');
+  .name("247")
+  .description(
+    "247 - Access Claude Code from anywhere 24/7\nby The Vibe Company"
+  )
+  .version("2.44.2")
+  .option("-P, --profile <name>", "Use a specific profile (dev, prod, etc.)");
 
 // Add commands
 program.addCommand(initCommand);

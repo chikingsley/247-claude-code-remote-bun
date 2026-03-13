@@ -3,9 +3,9 @@
  * Reads agent version and provides semver comparison utilities.
  */
 
-import { readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -16,19 +16,21 @@ let cachedVersion: string | null = null;
  * Tries multiple paths to support both dev and production (bundled in CLI).
  */
 export function getAgentVersion(): string {
-  if (cachedVersion) return cachedVersion;
+  if (cachedVersion) {
+    return cachedVersion;
+  }
 
   // Paths to try in order:
   // 1. Dev mode: apps/agent/package.json (src -> apps/agent)
   // 2. Prod mode: CLI's package.json (agent/dist -> agent -> cli)
   const paths = [
-    join(__dirname, '..', 'package.json'), // dev: src/version.ts -> apps/agent/
-    join(__dirname, '..', '..', 'package.json'), // prod: agent/dist/version.js -> agent -> cli/
+    join(__dirname, "..", "package.json"), // dev: src/version.ts -> apps/agent/
+    join(__dirname, "..", "..", "package.json"), // prod: agent/dist/version.js -> agent -> cli/
   ];
 
   for (const p of paths) {
     try {
-      const pkg = JSON.parse(readFileSync(p, 'utf-8'));
+      const pkg = JSON.parse(readFileSync(p, "utf-8"));
       if (pkg.version) {
         cachedVersion = pkg.version as string;
         return cachedVersion;
@@ -38,7 +40,7 @@ export function getAgentVersion(): string {
     }
   }
 
-  cachedVersion = '0.0.0';
+  cachedVersion = "0.0.0";
   return cachedVersion;
 }
 
@@ -48,11 +50,11 @@ export function getAgentVersion(): string {
  */
 export function compareSemver(a: string, b: string): number {
   // Remove 'v' prefix if present
-  const cleanA = a.replace(/^v/, '');
-  const cleanB = b.replace(/^v/, '');
+  const cleanA = a.replace(/^v/, "");
+  const cleanB = b.replace(/^v/, "");
 
-  const partsA = cleanA.split('.').map((n) => parseInt(n, 10) || 0);
-  const partsB = cleanB.split('.').map((n) => parseInt(n, 10) || 0);
+  const partsA = cleanA.split(".").map((n) => Number.parseInt(n, 10) || 0);
+  const partsB = cleanB.split(".").map((n) => Number.parseInt(n, 10) || 0);
 
   // Compare major, minor, patch
   for (let i = 0; i < 3; i++) {

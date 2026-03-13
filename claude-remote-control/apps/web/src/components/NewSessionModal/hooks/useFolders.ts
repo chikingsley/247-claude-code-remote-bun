@@ -1,35 +1,35 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { buildApiUrl } from '@/lib/utils';
+import { useEffect, useState } from "react";
+import { buildApiUrl } from "@/lib/utils";
 
 interface Machine {
-  id: string;
-  name: string;
-  status: string;
   config?: {
     projects: string[];
     agentUrl?: string;
   };
+  id: string;
+  name: string;
+  status: string;
 }
 
 export function useFolders(selectedMachine: Machine | null) {
   const [folders, setFolders] = useState<string[]>([]);
-  const [selectedProject, setSelectedProject] = useState<string>('');
+  const [selectedProject, setSelectedProject] = useState<string>("");
   const [loadingFolders, setLoadingFolders] = useState(false);
 
   useEffect(() => {
     if (!selectedMachine) {
       setFolders([]);
-      setSelectedProject('');
+      setSelectedProject("");
       return;
     }
 
     const fetchFolders = async () => {
       setLoadingFolders(true);
       try {
-        const agentUrl = selectedMachine.config?.agentUrl || 'localhost:4678';
-        const response = await fetch(buildApiUrl(agentUrl, '/api/folders'));
+        const agentUrl = selectedMachine.config?.agentUrl || "localhost:4678";
+        const response = await fetch(buildApiUrl(agentUrl, "/api/folders"));
         if (response.ok) {
           const folderList: string[] = await response.json();
           setFolders(folderList);
@@ -38,7 +38,7 @@ export function useFolders(selectedMachine: Machine | null) {
           }
         }
       } catch (err) {
-        console.error('Failed to fetch folders:', err);
+        console.error("Failed to fetch folders:", err);
         if (selectedMachine.config?.projects?.length) {
           setFolders(selectedMachine.config.projects);
           setSelectedProject(selectedMachine.config.projects[0]);

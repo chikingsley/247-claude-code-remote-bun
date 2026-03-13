@@ -1,21 +1,29 @@
 /**
- * Full lifecycle integration test: init → start → stop
+ * Full lifecycle integration test: init -> start -> stop
  *
  * This test verifies the complete user journey works end-to-end.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  mockPaths,
-  createMockFsState,
-  createMockChild,
-  createProcessKillMock,
-  captureConsole,
-  setupDefaultDirectories,
-  setupAgentEntryPoint,
-  setupHooksSource,
-  type MockFsState,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
+import {
   type CapturedOutput,
-} from '../helpers/mock-system.js';
+  captureConsole,
+  createMockChild,
+  createMockFsState,
+  createProcessKillMock,
+  type MockFsState,
+  mockPaths,
+  setupAgentEntryPoint,
+  setupDefaultDirectories,
+  setupHooksSource,
+} from "../helpers/mock-system.js";
 
 // ============= MOCK SETUP =============
 
@@ -23,13 +31,13 @@ let fsState: MockFsState;
 let runningPids: Set<number>;
 let promptResponses: unknown[];
 let output: CapturedOutput;
-let processExitSpy: ReturnType<typeof vi.spyOn>;
+let processExitSpy: ReturnType<typeof spyOn>;
 const originalKill = process.kill;
 
 // Mock paths module
-vi.mock('../../src/lib/paths.js', () => ({
+mock.module("../../src/lib/paths.js", () => ({
   getAgentPaths: () => mockPaths,
-  ensureDirectories: vi.fn(() => {
+  ensureDirectories: mock(() => {
     fsState.directories.add(mockPaths.configDir);
     fsState.directories.add(mockPaths.profilesDir);
     fsState.directories.add(mockPaths.dataDir);
@@ -38,85 +46,95 @@ vi.mock('../../src/lib/paths.js', () => ({
 }));
 
 // Mock fs module
-vi.mock('fs', () => ({
-  existsSync: vi.fn((path: string) => fsState?.files.has(path) || fsState?.directories.has(path)),
-  readFileSync: vi.fn((path: string) => {
+mock.module("fs", () => ({
+  existsSync: mock(
+    (path: string) => fsState?.files.has(path) || fsState?.directories.has(path)
+  ),
+  readFileSync: mock((path: string) => {
     const content = fsState?.files.get(path);
-    if (content === undefined) throw new Error('ENOENT');
+    if (content === undefined) {
+      throw new Error("ENOENT");
+    }
     return content;
   }),
-  writeFileSync: vi.fn((path: string, content: string) => {
+  writeFileSync: mock((path: string, content: string) => {
     fsState?.files.set(path, content);
   }),
-  mkdirSync: vi.fn((path: string) => {
+  mkdirSync: mock((path: string) => {
     fsState?.directories.add(path);
   }),
-  unlinkSync: vi.fn((path: string) => {
+  unlinkSync: mock((path: string) => {
     fsState?.files.delete(path);
   }),
-  readdirSync: vi.fn(() => []),
-  lstatSync: vi.fn(() => ({ isSymbolicLink: () => false })),
-  rmSync: vi.fn(),
-  copyFileSync: vi.fn(),
-  symlinkSync: vi.fn(),
-  openSync: vi.fn(() => 3),
+  readdirSync: mock(() => []),
+  lstatSync: mock(() => ({ isSymbolicLink: () => false })),
+  rmSync: mock(),
+  copyFileSync: mock(),
+  symlinkSync: mock(),
+  openSync: mock(() => 3),
 }));
 
 // Mock crypto
-vi.mock('crypto', () => ({
-  randomUUID: () => 'lifecycle-test-uuid',
+mock.module("crypto", () => ({
+  randomUUID: () => "lifecycle-test-uuid",
 }));
 
 // Mock child_process
-vi.mock('child_process', () => ({
-  spawn: vi.fn(),
-  execSync: vi.fn(() => 'tmux 3.4'),
+mock.module("child_process", () => ({
+  spawn: mock(),
+  execSync: mock(() => "tmux 3.4"),
 }));
 
 // Mock os
-vi.mock('os', () => ({
-  hostname: () => 'test-hostname',
-  platform: () => 'darwin',
-  homedir: () => '/mock',
+mock.module("os", () => ({
+  hostname: () => "test-hostname",
+  platform: () => "darwin",
+  homedir: () => "/mock",
 }));
 
 // Mock enquirer
-vi.mock('enquirer', () => ({
+mock.module("enquirer", () => ({
   default: {
-    prompt: vi.fn(() => Promise.resolve(promptResponses.shift())),
+    prompt: mock(() => Promise.resolve(promptResponses.shift())),
   },
 }));
 
 // Mock ora - capture messages to output
-vi.mock('ora', () => ({
-  default: vi.fn(() => {
+mock.module("ora", () => ({
+  default: mock(() => {
     const spinner = {
-      text: '',
-      start: vi.fn(function (this: any, text?: string) {
-        if (text) this.text = text;
+      text: "",
+      start: mock(function (this: any, text?: string) {
+        if (text) {
+          this.text = text;
+        }
         return this;
       }),
-      stop: vi.fn().mockReturnThis(),
-      succeed: vi.fn(function (this: any, text?: string) {
+      stop: mock(function (this: any) {
+        return this;
+      }),
+      succeed: mock(function (this: any, text?: string) {
         console.log(text || this.text);
         return this;
       }),
-      fail: vi.fn(function (this: any, text?: string) {
+      fail: mock(function (this: any, text?: string) {
         console.log(text || this.text);
         return this;
       }),
-      warn: vi.fn(function (this: any, text?: string) {
+      warn: mock(function (this: any, text?: string) {
         console.log(text || this.text);
         return this;
       }),
-      info: vi.fn().mockReturnThis(),
+      info: mock(function (this: any) {
+        return this;
+      }),
     };
     return spinner;
   }),
 }));
 
 // Mock chalk
-vi.mock('chalk', () => ({
+mock.module("chalk", () => ({
   default: {
     red: (s: string) => s,
     green: (s: string) => s,
@@ -128,20 +146,22 @@ vi.mock('chalk', () => ({
 }));
 
 // Mock net module for port checking
-vi.mock('net', () => {
+mock.module("net", () => {
   return {
-    createServer: vi.fn(() => {
+    createServer: mock(() => {
       const listeners: Record<string, Array<() => void>> = {};
       return {
-        listen: vi.fn(function (this: any, _port: number, _host: string) {
+        listen: mock(function (this: any, _port: number, _host: string) {
           setImmediate(() => {
-            listeners['listening']?.forEach((cb) => cb());
+            listeners["listening"]?.forEach((cb) => cb());
           });
           return this;
         }),
-        close: vi.fn(),
-        once: vi.fn(function (this: any, event: string, callback: () => void) {
-          if (!listeners[event]) listeners[event] = [];
+        close: mock(),
+        once: mock(function (this: any, event: string, callback: () => void) {
+          if (!listeners[event]) {
+            listeners[event] = [];
+          }
           listeners[event].push(callback);
           return this;
         }),
@@ -152,11 +172,8 @@ vi.mock('net', () => {
 
 // ============= TESTS =============
 
-describe('full 247 lifecycle', () => {
+describe("full 247 lifecycle", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    vi.resetModules();
-
     // Reset state
     fsState = createMockFsState();
     runningPids = new Set();
@@ -170,128 +187,122 @@ describe('full 247 lifecycle', () => {
     process.kill = createProcessKillMock(runningPids) as any;
 
     // Mock process.exit
-    processExitSpy = vi.spyOn(process, 'exit').mockImplementation((code) => {
+    processExitSpy = spyOn(process, "exit").mockImplementation((code) => {
       throw new Error(`process.exit(${code})`);
     });
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    mock.restore();
     process.kill = originalKill;
   });
 
-  it('init → start → stop workflow completes successfully', async () => {
+  it("init -> start -> stop workflow completes successfully", async () => {
     // ============= STEP 1: INIT =============
 
-    promptResponses = [{ machineName: 'lifecycle-test-machine' }, { projectsPath: '~/Dev' }];
+    promptResponses = [
+      { machineName: "lifecycle-test-machine" },
+      { projectsPath: "~/Dev" },
+    ];
 
-    const { initCommand } = await import('../../src/commands/init.js');
-    await initCommand.parseAsync(['node', '247', 'init']);
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand.parseAsync(["node", "247", "init"]);
 
     // Verify: config was created
     expect(fsState.files.has(mockPaths.configPath)).toBe(true);
     const savedConfig = JSON.parse(fsState.files.get(mockPaths.configPath)!);
-    expect(savedConfig.machine.name).toBe('lifecycle-test-machine');
-    expect(savedConfig.machine.id).toBe('lifecycle-test-uuid');
-
-    // Reset modules for fresh imports with new state
-    vi.resetModules();
+    expect(savedConfig.machine.name).toBe("lifecycle-test-machine");
+    expect(savedConfig.machine.id).toBe("lifecycle-test-uuid");
 
     // ============= STEP 2: START =============
 
-    const { spawn } = await import('child_process');
-    const mockChild = createMockChild({ pid: 55555 });
-    vi.mocked(spawn).mockReturnValue(mockChild as any);
+    const { spawn } = await import("child_process");
+    const mockChild = createMockChild({ pid: 55_555 });
+    (spawn as ReturnType<typeof mock>).mockReturnValue(mockChild as any);
 
     // Mark process as running after spawn
-    runningPids.add(55555);
+    runningPids.add(55_555);
 
-    const { startCommand } = await import('../../src/commands/start.js');
-    await startCommand.parseAsync(['node', '247', 'start']);
+    const { startCommand } = await import("../../src/commands/start.js");
+    await startCommand.parseAsync(["node", "247", "start"]);
 
     // Verify: agent was spawned and PID file was created
     expect(spawn).toHaveBeenCalled();
-    expect(fsState.files.get(mockPaths.pidFile)).toBe('55555');
-    expect(runningPids.has(55555)).toBe(true);
+    expect(fsState.files.get(mockPaths.pidFile)).toBe("55555");
+    expect(runningPids.has(55_555)).toBe(true);
     expect(mockChild.unref).toHaveBeenCalled();
-
-    // Reset modules for fresh imports
-    vi.resetModules();
 
     // ============= STEP 3: STOP =============
 
-    const { stopCommand } = await import('../../src/commands/stop.js');
-    await stopCommand.parseAsync(['node', '247', 'stop']);
+    const { stopCommand } = await import("../../src/commands/stop.js");
+    await stopCommand.parseAsync(["node", "247", "stop"]);
 
     // Verify: process was stopped and PID file was removed
-    expect(process.kill).toHaveBeenCalledWith(55555, 'SIGTERM');
-    expect(runningPids.has(55555)).toBe(false);
+    expect(process.kill).toHaveBeenCalledWith(55_555, "SIGTERM");
+    expect(runningPids.has(55_555)).toBe(false);
     expect(fsState.files.has(mockPaths.pidFile)).toBe(false);
   });
 
-  it('start fails gracefully before init', async () => {
+  it("start fails gracefully before init", async () => {
     // Try to start without running init first
 
-    const { startCommand } = await import('../../src/commands/start.js');
+    const { startCommand } = await import("../../src/commands/start.js");
 
-    await expect(startCommand.parseAsync(['node', '247', 'start'])).rejects.toThrow(
-      'process.exit(1)'
-    );
+    await expect(
+      startCommand.parseAsync(["node", "247", "start"])
+    ).rejects.toThrow("process.exit(1)");
 
     // Should suggest running init
-    expect(output.logs.some((l) => l.includes('247 init'))).toBe(true);
+    expect(output.logs.some((l) => l.includes("247 init"))).toBe(true);
   });
 
-  it('stop succeeds even when not running', async () => {
+  it("stop succeeds even when not running", async () => {
     // Stop when nothing is running
 
-    const { stopCommand } = await import('../../src/commands/stop.js');
-    await stopCommand.parseAsync(['node', '247', 'stop']);
+    const { stopCommand } = await import("../../src/commands/stop.js");
+    await stopCommand.parseAsync(["node", "247", "stop"]);
 
     // Should complete without error
-    expect(output.logs.some((l) => l.includes('not running'))).toBe(true);
+    expect(output.logs.some((l) => l.includes("not running"))).toBe(true);
   });
 
-  it('start after stop works correctly', async () => {
+  it("start after stop works correctly", async () => {
     // Setup: init first
-    promptResponses = [{ machineName: 'restart-test' }, { projectsPath: '~/Dev' }];
+    promptResponses = [
+      { machineName: "restart-test" },
+      { projectsPath: "~/Dev" },
+    ];
 
-    const { initCommand } = await import('../../src/commands/init.js');
-    await initCommand.parseAsync(['node', '247', 'init']);
-
-    vi.resetModules();
+    const { initCommand } = await import("../../src/commands/init.js");
+    await initCommand.parseAsync(["node", "247", "init"]);
 
     // First start
-    const { spawn } = await import('child_process');
-    let mockChild = createMockChild({ pid: 11111 });
-    vi.mocked(spawn).mockReturnValue(mockChild as any);
-    runningPids.add(11111);
+    const { spawn } = await import("child_process");
+    let mockChild = createMockChild({ pid: 11_111 });
+    (spawn as ReturnType<typeof mock>).mockReturnValue(mockChild as any);
+    runningPids.add(11_111);
 
-    let { startCommand } = await import('../../src/commands/start.js');
-    await startCommand.parseAsync(['node', '247', 'start']);
+    let { startCommand } = await import("../../src/commands/start.js");
+    await startCommand.parseAsync(["node", "247", "start"]);
 
-    expect(fsState.files.get(mockPaths.pidFile)).toBe('11111');
-
-    vi.resetModules();
+    expect(fsState.files.get(mockPaths.pidFile)).toBe("11111");
 
     // Stop
-    const { stopCommand } = await import('../../src/commands/stop.js');
-    await stopCommand.parseAsync(['node', '247', 'stop']);
+    const { stopCommand } = await import("../../src/commands/stop.js");
+    await stopCommand.parseAsync(["node", "247", "stop"]);
 
     expect(fsState.files.has(mockPaths.pidFile)).toBe(false);
 
-    vi.resetModules();
-
     // Second start with new PID
-    const { spawn: spawn2 } = await import('child_process');
-    mockChild = createMockChild({ pid: 22222 });
-    vi.mocked(spawn2).mockReturnValue(mockChild as any);
-    runningPids.add(22222);
+    const { spawn: spawn2 } = await import("child_process");
+    mockChild = createMockChild({ pid: 22_222 });
+    (spawn2 as ReturnType<typeof mock>).mockReturnValue(mockChild as any);
+    runningPids.add(22_222);
 
-    ({ startCommand } = await import('../../src/commands/start.js'));
-    await startCommand.parseAsync(['node', '247', 'start']);
+    ({ startCommand } = await import("../../src/commands/start.js"));
+    await startCommand.parseAsync(["node", "247", "start"]);
 
-    expect(fsState.files.get(mockPaths.pidFile)).toBe('22222');
-    expect(runningPids.has(22222)).toBe(true);
+    expect(fsState.files.get(mockPaths.pidFile)).toBe("22222");
+    expect(runningPids.has(22_222)).toBe(true);
   });
 });

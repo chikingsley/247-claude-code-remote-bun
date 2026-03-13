@@ -3,18 +3,18 @@
  * Provides a web page with pairing link, QR code, and 6-digit fallback code.
  */
 
-import { Router } from 'express';
-import { createHmac } from 'crypto';
-import { config } from '../config.js';
+import { createHmac } from "crypto";
+import { config } from "../config.js";
+import { html, json, type Route, route } from "../router.js";
 
 // In-memory store for pairing codes (6-digit codes with 10-minute expiry)
 interface PairingCode {
-  code: string;
-  machineId: string;
-  machineName: string;
   agentUrl: string;
+  code: string;
   createdAt: number;
   expiresAt: number;
+  machineId: string;
+  machineName: string;
 }
 
 const pairingCodes = new Map<string, PairingCode>();
@@ -31,7 +31,7 @@ setInterval(() => {
 
 // Generate a 6-digit code
 function generateCode(): string {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const code = Math.floor(100_000 + Math.random() * 900_000).toString();
   // Ensure uniqueness
   if (pairingCodes.has(code)) {
     return generateCode();
@@ -40,11 +40,17 @@ function generateCode(): string {
 }
 
 // Create a signed token
-function createToken(payload: object, secret: string, expiresInMs: number): string {
+function createToken(
+  payload: object,
+  secret: string,
+  expiresInMs: number
+): string {
   const exp = Date.now() + expiresInMs;
   const data = { ...payload, iat: Date.now(), exp };
-  const payloadStr = Buffer.from(JSON.stringify(data)).toString('base64url');
-  const signature = createHmac('sha256', secret).update(payloadStr).digest('base64url');
+  const payloadStr = Buffer.from(JSON.stringify(data)).toString("base64url");
+  const signature = createHmac("sha256", secret)
+    .update(payloadStr)
+    .digest("base64url");
   return `${payloadStr}.${signature}`;
 }
 
@@ -54,25 +60,27 @@ export function verifyToken(
   secret: string
 ): { valid: boolean; payload?: Record<string, unknown>; error?: string } {
   try {
-    const [payloadStr, signature] = token.split('.');
-    if (!payloadStr || !signature) {
-      return { valid: false, error: 'Invalid token format' };
+    const [payloadStr, signature] = token.split(".");
+    if (!(payloadStr && signature)) {
+      return { valid: false, error: "Invalid token format" };
     }
 
-    const expectedSignature = createHmac('sha256', secret).update(payloadStr).digest('base64url');
+    const expectedSignature = createHmac("sha256", secret)
+      .update(payloadStr)
+      .digest("base64url");
     if (signature !== expectedSignature) {
-      return { valid: false, error: 'Invalid signature' };
+      return { valid: false, error: "Invalid signature" };
     }
 
-    const payload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString());
+    const payload = JSON.parse(Buffer.from(payloadStr, "base64url").toString());
 
     if (payload.exp && payload.exp < Date.now()) {
-      return { valid: false, error: 'Token expired' };
+      return { valid: false, error: "Token expired" };
     }
 
     return { valid: true, payload };
   } catch {
-    return { valid: false, error: 'Failed to parse token' };
+    return { valid: false, error: "Failed to parse token" };
   }
 }
 
@@ -90,9 +98,9 @@ function getDashboardUrl(): string {
   // Use config if available, otherwise default to production
   if (config.dashboard?.apiUrl) {
     // Extract base URL from API URL (remove /api suffix)
-    return config.dashboard.apiUrl.replace(/\/api\/?$/, '');
+    return config.dashboard.apiUrl.replace(/\/api\/?$/, "");
   }
-  return 'https://247.quivr.com';
+  return "https://247.quivr.com";
 }
 
 // Generate QR code as SVG using a simple implementation
@@ -104,11 +112,38 @@ function generateQRCodeSVG(data: string): string {
   return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}" alt="QR Code" width="200" height="200" style="image-rendering: pixelated;" />`;
 }
 
-export function createPairRoutes(): Router {
-  const router = Router();
+// Get or create a pairing code for the current machine
+function getOrCreateCode(
+  machineId: string,
+  machineName: string,
+  agentUrl: string
+): string {
+  // Reuse existing code if still valid
+  for (const [code, data] of pairingCodes.entries()) {
+    if (data.machineId === machineId && data.expiresAt > Date.now()) {
+      return code;
+    }
+  }
 
+  // Generate a new code
+  const newCode = generateCode();
+  pairingCodes.set(newCode, {
+    code: newCode,
+    machineId,
+    machineName,
+    agentUrl,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 10 * 60 * 1000,
+  });
+  return newCode;
+}
+
+/**
+ * Create pair routes under a given prefix (e.g. "/pair" or "/api/pair").
+ */
+function makePairRoutes(prefix: string): Route[] {
   // GET /pair - HTML page with pairing info
-  router.get('/', (_req, res) => {
+  const pairPage = route("GET", prefix, (_req, _url, _params) => {
     const machineId = config.machine.id;
     const machineName = config.machine.name;
     const agentUrl = getAgentUrl();
@@ -125,38 +160,17 @@ export function createPairRoutes(): Router {
       10 * 60 * 1000
     );
 
-    // Generate or reuse existing code for this machine
-    let existingCode: string | undefined;
-    for (const [code, data] of pairingCodes.entries()) {
-      if (data.machineId === machineId && data.expiresAt > Date.now()) {
-        existingCode = code;
-        break;
-      }
-    }
-
-    const code =
-      existingCode ||
-      (() => {
-        const newCode = generateCode();
-        pairingCodes.set(newCode, {
-          code: newCode,
-          machineId,
-          machineName,
-          agentUrl,
-          createdAt: Date.now(),
-          expiresAt: Date.now() + 10 * 60 * 1000,
-        });
-        return newCode;
-      })();
-
+    const code = getOrCreateCode(machineId, machineName, agentUrl);
     const pairingLink = `${dashboardUrl}/connect?token=${encodeURIComponent(token)}`;
     const qrCodeSvg = generateQRCodeSVG(pairingLink);
 
     // Calculate time remaining
     const codeData = pairingCodes.get(code)!;
-    const secondsRemaining = Math.floor((codeData.expiresAt - Date.now()) / 1000);
+    const secondsRemaining = Math.floor(
+      (codeData.expiresAt - Date.now()) / 1000
+    );
 
-    const html = `<!DOCTYPE html>
+    const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -305,7 +319,7 @@ export function createPairRoutes(): Router {
     <div class="code-section">
       <p class="code-label">Pairing Code</p>
       <p class="code">${code}</p>
-      <p class="expires">Expires in <span id="countdown">${Math.floor(secondsRemaining / 60)}:${String(secondsRemaining % 60).padStart(2, '0')}</span></p>
+      <p class="expires">Expires in <span id="countdown">${Math.floor(secondsRemaining / 60)}:${String(secondsRemaining % 60).padStart(2, "0")}</span></p>
     </div>
 
     <p class="refresh-note">Page will auto-refresh when code expires</p>
@@ -334,12 +348,11 @@ export function createPairRoutes(): Router {
 </body>
 </html>`;
 
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
+    return html(htmlContent);
   });
 
   // GET /pair/info - JSON API for pairing info
-  router.get('/info', (_req, res) => {
+  const pairInfo = route("GET", `${prefix}/info`, (_req, _url, _params) => {
     const machineId = config.machine.id;
     const machineName = config.machine.name;
     const agentUrl = getAgentUrl();
@@ -356,33 +369,10 @@ export function createPairRoutes(): Router {
       10 * 60 * 1000
     );
 
-    // Generate or reuse existing code
-    let existingCode: string | undefined;
-    for (const [code, data] of pairingCodes.entries()) {
-      if (data.machineId === machineId && data.expiresAt > Date.now()) {
-        existingCode = code;
-        break;
-      }
-    }
-
-    const code =
-      existingCode ||
-      (() => {
-        const newCode = generateCode();
-        pairingCodes.set(newCode, {
-          code: newCode,
-          machineId,
-          machineName,
-          agentUrl,
-          createdAt: Date.now(),
-          expiresAt: Date.now() + 10 * 60 * 1000,
-        });
-        return newCode;
-      })();
-
+    const code = getOrCreateCode(machineId, machineName, agentUrl);
     const codeData = pairingCodes.get(code)!;
 
-    res.json({
+    return json({
       machineId,
       machineName,
       agentUrl,
@@ -394,47 +384,68 @@ export function createPairRoutes(): Router {
   });
 
   // GET /pair/code/:code - Lookup a pairing code (for dashboard to verify)
-  router.get('/code/:code', (req, res) => {
-    const { code } = req.params;
-    const data = pairingCodes.get(code);
+  const pairCodeLookup = route(
+    "GET",
+    `${prefix}/code/:code`,
+    (_req, _url, params) => {
+      const data = pairingCodes.get(params.code);
 
-    if (!data || data.expiresAt < Date.now()) {
-      return res.status(404).json({ error: 'Code not found or expired' });
+      if (!data || data.expiresAt < Date.now()) {
+        return json({ error: "Code not found or expired" }, 404);
+      }
+
+      return json({
+        machineId: data.machineId,
+        machineName: data.machineName,
+        agentUrl: data.agentUrl,
+        expiresAt: data.expiresAt,
+      });
     }
-
-    res.json({
-      machineId: data.machineId,
-      machineName: data.machineName,
-      agentUrl: data.agentUrl,
-      expiresAt: data.expiresAt,
-    });
-  });
+  );
 
   // POST /pair/verify - Verify a token (for dashboard to validate)
-  router.post('/verify', (req, res) => {
-    const { token } = req.body;
+  const pairVerify = route(
+    "POST",
+    `${prefix}/verify`,
+    async (req, _url, _params) => {
+      const body = await req.json();
+      const { token } = body;
 
-    if (!token || typeof token !== 'string') {
-      return res.status(400).json({ error: 'Token is required' });
+      if (!token || typeof token !== "string") {
+        return json({ error: "Token is required" }, 400);
+      }
+
+      const machineId = config.machine.id;
+      const result = verifyToken(token, machineId);
+
+      if (!result.valid) {
+        return json({ error: result.error }, 401);
+      }
+
+      return json({
+        valid: true,
+        machineId: result.payload?.mid,
+        machineName: result.payload?.mn,
+        agentUrl: result.payload?.url,
+      });
     }
+  );
 
-    const machineId = config.machine.id;
-    const result = verifyToken(token, machineId);
+  return [pairPage, pairInfo, pairCodeLookup, pairVerify];
+}
 
-    if (!result.valid) {
-      return res.status(401).json({ error: result.error });
-    }
-
-    res.json({
-      valid: true,
-      machineId: result.payload?.mid,
-      machineName: result.payload?.mn,
-      agentUrl: result.payload?.url,
-    });
-  });
-
-  return router;
+/**
+ * Returns all pair routes for both /pair and /api/pair prefixes.
+ */
+export function pairRoutes(): Route[] {
+  return [...makePairRoutes("/pair"), ...makePairRoutes("/api/pair")];
 }
 
 // Export for testing
-export { pairingCodes, generateCode, createToken, getAgentUrl, getDashboardUrl };
+export {
+  pairingCodes,
+  generateCode,
+  createToken,
+  getAgentUrl,
+  getDashboardUrl,
+};

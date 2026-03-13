@@ -28,42 +28,29 @@
   "bugs": {
     "url": "https://github.com/QuivrHQ/247-claude-code-remote/issues"
   },
-  "packageManager": "pnpm@9.15.1",
-  "engines": {
-    "node": ">=22.0.0"
-  },
   "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "dev": "bun run --parallel --filter '*' --if-present dev",
+    "build": "bun run --filter '*' --if-present build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "turbo typecheck",
-    "clean": "turbo clean && rm -rf node_modules",
-    "test": "turbo test --output-logs=errors-only",
-    "test:verbose": "turbo test",
-    "test:unit": "turbo test:unit",
-    "test:integration": "turbo test:integration",
-    "test:coverage": "turbo test -- --coverage",
-    "test:duplication": "vitest run tests/duplication",
+    "typecheck": "bun run --filter '*' --if-present typecheck",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
+    "test": "bun run --filter '*' --if-present test",
+    "test:verbose": "bun run --filter '*' --if-present test",
+    "test:unit": "bun run --filter '*' --if-present test:unit",
+    "test:integration": "bun run --filter '*' --if-present test:integration",
+    "test:coverage": "bun run --filter '*' --if-present test:coverage",
     "duplication": "jscpd",
     "duplication:check": "jscpd --exitCode 1",
     "deadcode": "knip",
     "deadcode:fix": "knip --fix",
-    "dev:web": "pnpm --filter 247-web dev",
-    "dev:agent": "pnpm --filter 247-agent dev",
-    "release": "pnpm exec tsx scripts/release/index.ts",
+    "dev:web": "bun run --filter 247-web dev",
+    "dev:agent": "bun run --filter 247-agent dev",
+    "release": "bun scripts/release/index.ts",
     "prepare": "echo 'Husky hooks configured at repo root'"
   },
   "devDependencies": {
-    "@eslint/js": "^9.18.0",
-    "@vitest/coverage-v8": "^4.0.16",
     "chalk": "^5.3.0",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^10.0.1",
-    "eslint-plugin-react": "^7.37.4",
-    "eslint-plugin-react-hooks": "^5.1.0",
     "husky": "^9.1.7",
     "jscpd": "^4.0.5",
     "knip": "^5.82.1",
@@ -71,18 +58,10 @@
     "ora": "^8.0.0",
     "prettier": "^3.4.2",
     "prettier-plugin-tailwindcss": "^0.6.11",
-    "tsx": "^4.19.2",
-    "turbo": "^2.3.3",
-    "typescript": "^5.7.2",
-    "typescript-eslint": "^8.21.0",
-    "vitest": "^4.0.16"
+    "typescript": "^5.7.2"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix --max-warnings=-1",
-      "prettier --write"
-    ],
-    "*.{json,md,yml,yaml}": [
+    "*.{ts,tsx,json,md,yml,yaml}": [
       "prettier --write"
     ]
   },

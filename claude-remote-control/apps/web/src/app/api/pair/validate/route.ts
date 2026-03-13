@@ -1,27 +1,29 @@
-import { NextResponse } from 'next/server';
-import { lookupPairingCode } from '@/lib/pairing-codes';
+import { lookupPairingCode } from "@/lib/pairing-codes";
 
 /**
  * Decode a token without verifying signature.
  * The signature will be verified by pinging the agent.
  */
-function decodeToken(token: string): { payload: Record<string, unknown> | null; error?: string } {
+function decodeToken(token: string): {
+  payload: Record<string, unknown> | null;
+  error?: string;
+} {
   try {
-    const [payloadStr] = token.split('.');
+    const [payloadStr] = token.split(".");
     if (!payloadStr) {
-      return { payload: null, error: 'Invalid token format' };
+      return { payload: null, error: "Invalid token format" };
     }
 
-    const payload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString());
+    const payload = JSON.parse(Buffer.from(payloadStr, "base64url").toString());
 
     // Check expiry
     if (payload.exp && payload.exp < Date.now()) {
-      return { payload: null, error: 'Token expired' };
+      return { payload: null, error: "Token expired" };
     }
 
     return { payload };
   } catch {
-    return { payload: null, error: 'Failed to parse token' };
+    return { payload: null, error: "Failed to parse token" };
   }
 }
 
@@ -34,13 +36,14 @@ async function verifyWithAgent(
 ): Promise<{ valid: boolean; error?: string }> {
   try {
     // Determine protocol - use HTTPS for Tailscale/remote, HTTP for localhost
-    const isLocalhost = agentUrl.startsWith('localhost') || agentUrl.startsWith('127.0.0.1');
-    const protocol = isLocalhost ? 'http' : 'https';
+    const isLocalhost =
+      agentUrl.startsWith("localhost") || agentUrl.startsWith("127.0.0.1");
+    const protocol = isLocalhost ? "http" : "https";
     const url = `${protocol}://${agentUrl}/api/pair/verify`;
 
     const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
       // Short timeout for verification
       signal: AbortSignal.timeout(5000),
@@ -48,7 +51,7 @@ async function verifyWithAgent(
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return { valid: false, error: data.error || 'Agent rejected token' };
+      return { valid: false, error: data.error || "Agent rejected token" };
     }
 
     return { valid: true };
@@ -69,13 +72,13 @@ export async function POST(req: Request) {
       const codeInfo = lookupPairingCode(code);
 
       if (!codeInfo) {
-        return NextResponse.json(
-          { valid: false, error: 'Invalid or expired code' },
+        return Response.json(
+          { valid: false, error: "Invalid or expired code" },
           { status: 400 }
         );
       }
 
-      return NextResponse.json({
+      return Response.json({
         valid: true,
         machineId: codeInfo.machineId,
         machineName: codeInfo.machineName,
@@ -84,9 +87,9 @@ export async function POST(req: Request) {
     }
 
     // Handle token-based pairing
-    if (!token || typeof token !== 'string') {
-      return NextResponse.json(
-        { valid: false, error: 'Token or code is required' },
+    if (!token || typeof token !== "string") {
+      return Response.json(
+        { valid: false, error: "Token or code is required" },
         { status: 400 }
       );
     }
@@ -95,16 +98,19 @@ export async function POST(req: Request) {
     const { payload, error } = decodeToken(token);
 
     if (!payload || error) {
-      return NextResponse.json({ valid: false, error: error || 'Invalid token' }, { status: 400 });
+      return Response.json(
+        { valid: false, error: error || "Invalid token" },
+        { status: 400 }
+      );
     }
 
     const machineId = payload.mid as string;
     const machineName = payload.mn as string;
     const agentUrl = payload.url as string;
 
-    if (!machineId || !machineName || !agentUrl) {
-      return NextResponse.json(
-        { valid: false, error: 'Incomplete token payload' },
+    if (!(machineId && machineName && agentUrl)) {
+      return Response.json(
+        { valid: false, error: "Incomplete token payload" },
         { status: 400 }
       );
     }
@@ -116,10 +122,12 @@ export async function POST(req: Request) {
     if (!verification.valid) {
       // Still return the info but note the verification failed
       // This allows connecting even if agent is temporarily unreachable
-      console.warn(`Token verification failed for ${agentUrl}: ${verification.error}`);
+      console.warn(
+        `Token verification failed for ${agentUrl}: ${verification.error}`
+      );
     }
 
-    return NextResponse.json({
+    return Response.json({
       valid: true,
       machineId,
       machineName,
@@ -127,9 +135,9 @@ export async function POST(req: Request) {
       verified: verification.valid,
     });
   } catch (error) {
-    console.error('Error validating pairing:', error);
-    return NextResponse.json(
-      { valid: false, error: 'Failed to validate pairing' },
+    console.error("Error validating pairing:", error);
+    return Response.json(
+      { valid: false, error: "Failed to validate pairing" },
       { status: 500 }
     );
   }

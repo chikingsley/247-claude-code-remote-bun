@@ -3,79 +3,81 @@
  *
  * Tests for the prerequisites checking module.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { PrerequisiteCheck } from '../../src/lib/prerequisites.js';
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import type { PrerequisiteCheck } from "../../src/lib/prerequisites.js";
 
 // Mock child_process
-vi.mock('child_process', () => ({
-  execSync: vi.fn(),
+mock.module("child_process", () => ({
+  execSync: mock(),
 }));
 
-describe('Prerequisites', () => {
+describe("Prerequisites", () => {
   beforeEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
+    // Re-mock in beforeEach to ensure fresh mock state
+    mock.module("child_process", () => ({
+      execSync: mock(),
+    }));
   });
 
-  describe('checkNodeVersion', () => {
-    it('returns ok for Node 22+', async () => {
-      const { checkNodeVersion } = await import('../../src/lib/prerequisites.js');
+  describe("checkRuntime", () => {
+    it("returns ok for supported runtime", async () => {
+      const { checkRuntime } = await import("../../src/lib/prerequisites.js");
 
-      // This test passes if current Node is >= 22
-      const result = checkNodeVersion();
+      const result = checkRuntime();
 
-      expect(result.name).toBe('Node.js');
+      expect(result.name).toBe("Runtime");
       expect(result.required).toBe(true);
-      expect(['ok', 'warn', 'error']).toContain(result.status);
+      expect(["ok", "warn", "error"]).toContain(result.status);
     });
 
-    it('includes version in message', async () => {
-      const { checkNodeVersion } = await import('../../src/lib/prerequisites.js');
+    it("includes version in message", async () => {
+      const { checkRuntime } = await import("../../src/lib/prerequisites.js");
 
-      const result = checkNodeVersion();
+      const result = checkRuntime();
 
-      expect(result.message).toContain('v');
+      // Message contains either Bun version or Node.js version string
+      expect(result.message).toMatch(/Bun|Node\.js/);
     });
   });
 
-  describe('checkTmux', () => {
-    it('returns ok when tmux is installed', async () => {
-      const { execSync } = await import('child_process');
-      vi.mocked(execSync).mockReturnValue('tmux 3.4\n');
+  describe("checkTmux", () => {
+    it("returns ok when tmux is installed", async () => {
+      const { execSync } = await import("child_process");
+      (execSync as ReturnType<typeof mock>).mockReturnValue("tmux 3.4\n");
 
-      const { checkTmux } = await import('../../src/lib/prerequisites.js');
+      const { checkTmux } = await import("../../src/lib/prerequisites.js");
 
       const result = checkTmux();
 
-      expect(result.status).toBe('ok');
-      expect(result.name).toBe('tmux');
-      expect(result.message).toBe('tmux 3.4');
+      expect(result.status).toBe("ok");
+      expect(result.name).toBe("tmux");
+      expect(result.message).toBe("tmux 3.4");
       expect(result.required).toBe(true);
     });
 
-    it('returns error when tmux is not installed', async () => {
-      const { execSync } = await import('child_process');
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('command not found');
+    it("returns error when tmux is not installed", async () => {
+      const { execSync } = await import("child_process");
+      (execSync as ReturnType<typeof mock>).mockImplementation(() => {
+        throw new Error("command not found");
       });
 
-      const { checkTmux } = await import('../../src/lib/prerequisites.js');
+      const { checkTmux } = await import("../../src/lib/prerequisites.js");
 
       const result = checkTmux();
 
-      expect(result.status).toBe('error');
-      expect(result.name).toBe('tmux');
-      expect(result.message).toContain('Not installed');
+      expect(result.status).toBe("error");
+      expect(result.name).toBe("tmux");
+      expect(result.message).toContain("Not installed");
       expect(result.required).toBe(true);
     });
 
-    it('includes install instructions for macOS', async () => {
-      const { execSync } = await import('child_process');
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('command not found');
+    it("includes install instructions for macOS", async () => {
+      const { execSync } = await import("child_process");
+      (execSync as ReturnType<typeof mock>).mockImplementation(() => {
+        throw new Error("command not found");
       });
 
-      const { checkTmux } = await import('../../src/lib/prerequisites.js');
+      const { checkTmux } = await import("../../src/lib/prerequisites.js");
 
       const result = checkTmux();
 
@@ -84,64 +86,64 @@ describe('Prerequisites', () => {
     });
   });
 
-  describe('checkBun', () => {
-    it('returns ok when bun is installed', async () => {
-      const { execSync } = await import('child_process');
-      vi.mocked(execSync).mockReturnValue('1.3.9\n');
+  describe("checkBun", () => {
+    it("returns ok when bun is installed", async () => {
+      const { execSync } = await import("child_process");
+      (execSync as ReturnType<typeof mock>).mockReturnValue("1.3.9\n");
 
-      const { checkBun } = await import('../../src/lib/prerequisites.js');
+      const { checkBun } = await import("../../src/lib/prerequisites.js");
 
       const result = checkBun();
 
-      expect(result.status).toBe('ok');
-      expect(result.name).toBe('Bun');
-      expect(result.message).toBe('1.3.9');
+      expect(result.status).toBe("ok");
+      expect(result.name).toBe("Bun");
+      expect(result.message).toBe("1.3.9");
       expect(result.required).toBe(true);
     });
 
-    it('returns error when bun is not installed', async () => {
-      const { execSync } = await import('child_process');
-      vi.mocked(execSync).mockImplementation(() => {
-        throw new Error('command not found');
+    it("returns error when bun is not installed", async () => {
+      const { execSync } = await import("child_process");
+      (execSync as ReturnType<typeof mock>).mockImplementation(() => {
+        throw new Error("command not found");
       });
 
-      const { checkBun } = await import('../../src/lib/prerequisites.js');
+      const { checkBun } = await import("../../src/lib/prerequisites.js");
 
       const result = checkBun();
 
-      expect(result.status).toBe('error');
-      expect(result.name).toBe('Bun');
-      expect(result.message).toContain('Not installed');
+      expect(result.status).toBe("error");
+      expect(result.name).toBe("Bun");
+      expect(result.message).toContain("Not installed");
       expect(result.required).toBe(true);
     });
   });
 
-  describe('checkPlatform', () => {
-    it('returns ok for macOS', async () => {
-      const { checkPlatform } = await import('../../src/lib/prerequisites.js');
+  describe("checkPlatform", () => {
+    it("returns ok for macOS", async () => {
+      const { checkPlatform } = await import("../../src/lib/prerequisites.js");
 
       const result = checkPlatform();
 
       // This will pass on macOS/Linux
-      if (process.platform === 'darwin') {
-        expect(result.status).toBe('ok');
-        expect(result.message).toBe('macOS');
+      if (process.platform === "darwin") {
+        expect(result.status).toBe("ok");
+        expect(result.message).toBe("macOS");
       }
     });
 
-    it('returns ok for Linux', async () => {
-      const { checkPlatform } = await import('../../src/lib/prerequisites.js');
+    it("returns ok for Linux", async () => {
+      const { checkPlatform } = await import("../../src/lib/prerequisites.js");
 
       const result = checkPlatform();
 
-      if (process.platform === 'linux') {
-        expect(result.status).toBe('ok');
-        expect(result.message).toBe('Linux');
+      if (process.platform === "linux") {
+        expect(result.status).toBe("ok");
+        expect(result.message).toBe("Linux");
       }
     });
 
-    it('has required flag set to true', async () => {
-      const { checkPlatform } = await import('../../src/lib/prerequisites.js');
+    it("has required flag set to true", async () => {
+      const { checkPlatform } = await import("../../src/lib/prerequisites.js");
 
       const result = checkPlatform();
 
@@ -149,22 +151,22 @@ describe('Prerequisites', () => {
     });
   });
 
-  describe('checkPort', () => {
-    it('returns ok for available port', async () => {
-      const { checkPort } = await import('../../src/lib/prerequisites.js');
+  describe("checkPort", () => {
+    it("returns ok for available port", async () => {
+      const { checkPort } = await import("../../src/lib/prerequisites.js");
 
       // Use a random high port that's likely available
-      const port = 49152 + Math.floor(Math.random() * 10000);
+      const port = 49_152 + Math.floor(Math.random() * 10_000);
       const result = await checkPort(port);
 
       expect(result.name).toBe(`Port ${port}`);
-      expect(result.status).toBe('ok');
-      expect(result.message).toBe('Available');
+      expect(result.status).toBe("ok");
+      expect(result.message).toBe("Available");
       expect(result.required).toBe(false);
     });
 
-    it('includes port number in name', async () => {
-      const { checkPort } = await import('../../src/lib/prerequisites.js');
+    it("includes port number in name", async () => {
+      const { checkPort } = await import("../../src/lib/prerequisites.js");
 
       const port = 4678;
       const result = await checkPort(port);
@@ -173,12 +175,14 @@ describe('Prerequisites', () => {
     });
   });
 
-  describe('checkAllPrerequisites', () => {
-    it('returns array of checks', async () => {
-      const { execSync } = await import('child_process');
-      vi.mocked(execSync).mockReturnValue('tmux 3.4\n');
+  describe("checkAllPrerequisites", () => {
+    it("returns array of checks", async () => {
+      const { execSync } = await import("child_process");
+      (execSync as ReturnType<typeof mock>).mockReturnValue("tmux 3.4\n");
 
-      const { checkAllPrerequisites } = await import('../../src/lib/prerequisites.js');
+      const { checkAllPrerequisites } = await import(
+        "../../src/lib/prerequisites.js"
+      );
 
       const results = await checkAllPrerequisites();
 
@@ -187,98 +191,94 @@ describe('Prerequisites', () => {
 
       // Should include platform, node, tmux, and bun checks
       const names = results.map((r) => r.name);
-      expect(names).toContain('Platform');
-      expect(names).toContain('Node.js');
-      expect(names).toContain('tmux');
-      expect(names).toContain('Bun');
+      expect(names).toContain("Platform");
+      expect(names).toContain("Runtime");
+      expect(names).toContain("tmux");
+      expect(names).toContain("Bun");
     });
 
-    it('includes port check when port is provided', async () => {
-      const { execSync } = await import('child_process');
-      vi.mocked(execSync).mockReturnValue('tmux 3.4\n');
+    it("includes port check when port is provided", async () => {
+      const { execSync } = await import("child_process");
+      (execSync as ReturnType<typeof mock>).mockReturnValue("tmux 3.4\n");
 
-      const { checkAllPrerequisites } = await import('../../src/lib/prerequisites.js');
+      const { checkAllPrerequisites } = await import(
+        "../../src/lib/prerequisites.js"
+      );
 
-      const port = 49152 + Math.floor(Math.random() * 10000);
+      const port = 49_152 + Math.floor(Math.random() * 10_000);
       const results = await checkAllPrerequisites(port);
 
-      const portCheck = results.find((r) => r.name.includes('Port'));
+      const portCheck = results.find((r) => r.name.includes("Port"));
       expect(portCheck).toBeDefined();
       expect(portCheck?.name).toContain(port.toString());
     });
 
-    it('does not include port check when no port provided', async () => {
-      const { execSync } = await import('child_process');
-      vi.mocked(execSync).mockReturnValue('tmux 3.4\n');
+    it("does not include port check when no port provided", async () => {
+      const { execSync } = await import("child_process");
+      (execSync as ReturnType<typeof mock>).mockReturnValue("tmux 3.4\n");
 
-      const { checkAllPrerequisites } = await import('../../src/lib/prerequisites.js');
+      const { checkAllPrerequisites } = await import(
+        "../../src/lib/prerequisites.js"
+      );
 
       const results = await checkAllPrerequisites();
 
-      const portCheck = results.find((r) => r.name.includes('Port'));
+      const portCheck = results.find((r) => r.name.includes("Port"));
       expect(portCheck).toBeUndefined();
     });
   });
 
-  describe('allRequiredMet', () => {
-    it('returns true when all required checks pass', async () => {
-      const { allRequiredMet } = await import('../../src/lib/prerequisites.js');
+  describe("allRequiredMet", () => {
+    it("returns true when all required checks pass", async () => {
+      const { allRequiredMet } = await import("../../src/lib/prerequisites.js");
 
       const checks: PrerequisiteCheck[] = [
-        { name: 'Test1', status: 'ok', message: 'OK', required: true },
-        { name: 'Test2', status: 'ok', message: 'OK', required: true },
-        { name: 'Test3', status: 'warn', message: 'Warn', required: false },
+        { name: "Test1", status: "ok", message: "OK", required: true },
+        { name: "Test2", status: "ok", message: "OK", required: true },
+        { name: "Test3", status: "warn", message: "Warn", required: false },
       ];
 
       expect(allRequiredMet(checks)).toBe(true);
     });
 
-    it('returns false when a required check fails', async () => {
-      const { allRequiredMet } = await import('../../src/lib/prerequisites.js');
+    it("returns false when a required check fails", async () => {
+      const { allRequiredMet } = await import("../../src/lib/prerequisites.js");
 
       const checks: PrerequisiteCheck[] = [
-        { name: 'Test1', status: 'ok', message: 'OK', required: true },
-        { name: 'Test2', status: 'error', message: 'Error', required: true },
+        { name: "Test1", status: "ok", message: "OK", required: true },
+        { name: "Test2", status: "error", message: "Error", required: true },
       ];
 
       expect(allRequiredMet(checks)).toBe(false);
     });
 
-    it('ignores non-required check failures', async () => {
-      const { allRequiredMet } = await import('../../src/lib/prerequisites.js');
+    it("ignores non-required check failures", async () => {
+      const { allRequiredMet } = await import("../../src/lib/prerequisites.js");
 
       const checks: PrerequisiteCheck[] = [
-        { name: 'Test1', status: 'ok', message: 'OK', required: true },
-        { name: 'Test2', status: 'error', message: 'Error', required: false },
+        { name: "Test1", status: "ok", message: "OK", required: true },
+        { name: "Test2", status: "error", message: "Error", required: false },
       ];
 
       expect(allRequiredMet(checks)).toBe(true);
     });
 
-    it('returns true for empty array', async () => {
-      const { allRequiredMet } = await import('../../src/lib/prerequisites.js');
+    it("returns true for empty array", async () => {
+      const { allRequiredMet } = await import("../../src/lib/prerequisites.js");
 
       expect(allRequiredMet([])).toBe(true);
     });
 
-    it('handles warnings correctly', async () => {
-      const { allRequiredMet } = await import('../../src/lib/prerequisites.js');
+    it("handles warnings correctly", async () => {
+      const { allRequiredMet } = await import("../../src/lib/prerequisites.js");
 
       const checks: PrerequisiteCheck[] = [
-        { name: 'Test1', status: 'warn', message: 'Warn', required: true },
-        { name: 'Test2', status: 'ok', message: 'OK', required: true },
+        { name: "Test1", status: "warn", message: "Warn", required: true },
+        { name: "Test2", status: "ok", message: "OK", required: true },
       ];
 
       // Warnings should not cause failure
       expect(allRequiredMet(checks)).toBe(true);
-    });
-  });
-
-  describe('checkNode alias', () => {
-    it('checkNode is an alias for checkNodeVersion', async () => {
-      const { checkNode, checkNodeVersion } = await import('../../src/lib/prerequisites.js');
-
-      expect(checkNode).toBe(checkNodeVersion);
     });
   });
 });

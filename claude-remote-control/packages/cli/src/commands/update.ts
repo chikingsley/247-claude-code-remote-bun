@@ -1,46 +1,58 @@
-import { Command } from 'commander';
-import chalk from 'chalk';
-import ora from 'ora';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { createServiceManager } from '../service/index.js';
-import { isAgentRunning, stopAgent } from '../lib/process.js';
+import chalk from "chalk";
+import { exec } from "child_process";
+import { Command } from "commander";
+import ora from "ora";
+import { promisify } from "util";
+import { isAgentRunning, stopAgent } from "../lib/process.js";
+import { createServiceManager } from "../service/index.js";
 
 const execAsync = promisify(exec);
 
-const PACKAGE_NAME = '247-cli';
+const PACKAGE_NAME = "247-cli";
 
-export const updateCommand = new Command('update')
-  .description('Update 247 to the latest version')
-  .option('--check', 'Only check for updates without installing')
+export const updateCommand = new Command("update")
+  .description("Update 247 to the latest version")
+  .option("--check", "Only check for updates without installing")
   .action(async (options) => {
-    console.log(chalk.bold('\n247 Update\n'));
+    console.log(chalk.bold("\n247 Update\n"));
 
-    const checkSpinner = ora('Checking for updates...').start();
+    const checkSpinner = ora("Checking for updates...").start();
 
     try {
       // Get current version
-      const pkg = await import('../../package.json', {
-        with: { type: 'json' },
+      const pkg = await import("../../package.json", {
+        with: { type: "json" },
       });
       const currentVersion = pkg.default.version;
 
-      // Check npm for latest version
+      // Check registry for latest version
       let latestVersion: string;
       try {
-        const { stdout } = await execAsync(`npm view ${PACKAGE_NAME} version 2>/dev/null`);
-        latestVersion = stdout.trim();
+        const res = await fetch(
+          `https://registry.npmjs.org/${PACKAGE_NAME}/latest`
+        );
+        if (!res.ok) {
+          throw new Error(`Registry returned ${res.status}`);
+        }
+        const data = (await res.json()) as { version: string };
+        latestVersion = data.version;
       } catch {
-        checkSpinner.fail('Failed to check for updates. Are you connected to the internet?');
+        checkSpinner.fail(
+          "Failed to check for updates. Are you connected to the internet?"
+        );
         process.exit(1);
       }
 
       if (currentVersion === latestVersion) {
-        checkSpinner.succeed(`Already on the latest version (${currentVersion})`);
+        checkSpinner.succeed(
+          `Already on the latest version (${currentVersion})`
+        );
         return;
       }
 
-      checkSpinner.succeed(`Update available: ${currentVersion} → ${latestVersion}`);
+      checkSpinner.succeed(
+        `Update available: ${currentVersion} → ${latestVersion}`
+      );
 
       if (options.check) {
         console.log(chalk.dim('\nRun "247 update" to install the update.\n'));
@@ -64,7 +76,7 @@ export const updateCommand = new Command('update')
 
       // Stop agent if running
       if (serviceWasRunning) {
-        const stopSpinner = ora('Stopping agent...').start();
+        const stopSpinner = ora("Stopping agent...").start();
         try {
           const serviceStatus = await serviceManager.status();
           if (serviceStatus.installed && serviceStatus.running) {
@@ -72,38 +84,39 @@ export const updateCommand = new Command('update')
           } else {
             await stopAgent();
           }
-          stopSpinner.succeed('Agent stopped');
+          stopSpinner.succeed("Agent stopped");
         } catch (err) {
           stopSpinner.warn(`Could not stop agent: ${(err as Error).message}`);
         }
       }
 
-      // Update via npm
-      const updateSpinner = ora(`Updating to ${latestVersion} via npm...`).start();
+      const installCmd = `bun install -g ${PACKAGE_NAME}@${latestVersion}`;
+
+      const updateSpinner = ora(
+        `Updating to ${latestVersion} via bun...`
+      ).start();
       try {
-        const { stdout, stderr } = await execAsync(
-          `npm install -g ${PACKAGE_NAME}@${latestVersion} 2>&1`,
-          { timeout: 120_000 }
-        );
+        const { stdout, stderr } = await execAsync(`${installCmd} 2>&1`, {
+          timeout: 120_000,
+        });
 
         // Verify the installed version matches what we requested
         const { stdout: installedStr } = await execAsync(
-          `npm ls -g ${PACKAGE_NAME} --depth=0 --json 2>/dev/null`
+          "bun pm ls -g --json 2>/dev/null"
         );
         const installed = JSON.parse(installedStr);
-        const installedVersion = installed?.dependencies?.[PACKAGE_NAME]?.version;
+        const installedVersion =
+          installed?.dependencies?.[PACKAGE_NAME]?.version;
 
         if (installedVersion !== latestVersion) {
           updateSpinner.fail(
-            `npm installed ${installedVersion || 'unknown'} instead of ${latestVersion}`
+            `bun installed ${installedVersion || "unknown"} instead of ${latestVersion}`
           );
           if (stderr || stdout) {
-            console.log(chalk.dim('\nnpm output:'));
+            console.log(chalk.dim("\nbun output:"));
             console.log(chalk.dim(stderr || stdout));
           }
-          console.log(
-            chalk.dim(`\nTry: npm install -g ${PACKAGE_NAME}@${latestVersion} --force\n`)
-          );
+          console.log(chalk.dim(`\nTry: ${installCmd} --force\n`));
           process.exit(1);
         }
 
@@ -112,18 +125,16 @@ export const updateCommand = new Command('update')
         const execErr = err as Error & { stderr?: string; stdout?: string };
         updateSpinner.fail(`Failed to update: ${execErr.message}`);
         if (execErr.stderr) {
-          console.log(chalk.dim('\nnpm error output:'));
+          console.log(chalk.dim("\nbun error output:"));
           console.log(chalk.dim(execErr.stderr));
         }
-        console.log(
-          chalk.dim(`\nTry running manually: npm install -g ${PACKAGE_NAME}@${latestVersion}\n`)
-        );
+        console.log(chalk.dim(`\nTry running manually: ${installCmd}\n`));
         process.exit(1);
       }
 
       // Restart agent if it was running
       if (serviceWasRunning) {
-        const startSpinner = ora('Restarting agent...').start();
+        const startSpinner = ora("Restarting agent...").start();
         try {
           const serviceStatus = await serviceManager.status();
           if (serviceStatus.installed) {
@@ -131,17 +142,21 @@ export const updateCommand = new Command('update')
           } else {
             // Will use the daemon mode - but after update the binary changed
             // so we should tell user to restart manually
-            startSpinner.info('Please restart the agent manually: 247 start');
+            startSpinner.info("Please restart the agent manually: 247 start");
           }
-          startSpinner.succeed('Agent restarted');
+          startSpinner.succeed("Agent restarted");
         } catch (err) {
-          startSpinner.warn(`Could not restart agent: ${(err as Error).message}`);
-          console.log(chalk.dim('Run "247 start" to start the agent manually.'));
+          startSpinner.warn(
+            `Could not restart agent: ${(err as Error).message}`
+          );
+          console.log(
+            chalk.dim('Run "247 start" to start the agent manually.')
+          );
         }
       }
 
       console.log();
-      console.log(chalk.green('✓ Update complete!'));
+      console.log(chalk.green("✓ Update complete!"));
       console.log();
     } catch (err) {
       checkSpinner.fail(`Error: ${(err as Error).message}`);

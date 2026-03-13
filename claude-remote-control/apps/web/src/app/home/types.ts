@@ -1,25 +1,24 @@
 export interface LocalMachine {
-  id: string;
-  name: string;
-  status: 'online' | 'offline';
   color?: string;
   config?: {
     projects: string[];
     agentUrl: string;
   };
+  id: string;
+  name: string;
+  status: "online" | "offline";
 }
 
 export interface SelectedSession {
-  machineId: string;
-  sessionName: string;
-  project: string;
   environmentId?: string;
+  machineId: string;
   planningProjectId?: string;
+  project: string;
+  sessionName: string;
 }
 
 // Re-export StoredAgentConnection from AgentConnectionSettings for convenience
-export type { StoredAgentConnection } from '@/components/AgentConnectionSettings';
+export type { StoredAgentConnection } from "@/components/AgentConnectionSettings";
 
-// Legacy constant - deprecated, use connection IDs instead
-// @deprecated Use the connection's unique ID from StoredAgentConnection instead
-export const DEFAULT_MACHINE_ID = 'local-agent';
+// Fallback machine ID when no ?machine= param is in the URL
+export const DEFAULT_MACHINE_ID = "local-agent";

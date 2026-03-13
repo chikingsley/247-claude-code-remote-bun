@@ -1,26 +1,31 @@
-import { existsSync, writeFileSync, unlinkSync, mkdirSync } from 'fs';
-import { join } from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from "child_process";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "fs";
+import { join } from "path";
+import { promisify } from "util";
+import { getAgentPaths, getTestableHomedir } from "../lib/paths.js";
+import { checkTmux } from "../lib/prerequisites.js";
 import type {
-  ServiceManager,
-  ServiceStatus,
   ServiceInstallOptions,
+  ServiceManager,
   ServiceResult,
-} from './index.js';
-import { getAgentPaths, getTestableHomedir } from '../lib/paths.js';
-import { checkTmux } from '../lib/prerequisites.js';
+  ServiceStatus,
+} from "./index.js";
 
 const execAsync = promisify(exec);
 
-const SERVICE_LABEL = 'com.quivr.247';
+const SERVICE_LABEL = "com.quivr.247";
 
 export class LaunchdService implements ServiceManager {
-  platform = 'macos' as const;
+  platform = "macos" as const;
   serviceName = SERVICE_LABEL;
 
   private get plistPath(): string {
-    return join(getTestableHomedir(), 'Library', 'LaunchAgents', `${SERVICE_LABEL}.plist`);
+    return join(
+      getTestableHomedir(),
+      "Library",
+      "LaunchAgents",
+      `${SERVICE_LABEL}.plist`
+    );
   }
 
   async status(): Promise<ServiceStatus> {
@@ -30,10 +35,12 @@ export class LaunchdService implements ServiceManager {
 
     if (installed) {
       try {
-        const { stdout } = await execAsync(`launchctl list | grep ${SERVICE_LABEL}`);
+        const { stdout } = await execAsync(
+          `launchctl list | grep ${SERVICE_LABEL}`
+        );
         const parts = stdout.trim().split(/\s+/);
-        if (parts[0] && parts[0] !== '-') {
-          pid = parseInt(parts[0], 10);
+        if (parts[0] && parts[0] !== "-") {
+          pid = Number.parseInt(parts[0], 10);
           running = !isNaN(pid);
         }
       } catch {
@@ -55,23 +62,24 @@ export class LaunchdService implements ServiceManager {
 
     // Verify tmux is installed
     const tmuxCheck = checkTmux();
-    if (tmuxCheck.status === 'error') {
+    if (tmuxCheck.status === "error") {
       return {
         success: false,
-        error: 'tmux is not installed. Please install it first: brew install tmux',
+        error:
+          "tmux is not installed. Please install it first: brew install tmux",
       };
     }
 
     const home = getTestableHomedir();
 
     // Create LaunchAgents directory if needed
-    const launchAgentsDir = join(home, 'Library', 'LaunchAgents');
+    const launchAgentsDir = join(home, "Library", "LaunchAgents");
     if (!existsSync(launchAgentsDir)) {
       mkdirSync(launchAgentsDir, { recursive: true });
     }
 
     // Create log directory
-    const logDir = join(home, 'Library', 'Logs', '247-agent');
+    const logDir = join(home, "Library", "Logs", "247-agent");
     if (!existsSync(logDir)) {
       mkdirSync(logDir, { recursive: true });
     }
@@ -80,8 +88,8 @@ export class LaunchdService implements ServiceManager {
 
     // Determine entry point
     const entryPoint = paths.isDev
-      ? join(paths.agentRoot, 'src', 'index.ts')
-      : join(paths.agentRoot, 'dist', 'index.js');
+      ? join(paths.agentRoot, "src", "index.ts")
+      : join(paths.agentRoot, "dist", "index.js");
 
     // Generate plist content
     const plistContent = this.generatePlist({
@@ -98,7 +106,7 @@ export class LaunchdService implements ServiceManager {
       dataDir: paths.dataDir,
     });
 
-    writeFileSync(this.plistPath, plistContent, 'utf-8');
+    writeFileSync(this.plistPath, plistContent, "utf-8");
 
     // Load the service if requested
     if (options.startNow) {
@@ -124,7 +132,10 @@ export class LaunchdService implements ServiceManager {
       try {
         unlinkSync(this.plistPath);
       } catch (err) {
-        return { success: false, error: `Failed to remove plist: ${(err as Error).message}` };
+        return {
+          success: false,
+          error: `Failed to remove plist: ${(err as Error).message}`,
+        };
       }
     }
 
@@ -156,10 +167,10 @@ export class LaunchdService implements ServiceManager {
   }
 
   getLogPaths(): { stdout: string; stderr: string } {
-    const logDir = join(getTestableHomedir(), 'Library', 'Logs', '247-agent');
+    const logDir = join(getTestableHomedir(), "Library", "Logs", "247-agent");
     return {
-      stdout: join(logDir, 'agent.log'),
-      stderr: join(logDir, 'agent.error.log'),
+      stdout: join(logDir, "agent.log"),
+      stderr: join(logDir, "agent.error.log"),
     };
   }
 
@@ -235,9 +246,9 @@ ${programArgs}
 
 function escapeXml(str: string): string {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
